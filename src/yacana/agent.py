@@ -200,7 +200,7 @@ class Agent:
                 else:
                     tool_output = str(tool_output)
                 break
-            except (ToolError, TypeError, JSONDecodeError) as e: #@ todo catcher plus large ?
+            except (ToolError, TypeError, JSONDecodeError) as e:  # @todo catcher plus large ?
                 if type(e) is ToolError or type(e) is JSONDecodeError:
                     logging.warning(f"Tool '{tool.tool_name}' raised an error\n")
                     max_custom_error -= 1
@@ -278,11 +278,11 @@ class Agent:
             logging.info("Exiting tool calls loop\n")
             return False
 
-    def _interact(self, task: str, tools: List[Tool] = None, json_output: bool = False) -> Message:
+    def _interact(self, task: str, tools: List[Tool] = None, json_output: bool = False, images: List[str] | None = None) -> Message:
         tools: List[Tool] = [] if tools is None else tools
 
         if len(tools) == 0:
-            self._chat(self.history, task, json_output=json_output)
+            self._chat(self.history, task, images=images, json_output=json_output)
 
         elif len(tools) > 1:
             local_history = copy.deepcopy(self.history)
@@ -294,7 +294,7 @@ class Agent:
             self._chat(local_history, tool_ack_prompt)
 
             tool_use_decision: str = f"You have a task to solve. I will give it to you between these tags `<task></task>`. However, your actual job is to decide if you need to use any of the available tools to solve the task or not. If you do need tools then output their names. The task to solve is <task>{task}</task> So, would any tools be useful in relation to the given task ?"
-            self._chat(local_history, tool_use_decision)
+            self._chat(local_history, tool_use_decision, images=images)
 
             tool_router: str = "In order to summarize your previous answer in one word. Did you chose to use any tools ? Respond ONLY by 'yes' or 'no'."
             ai_may_use_tools: str = self._chat(local_history, tool_router, save_to_history=False)
@@ -313,7 +313,7 @@ class Agent:
                     tool_training_history._concat_history(tool._get_examples_as_history())
 
                     tool_use: str = "Now that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
-                    self._chat(tool_training_history, tool_use, json_output=True)
+                    self._chat(tool_training_history, tool_use, images=images, json_output=True)
                     tool_output: str = self._tool_call(tool_training_history, tool)
                     self._reconcile_history_multi_tools(tool_training_history, local_history, tool, tool_output)
                     use_other_tool: bool = self._use_other_tool(local_history)
@@ -325,9 +325,8 @@ class Agent:
                 if not ("no" in ai_may_use_tools.lower()):
                     logging.warning(
                         "Yacana couldn't determine if the LLM chose to use a tool or not. As a decision must be taken "
-                        "the default behavior is to not use any tools. If this warning persists please open a issue "
-                        "on github. Thx !")
-                self._chat(self.history, task, json_output=json_output)
+                        "the default behavior is to not use any tools. If this warning persists you might need to rewrite your initial prompt.")
+                self._chat(self.history, task, images=images, json_output=json_output)
 
         elif len(tools) == 1:
             local_history = copy.deepcopy(self.history)
@@ -345,16 +344,16 @@ class Agent:
 
             if tool.optional is True:
                 task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
-                self._chat(local_history, task_outputting_prompt)
+                self._chat(local_history, task_outputting_prompt, images=images)
 
                 tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
                 tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
-                if not ("yes" in tool_use_ai_answer.lower()): # Better than checking for "no" as a substring could randomly match
-                    self._chat(self.history, task, json_output=json_output)
+                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
+                    self._chat(self.history, task, images=images, json_output=json_output)
                     return self.history.get_last()
 
             task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
-            self._chat(local_history, task_outputting_prompt, json_output=True)
+            self._chat(local_history, task_outputting_prompt, images=images, json_output=True)
             tool_output: str = self._tool_call(local_history, tool)
             logging.debug(f"Tool output: {tool_output}\n")
 
@@ -365,12 +364,12 @@ class Agent:
 
         return self.history.get_last()
 
-    def _chat(self, history: History, query: str, json_output=False, save_to_history: bool = True, stream: bool = False) -> str | Iterator:
+    def _chat(self, history: History, query: str, images: List[str] | None = None, json_output=False, save_to_history: bool = True, stream: bool = False) -> str | Iterator:
         if save_to_history is True:
-            history.add(Message(MessageRole.USER, query))
+            history.add(Message(MessageRole.USER, query, images=images))
         else:
             history_save = copy.deepcopy(history)
-            history_save.add(Message(MessageRole.USER, query))
+            history_save.add(Message(MessageRole.USER, query, images=images))
 
         logging.info(f"[PROMPT][To: {self.name}]: {query}")
         client: Client = Client(host=self.endpoint)  # Not great performance wise but storing the client crashes deepcopy. To fix later.

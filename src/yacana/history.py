@@ -26,36 +26,38 @@ class Message:
         From whom is the message from. See the MessageRole Enum
     content : str
         The actual message
-
+    images : List[str] | None
+        An optional list of path pointing to images on the filesystem.
     Methods
     ----------
     get_as_dict(self) -> Dict
 
     """
 
-    def __init__(self, role: MessageRole, content: str) -> None:
+    def __init__(self, role: MessageRole, content: str, images: List[str] | None = None) -> None:
         """
         Returns an instance of Message
         :param role: MessageRole: From whom is the message from. See the MessageRole Enum
         :param content: str : The actual message
+        :param images: List[str] | None : An optional list of path pointing to images on the filesystem.
         """
         self.role: MessageRole = role
         self.content: str = content
+        self.images: List[str] | None = images
 
     def get_as_dict(self) -> Dict:
         """
         Returns the alternation of messages that compose a conversation as a pure python dictionary
         @return: Dict
         """
-        return {'role': self.role.value, 'content': self.content}
+        return {'role': self.role.value, 'content': self.content, 'images': self.images}
 
     def __str__(self) -> str:
         """
         Override of str() to pretty print.
         :return: str
         """
-        result = {'role': self.role.value, 'content': self.content}
-        return json.dumps(result)
+        return json.dumps(self.get_as_dict())
 
 
 class History:
@@ -79,7 +81,7 @@ class History:
     def __init__(self, messages: List[Message] = None) -> None:
         """
         Returns a History instance
-        :param messages: List[Message]: The list of all messages that compose the History of an Agent
+        :param messages: List[Message] | None: An optional list of messages that compose the History of an Agent
         """
         self._messages: List[Message] = [] if messages is None else messages
         # Looks like { "uid": { history_as_dict }, ... }

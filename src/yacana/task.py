@@ -36,8 +36,8 @@ class Task:
         Only useful when the task is part of a GroupSolve(). Allows to keep the self reflection process done by the LLM in the next GS iteration. May be useful if the LLM has problems with reasoning.
     forget : bool
         When this task has finished resolving and this is set to False, the Agent won't remember it happened. Useful when doing yes/no questions for routing purposes and no need to keep the answer in the history.
-    uuid : str
-        An identifier uniq to this task. Mostly used internally, but you can use it to keep track of things if you wish.
+    images : List[str] | None
+        An optional list of path pointing to images on the filesystem.
 
     Methods
     ----------
@@ -46,8 +46,8 @@ class Task:
     """
 
     def __init__(self, prompt: str, agent: Agent, json_output=False, tools: List[Tool] = None,
-                 raise_when_max_tool_error_iter: bool = True, llm_stops_by_itself: bool = False,
-                 use_self_reflection=False, forget=False) -> None:
+                 images: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
+                 llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False) -> None:
         """
         Returns a Task instance.
         @param prompt: str: The task to solve. It is the prompt given to the assigned LLM
@@ -67,6 +67,7 @@ class Task:
         self.llm_stops_by_itself: bool = llm_stops_by_itself
         self.use_self_reflection: bool = use_self_reflection
         self.forget: bool = forget
+        self.images: List[str] | None = images
         self._uuid: str = str(uuid.uuid4())
 
         # Only used when @forget is True
@@ -91,14 +92,14 @@ class Task:
     def solve(self) -> Message | None:
         """
         This will call the assigned LLM to perform the inference on the prompt define in the task. The LLM will try to solve the task. If it has tools it will use them and multiple calls will
-        probably be made to the inference server. Yacana uses percussive maintenance  to force the LLM to obey.
+        probably be made to the inference server. Yacana uses percussive maintenance to force the LLM to obey.
         This method may raise 'MaxToolErrorIter()' if either the tool is not used correctly or if Yacana fails at calling it correctly.
         @return: Message : The last message from the LLM
         """
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
         try:
-            answer: Message = self.agent._interact(self.task, json_output=self.json_output, tools=self.tools)
+            answer: Message = self.agent._interact(self.task, json_output=self.json_output, tools=self.tools, images=self.images)
         except MaxToolErrorIter as e:
             if self.raise_when_max_tool_error_iter:
                 self._reset_agent_history()
