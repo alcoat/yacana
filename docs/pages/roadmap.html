@@ -62,13 +62,17 @@
                     <b>We expect to release the following new features in the next update:</b>
                 </p>
                 <ul>
-                    <li>Compatibility with inference servers other than Ollama, like vllm, etc.</li>
-                    <li>Simplifying shift message system and maybe reworking GroupChat itself a bit.</li>
+		    <li>Compatibility with vision models like llama3.2-vision. [Status]: Done. Available on dev branch.</li>
+                    <li>Compatibility with VLLM [Status]: In progress. We need to shift from the Ollama client library to allow the OpenAi one.</li>
+		    <li>Rework JSON mode to allow "structured output". [Status]: Todo. This will allow better tool calling success. In particular with VLLM which does not support the JSON mode.</li>
+		    <li>Compatibility with OpenAI. [Status]: Todo. It should be simple to develop after adding VLLM support as it must be in "OpenAI mode".</li>
+		    <li>Monitoring Yacana workflows to track down prompt engineering failures like tool calling failures count, etc. [Status]: Todo. Low priority.</li>
+                    <li>Simplifying shift message system and maybe reworking GroupChat itself a bit. [Status]: Todo.</li>
                     <li>Keep working on the documentation.</li>
                     <li>Add a section on code generation. In theory, we won't add any abstraction because this can be
                         achieved using the current features but still needs documentation. FYI just call a tool that
                         takes a string in input. The string would be the code to execute. Execute the code inside the
-                        tool. Problem solved...
+                        tool. Problem solved... [Status]: Todo.
                     </li>
                     <li>More to come</li>
                 </ul>
@@ -78,6 +82,7 @@
                     <li>Updating Gno6 as it's a good demonstration of what cool stuff can be achieved with Yacana</li>
                     <li>Making a RAG tool using Yacana</li>
                     <li>Making another smart CLI. Either GIT or Docker maybe.</li>
+		    <li>More youtube videos to come</li>
                     <li>More to come</li>
                 </ul>
 
