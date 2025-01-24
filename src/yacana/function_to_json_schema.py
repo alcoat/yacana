@@ -1,0 +1,91 @@
+from typing import Callable
+from pydantic import create_model
+import inspect
+import json
+
+
+def function_to_json_with_pydantic(func: Callable, description: str) -> dict:
+    """Convert a Python function to a JSON description with an exact match format."""
+    func_name = func.__name__
+
+    # Extract parameters and annotations
+    signature = inspect.signature(func)
+    annotations = {name: param.annotation for name, param in signature.parameters.items()}
+    required_params = [
+        name
+        for name, param in signature.parameters.items()
+        if param.default == inspect.Parameter.empty
+    ]
+
+    # Create a Pydantic model dynamically for the function parameters
+    PydanticModel = create_model(
+        func_name.capitalize() + "Params",
+        **{
+            name: (annotation, ...)
+            if name in required_params
+            else (annotation, None)
+            for name, annotation in annotations.items()
+        }
+    )
+
+    # Extract properties and required fields from Pydantic model schema
+    schema = PydanticModel.schema()
+    properties = schema.get("properties", {})
+    required = schema.get("required", [])
+
+    # Map types to match desired format
+    def map_pydantic_to_json_schema(prop):
+        json_type_mapping = {
+            "integer": "number",
+            "string": "string",
+            "array": "array",
+            "object": "object",
+            "boolean": "boolean",
+            "number": "number",
+        }
+        prop_type = prop.get("type", "string")
+        mapped_type = json_type_mapping.get(prop_type, "string")
+        result = {"type": mapped_type}
+        if mapped_type == "array" and "items" in prop:
+            result["items"] = map_pydantic_to_json_schema(prop["items"])
+        return result
+
+    # Transform properties to match your JSON structure
+    transformed_properties = {
+        name: map_pydantic_to_json_schema(details)
+        for name, details in properties.items()
+    }
+
+    # Construct JSON structure
+    func_json = {
+        "type": "function",
+        "function": {
+            "name": func_name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": transformed_properties,
+                "required": required,
+                "additionalProperties": False
+            },
+            "strict": True
+        }
+    }
+
+    return func_json
+
+
+# Example function
+def get_weather(latitude: int, longitude: int, someArrayParam: list[int]):
+    """
+    Get current temperature for provided coordinates in Celsius.
+    """
+    pass  # Placeholder for demonstration
+
+
+# Convert function to JSON
+description = "Get current temperature for provided coordinates in Celsius."
+json_description = function_to_json_with_pydantic(get_weather, description)
+
+# Print JSON
+print(json.dumps(json_description, indent=4))
