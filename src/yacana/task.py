@@ -5,6 +5,7 @@ from typing import List
 from .agent import Agent, Message
 from .exceptions import MaxToolErrorIter
 from .history import History
+from .inference import ServerType
 from .logging_config import LoggerManager
 from .tool import Tool
 
@@ -74,6 +75,8 @@ class Task:
         # Only used when @forget is True
         self.save_history: History | None = None
 
+        self._update_tool_schema_if_openai()
+
     @property
     def uuid(self) -> str:
         """
@@ -116,3 +119,15 @@ class Task:
     def _reset_agent_history(self):
         if self.forget is True:
             self.agent.history = self.save_history
+
+    def _update_tool_schema_if_openai(self):
+        """
+        Update the tool schema if the task is using an OpenAI agent as the inference server.
+        We do not need this schema for Ollama as it is not useful. Therefor it's the Task role to trigger the
+        tool's schema update only if the agent is an OpenAI agent. It's some kind of "lazy loading".
+        """
+        if self.agent.server_type is ServerType.OPENAI or self.agent.server_type is ServerType.VLLM:
+            for tool in self.tools:
+                if tool._openai_function_schema is not None:
+                    tool._function_to_json_with_pydantic()
+

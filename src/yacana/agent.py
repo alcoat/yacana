@@ -341,6 +341,10 @@ class Agent:
                 self._chat(self.history, task, images=images, json_output=json_output)
 
         elif len(tools) == 1:
+
+
+            self._chat(self.history, tool_use_decision)  # , images=images)
+
             local_history = copy.deepcopy(self.history)
             tool: Tool = tools[0]
 
@@ -376,12 +380,45 @@ class Agent:
 
         return self.history.get_last()
 
-
     def _interact(self, task: str, tools: List[Tool] = None, json_output: bool = False, images: List[str] | None = None) -> Message:
         tools: List[Tool] = [] if tools is None else tools
 
         if len(tools) == 0:
             self._chat(self.history, task, images=images, json_output=json_output)
+
+        elif len(tools) == 1:
+            local_history = copy.deepcopy(self.history)
+            tool: Tool = tools[0]
+
+            tmp = str(tool._function_prototype + " - " + tool.function_description)
+            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tmp}. Please acknowledge the given tool."
+            self._chat(local_history, tool_ack_prompt)
+
+            tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
+                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
+            self._chat(local_history, tool_examples_prompt)
+
+            local_history._concat_history(tool._get_examples_as_history())
+
+            if tool.optional is True:
+                task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
+                self._chat(local_history, task_outputting_prompt, images=images)
+
+                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
+                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
+                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
+                    self._chat(self.history, task, images=images, json_output=json_output)
+                    return self.history.get_last()
+
+            task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
+            self._chat(local_history, task_outputting_prompt, images=images, json_output=True)
+            tool_output: str = self._tool_call(local_history, tool)
+            logging.debug(f"Tool output: {tool_output}\n")
+
+            # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
+            #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
+
+            self._reconcile_history_solo_tool(local_history.get_last().content, tool_output, task, tool)
 
         elif len(tools) > 1:
             local_history = copy.deepcopy(self.history)
@@ -427,43 +464,9 @@ class Agent:
                         "the default behavior is to not use any tools. If this warning persists you might need to rewrite your initial prompt.")
                 self._chat(self.history, task, images=images, json_output=json_output)
 
-        elif len(tools) == 1:
-            local_history = copy.deepcopy(self.history)
-            tool: Tool = tools[0]
-
-            tmp = str(tool._function_prototype + " - " + tool.function_description)
-            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tmp}. Please acknowledge the given tool."
-            self._chat(local_history, tool_ack_prompt)
-
-            tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
-                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
-            self._chat(local_history, tool_examples_prompt)
-
-            local_history._concat_history(tool._get_examples_as_history())
-
-            if tool.optional is True:
-                task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
-                self._chat(local_history, task_outputting_prompt, images=images)
-
-                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
-                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
-                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
-                    self._chat(self.history, task, images=images, json_output=json_output)
-                    return self.history.get_last()
-
-            task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
-            self._chat(local_history, task_outputting_prompt, images=images, json_output=True)
-            tool_output: str = self._tool_call(local_history, tool)
-            logging.debug(f"Tool output: {tool_output}\n")
-
-            # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
-            #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
-
-            self._reconcile_history_solo_tool(local_history.get_last().content, tool_output, task, tool)
-
         return self.history.get_last()
 
-    def _chat(self, history: History, query: str, images: List[str] | None = None, json_output=False, save_to_history: bool = True, stream: bool = False) -> str | Iterator:
+    def _chat(self, history: History, query: str, images: List[str] | None = None, json_output=False, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
         if save_to_history is True:
             history.add(Message(MessageRole.USER, query, images=images))
         else:

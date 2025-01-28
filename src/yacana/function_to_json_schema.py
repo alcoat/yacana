@@ -76,16 +76,16 @@ def function_to_json_with_pydantic(func: Callable, description: str) -> dict:
 
 
 # Example function
-def get_weather(latitude: int, longitude: int, someArrayParam: list[int]):
-    """
-    Get current temperature for provided coordinates in Celsius.
-    """
-    pass  # Placeholder for demonstration
+#def get_weather(latitude: int, longitude: int, someArrayParam: list[int]):
+#    """
+#    Get current temperature for provided coordinates in Celsius.
+#    """
+#    pass  # Placeholder for demonstration
 
 
 # Convert function to JSON
-description = "Get current temperature for provided coordinates in Celsius."
-json_description = function_to_json_with_pydantic(get_weather, description)
+#description = "Get current temperature for provided coordinates in Celsius."
+#json_description = function_to_json_with_pydantic(get_weather, description)
 
 # Print JSON
-print(json.dumps(json_description, indent=4))
+#print(json.dumps(json_description, indent=4))

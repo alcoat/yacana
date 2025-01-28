@@ -3,6 +3,7 @@ import json
 from typing import List, Callable
 
 from .exceptions import IllogicalConfiguration
+from .function_to_json_schema import function_to_json_with_pydantic
 from .history import History, Message, MessageRole
 
 
@@ -44,9 +45,10 @@ class Tool:
         self.function_description: str = function_description
         self.function_ref: Callable = function_ref
         self.optional: bool = optional
+        self.usage_examples: List[dict] = usage_examples if usage_examples is not None else []
         self._function_prototype: str = Tool._extract_prototype(function_ref)
         self._function_args: List[str] = Tool._extract_parameters(function_ref)
-        self.usage_examples: List[dict] = usage_examples if usage_examples is not None else []
+        self._openai_function_schema: dict | None = None
         self.max_custom_error: int = max_custom_error
         self.max_call_error: int = max_call_error
         if max_custom_error < 0 or max_call_error < 0:
@@ -82,3 +84,6 @@ class Tool:
         parameters = signature.parameters
         # Extract the parameter names into a list
         return [param_name for param_name in parameters]
+
+    def _function_to_json_with_pydantic(self) -> None:
+        self._openai_function_schema = function_to_json_with_pydantic(self.function_ref, self.function_description)
