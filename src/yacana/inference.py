@@ -59,14 +59,16 @@ class VllmInference(Inference):
 
 class OpenAIInference(Inference):
     def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> (str, T):
-        refusal: bool = False
+
+        print("fu tools", tools)
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
+        print("ca pète pas ca ? = ", all_function_calling_json)
 
-        tool_choice = self._find_right_tool_choice_option(tools)
+        tool_choice_option = self._find_right_tool_choice_option(tools)
 
         # This is not the structured output feature, but only "best effort" to get a JSON object (as string)
-        response_format = {"type": "json_object"} if json_output else {}
+        #response_format = {"type": "json_object"} if json_output else None
 
         client = OpenAI(
             api_key=api_token,
@@ -78,20 +80,23 @@ class OpenAIInference(Inference):
         params = {
             "model": model_name,
             "messages": history,
-            "response_format": response_format,
-            "tools": all_function_calling_json,
-            "tool_choice": tool_choice
-        }
+            **({"response_format": {"type": "json_object"}} if json_output is True else {}),
+            **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
+            **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {})
 
+        }
+        # **({"stream": stream} if structured_output is None else {})
         if structured_output is None:
-            params["stream"] = stream
+            completion = client.beta.chat.completions.parse(**params)
+            return completion.choices[0].message.content, None
+        else:
+            print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {tools}")
             completion = client.chat.completions.create(**params)
             if completion.choices[0].message.refusal is not None:
                 raise TaskCompletionRefusal(completion.choices[0].message.refusal)  # Refusal is only available for structured output and doesn't work very well
             return completion.choices[0].message.content, completion.choices[0].message.parsed
-        else:
-            completion = client.beta.chat.completions.parse(**params)
-            return completion.choices[0].message.content, None
+
+
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
         """

@@ -74,6 +74,9 @@ class Agent:
         if self.system_prompt is not None:
             self.history.add(Message(MessageRole.SYSTEM, system_prompt))
 
+        if self.server_type == ServerType.OPENAI and self.api_token == "":
+            logging.warning("OpenAI requires an API token to be set.")
+
     def simple_chat(self, custom_prompt: str = "> ", stream: bool = True) -> None:
         """
         Use for testing but this is not how the framework is intended to be used. It creates a simple chatbot that
