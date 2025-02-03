@@ -1,6 +1,8 @@
 import copy
 import uuid
-from typing import List
+from typing import List, Type
+
+from pydantic import BaseModel
 
 from .agent import Agent, Message
 from .exceptions import MaxToolErrorIter
@@ -46,7 +48,7 @@ class Task:
     solve(self) -> Message | None:
     """
 
-    def __init__(self, prompt: str, agent: Agent, json_output=False, tools: List[Tool] = None,
+    def __init__(self, prompt: str, agent: Agent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
                  images: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
                  llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False) -> None:
         """
@@ -54,6 +56,7 @@ class Task:
         @param prompt: str: The task to solve. It is the prompt given to the assigned LLM
         @param agent: str: The agent assigned to this task
         @param json_output: bool: If True, will force the LLM to answer as JSON. Its using Ollama json mode for now. We shall see how to implement that on other inference backends. Either way you should ask for a JSON output in the task prompt.
+        @param structured_output : Type[BaseModel] | None : The expected structured output type for the task. If provided, the LLM's response will be validated against this type.
         @param tools:  List[Tool]: A list of tools that the LLM will get access to when trying to solve this task. This means that tools are not bound to the LLM itself but to the task. This provides more flexibility and less confusion to the LLM as it gets access to the tools it needs in relation to the task at hand.
         @param images: List[str] | None: An optional list of paths pointing to images on the filesystem.
         @param raise_when_max_tool_error_iter: bool: You should try/catch MaxToolErrorIter() on each call to .solve(). But if you don't want to, you can set this to False and in case there is a MaxToolErrorIter then the .solve() method will return None and won't throw. This might be cleaner to catch if you don't want to try/catch every call to .solve().  But be wary, this has not been tested extensively, yet, and is a behavior that might change in the near future.
@@ -64,6 +67,7 @@ class Task:
         self.task: str = prompt
         self.agent: Agent = agent
         self.json_output: bool = json_output
+        self.structured_output: Type[BaseModel] | None = structured_output
         self.tools: List[Tool] = tools if tools is not None else []
         self.raise_when_max_tool_error_iter: bool = raise_when_max_tool_error_iter  # Not a huge fan. Maybe add a callbak that would be called when we reach max iter instead of raising
         self.llm_stops_by_itself: bool = llm_stops_by_itself
@@ -103,7 +107,7 @@ class Task:
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
         try:
-            answer: Message = self.agent._interact(self.task, json_output=self.json_output, tools=self.tools, images=self.images)
+            answer: Message = self.agent._interact(self.task, self.tools, self.json_output, self.structured_output, self.images)
         except MaxToolErrorIter as e:
             if self.raise_when_max_tool_error_iter:
                 self._reset_agent_history()
@@ -112,7 +116,7 @@ class Task:
                 self._reset_agent_history()
                 # By default, we would raise but if @raise_when_max_tool_error_iter is False we simply return None.
                 # An uncaught exceptions would be fatal so returning None is a good way to continue execution after a failure.
-                return None  #@todo What happens in GroupSolve is the no raise option is used ?
+                return None  #@todo What happens in GroupSolve if the no raise option is used ?
         self._reset_agent_history()
         return answer
 

@@ -1,7 +1,7 @@
 import json
 import uuid
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Type, T
 from typing_extensions import Self
 
 
@@ -34,7 +34,7 @@ class Message:
 
     """
 
-    def __init__(self, role: MessageRole, content: str, images: List[str] | None = None) -> None:
+    def __init__(self, role: MessageRole, content: str, images: List[str] | None = None, structured_output: Type[T] | None = None) -> None:
         """
         Returns an instance of Message
         :param role: MessageRole: From whom is the message from. See the MessageRole Enum
@@ -44,6 +44,7 @@ class Message:
         self.role: MessageRole = role
         self.content: str = content
         self.images: List[str] | None = images
+        self.structured_output: Type[T] | None = structured_output
 
     def get_as_dict(self) -> Dict:
         """
@@ -61,7 +62,8 @@ class Message:
 
 
 class History:
-    """Container for an alternation of Messages representing a conversation between the user and an LLM
+    """
+    Container for an alternation of Messages representing a conversation between the user and an LLM
 
     Attributes
     ----------

@@ -48,3 +48,12 @@ class IllogicalConfiguration(Exception):
         """
         self.message = message
         super().__init__(self.message)
+
+
+class TaskCompletionRefusal(Exception):
+    """
+    Raised when the model refuses to complete the task.
+    """
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)

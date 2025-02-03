@@ -2,8 +2,9 @@ import copy
 import json
 import logging
 from json import JSONDecodeError
-from typing import List, Iterator
+from typing import List, Iterator, Type, T
 from ollama import Client
+from pydantic import BaseModel
 
 from .exceptions import MaxToolErrorIter, ToolError
 from .history import History, Message, MessageRole
@@ -11,7 +12,6 @@ from .inference import InferenceFactory, ServerType
 from .logging_config import LoggerManager
 from .modelSettings import ModelSettings
 from .tool import Tool
-
 
 logger = logging.getLogger(__name__)
 
@@ -179,11 +179,11 @@ class Agent:
 
             # No tool or too many tools found
             local_history.add(Message(MessageRole.USER,
-                                      "You didn't only output a tool name. Let's try again with only outputing the tool name to use."))
-            logging.info(f"[prompt]: You didn't only output a tool name. Let's try again with only outputing the tool name to use.\n")
+                                      "You didn't only output a tool name. Let's try again with only outputting the tool name to use."))
+            logging.info(f"[prompt]: You didn't only output a tool name. Let's try again with only outputting the tool name to use.\n")
             local_history.add(Message(MessageRole.ASSISTANT,
-                                      "I'm sorry. I know I must ONLY ouput the name of the tool I wish to use. Let's try again !"))
-            logging.info(f"[AI_RESPONSE]: I'm sorry. I know I must ONLY ouput the name of the tool I wish to use. Let's try again !\n")
+                                      "I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !"))
+            logging.info(f"[AI_RESPONSE]: I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !\n")
             max_tool_name_use_iter += 1
             # Forcing LLM to be less chatty and more focused
             if max_tool_name_use_iter >= 2:
@@ -292,16 +292,75 @@ class Agent:
             logging.info("Exiting tool calls loop\n")
             return False
 
-    def _interact_openai(self, task: str, tools: List[Tool] = None, json_output: bool = False, images: List[str] | None = None) -> Message:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
+        if self.server_type == ServerType.OLLAMA:
+            return self._interact_ollama(task, tools, json_output, structured_output, images)
+        elif self.server_type == ServerType.OPENAI:
+            return self._interact_openai(task, tools, json_output, structured_output, images)
+        elif self.server_type == ServerType.VLLM:
+            return self._interact_vllm(task, tools, json_output, structured_output, images)
+        else:
+            raise ValueError(f"Server type {self.server_type} is not supported.")
+
+    def _interact_vllm(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
+        raise NotImplemented()
+
+    def _interact_openai(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
         tools: List[Tool] = [] if tools is None else tools
         if len(tools) == 0:
-            self._chat(self.history, task, images=images, json_output=json_output)
+            self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output)
+        elif len(tools) > 0:
+            self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output, tools=tools)
+        return self.history.get_last()
+
+    def _interact_ollama(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
+        tools: List[Tool] = [] if tools is None else tools
+
+        if len(tools) == 0:
+            self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output)
+
+        elif len(tools) == 1:
+            local_history = copy.deepcopy(self.history)
+            tool: Tool = tools[0]
+
+            tmp = str(tool._function_prototype + " - " + tool.function_description)
+            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tmp}. Please acknowledge the given tool."
+            self._chat(local_history, tool_ack_prompt)
+
+            tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
+                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
+            self._chat(local_history, tool_examples_prompt)
+
+            local_history._concat_history(tool._get_examples_as_history())
+
+            # This section checks whether we need a tool or not. If not we call the LLM like if tools == 0 and exit the function.
+            if tool.optional is True:
+                task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
+                self._chat(local_history, task_outputting_prompt, images=images)
+
+                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
+                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
+                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
+                    self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output)  # !!Actual function calling
+                    return self.history.get_last()
+
+            # If getting here the tool call is inevitable
+            task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
+            self._chat(local_history, task_outputting_prompt, images=images, json_output=True)  # !!Actual function calling
+            tool_output: str = self._tool_call(local_history, tool)  # !!Actual tool calling
+            logging.debug(f"Tool output: {tool_output}\n")
+
+            # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
+            #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
+
+            self._reconcile_history_solo_tool(local_history.get_last().content, tool_output, task, tool)
+
         elif len(tools) > 1:
             local_history = copy.deepcopy(self.history)
 
             tools_presentation: str = "* " + "\n* ".join([
-                                                             f"Name: '{tool.tool_name}' - Usage: {tool._function_prototype} - Description: {tool.function_description}"
-                                                             for tool in tools])
+                f"Name: '{tool.tool_name}' - Usage: {tool._function_prototype} - Description: {tool.function_description}"
+                for tool in tools])
             tool_ack_prompt = f"You have access to this list of tools definitions you can use to fulfill tasks :\n{tools_presentation}\nPlease acknowledge the given tools."
             self._chat(local_history, tool_ack_prompt)
 
@@ -325,8 +384,8 @@ class Agent:
                     tool_training_history._concat_history(tool._get_examples_as_history())
 
                     tool_use: str = "Now that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
-                    self._chat(tool_training_history, tool_use, images=images, json_output=True)
-                    tool_output: str = self._tool_call(tool_training_history, tool)
+                    self._chat(tool_training_history, tool_use, images=images, json_output=True)  # !!Actual function calling
+                    tool_output: str = self._tool_call(tool_training_history, tool)  # !!Actual tool calling
                     self._reconcile_history_multi_tools(tool_training_history, local_history, tool, tool_output)
                     use_other_tool: bool = self._use_other_tool(local_history)
                     if use_other_tool is True:
@@ -338,135 +397,12 @@ class Agent:
                     logging.warning(
                         "Yacana couldn't determine if the LLM chose to use a tool or not. As a decision must be taken "
                         "the default behavior is to not use any tools. If this warning persists you might need to rewrite your initial prompt.")
-                self._chat(self.history, task, images=images, json_output=json_output)
-
-        elif len(tools) == 1:
-
-
-            self._chat(self.history, tool_use_decision)  # , images=images)
-
-            local_history = copy.deepcopy(self.history)
-            tool: Tool = tools[0]
-
-            tmp = str(tool._function_prototype + " - " + tool.function_description)
-            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tmp}. Please acknowledge the given tool."
-            self._chat(local_history, tool_ack_prompt)
-
-            tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
-                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
-            self._chat(local_history, tool_examples_prompt)
-
-            local_history._concat_history(tool._get_examples_as_history())
-
-            if tool.optional is True:
-                task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
-                self._chat(local_history, task_outputting_prompt, images=images)
-
-                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
-                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
-                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
-                    self._chat(self.history, task, images=images, json_output=json_output)
-                    return self.history.get_last()
-
-            task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
-            self._chat(local_history, task_outputting_prompt, images=images, json_output=True)
-            tool_output: str = self._tool_call(local_history, tool)
-            logging.debug(f"Tool output: {tool_output}\n")
-
-            # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
-            #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
-
-            self._reconcile_history_solo_tool(local_history.get_last().content, tool_output, task, tool)
-
-        return self.history.get_last()
-
-    def _interact(self, task: str, tools: List[Tool] = None, json_output: bool = False, images: List[str] | None = None) -> Message:
-        tools: List[Tool] = [] if tools is None else tools
-
-        if len(tools) == 0:
-            self._chat(self.history, task, images=images, json_output=json_output)
-
-        elif len(tools) == 1:
-            local_history = copy.deepcopy(self.history)
-            tool: Tool = tools[0]
-
-            tmp = str(tool._function_prototype + " - " + tool.function_description)
-            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tmp}. Please acknowledge the given tool."
-            self._chat(local_history, tool_ack_prompt)
-
-            tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
-                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
-            self._chat(local_history, tool_examples_prompt)
-
-            local_history._concat_history(tool._get_examples_as_history())
-
-            if tool.optional is True:
-                task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
-                self._chat(local_history, task_outputting_prompt, images=images)
-
-                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
-                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
-                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
-                    self._chat(self.history, task, images=images, json_output=json_output)
-                    return self.history.get_last()
-
-            task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
-            self._chat(local_history, task_outputting_prompt, images=images, json_output=True)
-            tool_output: str = self._tool_call(local_history, tool)
-            logging.debug(f"Tool output: {tool_output}\n")
-
-            # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
-            #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
-
-            self._reconcile_history_solo_tool(local_history.get_last().content, tool_output, task, tool)
-
-        elif len(tools) > 1:
-            local_history = copy.deepcopy(self.history)
-
-            tools_presentation: str = "* " + "\n* ".join([
-                                                             f"Name: '{tool.tool_name}' - Usage: {tool._function_prototype} - Description: {tool.function_description}"
-                                                             for tool in tools])
-            tool_ack_prompt = f"You have access to this list of tools definitions you can use to fulfill tasks :\n{tools_presentation}\nPlease acknowledge the given tools."
-            self._chat(local_history, tool_ack_prompt)
-
-            tool_use_decision: str = f"You have a task to solve. I will give it to you between these tags `<task></task>`. However, your actual job is to decide if you need to use any of the available tools to solve the task or not. If you do need tools then output their names. The task to solve is <task>{task}</task> So, would any tools be useful in relation to the given task ?"
-            self._chat(local_history, tool_use_decision, images=images)
-
-            tool_router: str = "In order to summarize your previous answer in one word. Did you chose to use any tools ? Respond ONLY by 'yes' or 'no'."
-            ai_may_use_tools: str = self._chat(local_history, tool_router, save_to_history=False)
-
-            if "yes" in ai_may_use_tools.lower():
-                self.history.add(Message(MessageRole.USER, task))
-                self.history.add(
-                    Message(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly."))
-                while True:
-                    tool: Tool = self._choose_tool_by_name(local_history, tools)
-                    tool_training_history = copy.deepcopy(local_history)
-                    tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
-                        {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
-                    self._chat(tool_training_history, tool_examples_prompt)
-
-                    tool_training_history._concat_history(tool._get_examples_as_history())
-
-                    tool_use: str = "Now that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
-                    self._chat(tool_training_history, tool_use, images=images, json_output=True)
-                    tool_output: str = self._tool_call(tool_training_history, tool)
-                    self._reconcile_history_multi_tools(tool_training_history, local_history, tool, tool_output)
-                    use_other_tool: bool = self._use_other_tool(local_history)
-                    if use_other_tool is True:
-                        continue
-                    else:
-                        break
-            else:
-                if not ("no" in ai_may_use_tools.lower()):
-                    logging.warning(
-                        "Yacana couldn't determine if the LLM chose to use a tool or not. As a decision must be taken "
-                        "the default behavior is to not use any tools. If this warning persists you might need to rewrite your initial prompt.")
+                # Getting here means that no tools were selected by the LLM and we act like tools == 0
                 self._chat(self.history, task, images=images, json_output=json_output)
 
         return self.history.get_last()
 
-    def _chat(self, history: History, query: str, images: List[str] | None = None, json_output=False, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
+    def _chat(self, history: History, query: str, images: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
         if save_to_history is True:
             history.add(Message(MessageRole.USER, query, images=images))
         else:
@@ -482,18 +418,20 @@ class Agent:
         #                       options=self.model_settings.get_settings()
         #                       )
         inference = InferenceFactory.get_inference(self.server_type)
-        response = inference.go(self.model_name,
-                                history.get_as_dict() if save_to_history is True else history_save.get_as_dict(),
-                                endpoint=self.endpoint,
-                                api_token=self.api_token,
-                                model_settings=self.model_settings.get_settings(),
-                                stream=stream,
-                                json_output=(True if json_output is True else False),
-                                headers=self.headers
-                                )
+        response: (str, T) = inference.go(model_name=self.model_name,
+                                          history=history.get_as_dict() if save_to_history is True else history_save.get_as_dict(),
+                                          endpoint=self.endpoint,
+                                          api_token=self.api_token,
+                                          model_settings=self.model_settings.get_settings(),
+                                          stream=stream,
+                                          json_output=(True if json_output is True else False),
+                                          structured_output=structured_output,
+                                          headers=self.headers,
+                                          tools=tools
+                                          )
         if stream is True:
-            return response  # Only for the simple_chat() method and is of no importance.
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {response}")
+            return response[0]  # Only for the simple_chat() method and is of no importance.
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {response[0]}")
         if save_to_history is True:
-            history.add(Message(MessageRole.ASSISTANT, response))
+            history.add(Message(MessageRole.ASSISTANT, response[0], structured_output=response[1]))
         return response
