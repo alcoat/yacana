@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from abc import ABC, abstractmethod
 import openai
@@ -36,16 +37,12 @@ class OllamaInference(Inference):
 
     def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> (str, T):
         client = Client(host=endpoint, headers=headers)
-        #print("valeur de ca = ", self.get_expected_output_format(json_output, structured_output))
         response = client.chat(model=model_name,
                                messages=history,
                                format=self.get_expected_output_format(json_output, structured_output),
                                stream=stream,
                                options=model_settings
                                )
-        print("message = ", response['message']['content'])
-        print(T)
-        print(type(T))
         if structured_output is None:
             return response['message']['content'], None
         else:
@@ -60,9 +57,10 @@ class VllmInference(Inference):
 class OpenAIInference(Inference):
     def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> (str, T):
 
-        print("fu tools", tools)
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
+
+        print("ca devrait etre du json = ", all_function_calling_json)
 
         tool_choice_option = self._find_right_tool_choice_option(tools)
         if structured_output is not None:
@@ -78,6 +76,7 @@ class OpenAIInference(Inference):
 
         # @todo pour stream faudrait du code spécifique donc je ne vois pas bien comment on pourrait le faire
         # @todo modelsettings
+        # @todo faut gérer les choices autres [0]
 
         params = {
             "model": model_name,
@@ -85,17 +84,34 @@ class OpenAIInference(Inference):
             **({"response_format": response_format} if response_format is not None else {}),
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {})
-
         }
+        print("tool choice = ", tool_choice_option)
         # **({"stream": stream} if structured_output is None else {})
         if structured_output is None:
             completion = client.chat.completions.create(**params)
-            return completion.choices[0].message.content, None
+            if len(tools) > 0:
+                print("retour de l'autre noob = ", completion.choices)
+                function_calling_answer = []
+                for tool_call in completion.choices[0].message.tool_calls:
+                    function_calling_answer.append({
+                        "id": tool_call.id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": json.loads(tool_call.function.arguments)
+                        }
+                    })
+                # We return the function calling as a JSON string and there is no structured output involved
+                return json.dumps(function_calling_answer), None  # @todo virer le tuple et faire une mini class avec 2 membres qui encapsule [0] en tant que text raw et [1] en tant que réponse structurée
+            else:
+                # No tools were given, so we return the classic completion and no structured output is involved
+                return completion.choices[0].message.content, None
         else:
             print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {tools}")
             completion = client.beta.chat.completions.parse(**params)
             if completion.choices[0].message.refusal is not None:
                 raise TaskCompletionRefusal(completion.choices[0].message.refusal)  # Refusal is only available for structured output and doesn't work very well
+            # We return the structured output as raw text and as structured output (but no tool calling is involved)
             return completion.choices[0].message.content, completion.choices[0].message.parsed
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:

@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 from json import JSONDecodeError
-from typing import List, Iterator, Type, T
+from typing import List, Iterator, Type, T, Dict
 from ollama import Client
 from pydantic import BaseModel
 
@@ -308,12 +308,54 @@ class Agent:
     def _interact_vllm(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
         raise NotImplemented()
 
+    def _openai_tool_call(self, tool: Tool, function_args: Dict) -> str:
+        max_call_error: int = tool.max_call_error
+        max_custom_error: int = tool.max_custom_error
+        tool_output: str = ""
+
+        while True:
+            try:
+                tool_output: str = tool.function_ref(**function_args)
+                if tool_output is None:
+                    tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
+                else:
+                    tool_output = str(tool_output)
+                break
+            except (ToolError, TypeError, JSONDecodeError) as e:  # @todo catcher plus large ?
+                if type(e) is ToolError or type(e) is JSONDecodeError:
+                    logging.warning(f"Tool '{tool.tool_name}' raised an error\n")
+                    max_custom_error -= 1
+                    tool_output = e.message
+                elif type(e) is TypeError:
+                    logging.warning(f"Yacana failed to call tool '{tool.tool_name}' correctly based on the LLM output\n")
+                    tool_output = str(e)
+                    max_call_error -= 1
+
+                if max_custom_error < 0:
+                    raise MaxToolErrorIter(
+                        f"Too many errors were raise by the tool '{tool.tool_name}'. Stopping after {tool.max_custom_error} errors. You can change the maximum errors a tool can raise in the Tool constructor with @max_custom_error.")
+                if max_call_error < 0:
+                    raise MaxToolErrorIter(
+                        f"Too many errors occurred while trying to call the python function by Yacana (tool name: {tool.tool_name}). Stopping after {tool.max_call_error} errors. You can change the maximum call error in the Tool constructor with @max_call_error.")
+                self._chat(self.history, f"The tool returned an error: `{tool_output}`\nUsing this error message, fix the JSON you generated.")
+        return tool_output
+
     def _interact_openai(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
         tools: List[Tool] = [] if tools is None else tools
         if len(tools) == 0:
             self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output)
         elif len(tools) > 0:
             self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output, tools=tools)
+            print("le json de tool calling ?\n", self.history.get_last().content)
+            function_calling = json.loads(self.history.get_last().content)
+            for function_data in function_calling:
+                if function_data["type"] == "function":  # et on fait quoi si c'est pas une fonction ?
+                    tool = next((tool for tool in tools if tool.tool_name == function_data["function"]["name"]), None)
+                    if tool is None:
+                        raise ValueError(f"Tool {function_data['function']['name']} not found in tools list")
+                    print("found ", tool.tool_name)
+                    tool_output: str = self._openai_tool_call(tool, function_data["function"]["arguments"])
+                    self.history.add(Message(MessageRole.USER, tool_output))
         return self.history.get_last()
 
     def _interact_ollama(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
@@ -413,13 +455,6 @@ class Agent:
             history_save.add(Message(MessageRole.USER, query, images=images))
 
         logging.info(f"[PROMPT][To: {self.name}]: {query}")
-        # client: Client = Client(host=self.endpoint, headers=self.custom_headers)  # Not great performance wise but storing the client crashes deepcopy. To fix later.
-        # response = client.chat(model=self.model_name,
-        #                       messages=history.get_as_dict() if save_to_history is True else history_save.get_as_dict(),
-        #                       format=("json" if json_output is True else ""),
-        #                       stream=stream,
-        #                       options=self.model_settings.get_settings()
-        #                       )
         inference = InferenceFactory.get_inference(self.server_type)
         response: (str, T) = inference.go(model_name=self.model_name,
                                           history=history.get_as_dict() if save_to_history is True else history_save.get_as_dict(),

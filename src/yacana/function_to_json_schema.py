@@ -4,8 +4,10 @@ import inspect
 import json
 
 
-def function_to_json_with_pydantic(func: Callable, description: str) -> dict:
+def function_to_json_with_pydantic(tool_name: str, description: str, func: Callable) -> dict:
     """Convert a Python function to a JSON description with an exact match format."""
+
+    # We keep this for later use, but we don't need it for now as it's not the function name that is used but the tool name given in the Tool constructor.
     func_name = func.__name__
 
     # Extract parameters and annotations
@@ -60,7 +62,7 @@ def function_to_json_with_pydantic(func: Callable, description: str) -> dict:
     func_json = {
         "type": "function",
         "function": {
-            "name": func_name,
+            "name": tool_name,
             "description": description,
             "parameters": {
                 "type": "object",

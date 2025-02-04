@@ -5,7 +5,7 @@ from typing import List, Type
 from pydantic import BaseModel
 
 from .agent import Agent, Message
-from .exceptions import MaxToolErrorIter
+from .exceptions import MaxToolErrorIter, IllogicalConfiguration
 from .history import History
 from .inference import ServerType
 from .logging_config import LoggerManager
@@ -76,6 +76,9 @@ class Task:
         self.images: List[str] | None = images
         self._uuid: str = str(uuid.uuid4())
 
+        if len(self.tools) > 0 and self.structured_output is not None:
+            raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")
+
         # Only used when @forget is True
         self.save_history: History | None = None
 
@@ -132,6 +135,6 @@ class Task:
         """
         if self.agent.server_type is ServerType.OPENAI or self.agent.server_type is ServerType.VLLM:
             for tool in self.tools:
-                if tool._openai_function_schema is not None:
+                if tool._openai_function_schema is None:
                     tool._function_to_json_with_pydantic()
 
