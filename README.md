@@ -233,14 +233,30 @@ for invoice_file in files:
 
 ## Roadmap
 
-❗ Highest priority
-* Compatibility with inference servers other than Ollama, like vllm, etc.
+❗ New features for the next update:
+* Compatibility with **OpenAI** for basic inference. [Status]: Done. ✔️
+  * Supporting OpenAI is not the core of Yacana but should be available for local and cloud-based projects to work with the same API if needed. 
+* Compatibility with **vision models** on Ollama. [Status]: Done. ✔️
+  * For instance, using llama3.2-vision. Available on dev branch for Ollama.
+* Compatibility with **medias** on OpenAI. [Status]: Todo. 🚧
+  * For instance, uploading images or audio.
+* Compatibility with **VLLM** [Status]: Todo. 🚧
+  * When the support for OpenAI is done we can hope to use the OpenAI mode on VLLM, allowing few changes to the code base.
+* Adding **"structured output"** on Ollama. [Status]: Done. ✔️
+  * This allows reliable JSON output
+* Adding **"structured output"** on OpenAI. [Status]: Done. ✔️
+  * This allows reliable JSON output
+* Adding **tool calling** on OpenAI: [Status]: WIP. 🚧
+  * Having the same API for Ollama and OpenAI local tool calling will be great!
+* **Reworking history** to allow multi-LLM output per Task (OpenAI stuff) and adding custom metadata on each message. [Status]: todo. 🚧
+
 
 ❕ Lower priority
+* Monitoring Yacana workflows to track down prompt engineering failures like tool calling failures count, etc.
 * Simplify shift message and maybe rework GroupChat itself a bit.
-* Keep working on the documentation.
 * Add a section on code generation.
 
+More to come
 
 ## License
 
