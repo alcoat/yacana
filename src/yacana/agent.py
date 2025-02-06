@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from .exceptions import MaxToolErrorIter, ToolError
 from .history import History, Message, MessageRole
-from .inference import InferenceFactory, ServerType
+from .inference import InferenceFactory, ServerType, InferenceOutput
 from .logging_config import LoggerManager
 from .modelSettings import ModelSettings
 from .tool import Tool
@@ -216,6 +216,7 @@ class Agent:
                     tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
                 else:
                     tool_output = str(tool_output)
+                logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")
                 break
             except (ToolError, TypeError, JSONDecodeError) as e:  # @todo catcher plus large ?
                 if type(e) is ToolError or type(e) is JSONDecodeError:
@@ -237,7 +238,7 @@ class Agent:
                         f"Too many errors occurred while trying to call the python function by Yacana (tool name: {tool.tool_name}). Stopping after {tool.max_call_error} errors. You can change the maximum call error in the Tool constructor with @max_call_error.")
 
                 fix_your_shit_prompt = f"The tool returned an error: `{tool_output}`\nUsing this error message, fix the JSON arguments you gave.\n{additional_prompt_help}"
-                self._chat(tool_training_history, fix_your_shit_prompt, json_output=True)
+                self._chat(tool_training_history, fix_your_shit_prompt, json_output=True)  # @todo ici je ne comprend plus comment ca boucle
         return tool_output
 
     def _reconcile_history_multi_tools(self, tool_training_history: History, local_history: History, tool: Tool, tool_output: str):
@@ -251,8 +252,9 @@ class Agent:
 
         # Master history + local history get fake USER prompt with the answer of the tool
         # @todo Finishing with a user prompt will render 2 consecutive USER prompts in the final history. This might be resolved by this kind of trick: 'USER: You will receive the tool output now' => 'ASSISTANT: Yes I got the tool output just now. It is the following: <output>'
-        self.history.add(Message(MessageRole.USER, tool_output))
-        local_history.add(Message(MessageRole.USER, tool_output))
+        # Enphasing on the above @todo we now have access to a tool type so the alternation with user and assistant is probably not a problem anymore
+        self.history.add(Message(MessageRole.TOOL, tool_output))
+        local_history.add(Message(MessageRole.TOOL, tool_output))
 
     def _reconcile_history_solo_tool(self, last_tool_call: str, tool_output: str, task: str, tool: Tool):
         self.history.add(Message(MessageRole.USER, task))
@@ -261,7 +263,7 @@ class Agent:
                     f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly."))
         self.history.add(Message(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
         self.history.add(Message(MessageRole.ASSISTANT, last_tool_call))
-        self.history.add(Message(MessageRole.USER, tool_output))
+        self.history.add(Message(MessageRole.TOOL, tool_output))
 
     def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
         """
@@ -320,6 +322,7 @@ class Agent:
                     tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
                 else:
                     tool_output = str(tool_output)
+                logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")
                 break
             except (ToolError, TypeError, JSONDecodeError) as e:  # @todo catcher plus large ?
                 if type(e) is ToolError or type(e) is JSONDecodeError:
@@ -349,13 +352,17 @@ class Agent:
             print("le json de tool calling ?\n", self.history.get_last().content)
             function_calling = json.loads(self.history.get_last().content)
             for function_data in function_calling:
-                if function_data["type"] == "function":  # et on fait quoi si c'est pas une fonction ?
+                if function_data["type"] == "function":  # @todo et on fait quoi si c'est pas une fonction ?
                     tool = next((tool for tool in tools if tool.tool_name == function_data["function"]["name"]), None)
                     if tool is None:
                         raise ValueError(f"Tool {function_data['function']['name']} not found in tools list")
                     print("found ", tool.tool_name)
                     tool_output: str = self._openai_tool_call(tool, function_data["function"]["arguments"])
-                    self.history.add(Message(MessageRole.USER, tool_output))
+                    self.history.add(Message(MessageRole.TOOL, tool_output))
+                else:
+                    # @todo c'est ici le pb. Si chatGPT a choisit de ne pas utiliser de tool finalement alors c'est juste de l'inférence classique et faut choper choice[0].content
+                    logging.error("Receiving a non-function type in the function calling list. This is not supported. (Continuing but you should abort...)")
+                    logging.error(f"Received: {function_data}")
         return self.history.get_last()
 
     def _interact_ollama(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
@@ -456,20 +463,20 @@ class Agent:
 
         logging.info(f"[PROMPT][To: {self.name}]: {query}")
         inference = InferenceFactory.get_inference(self.server_type)
-        response: (str, T) = inference.go(model_name=self.model_name,
-                                          history=history.get_as_dict() if save_to_history is True else history_save.get_as_dict(),
-                                          endpoint=self.endpoint,
-                                          api_token=self.api_token,
-                                          model_settings=self.model_settings.get_settings(),
-                                          stream=stream,
-                                          json_output=(True if json_output is True else False),
-                                          structured_output=structured_output,
-                                          headers=self.headers,
-                                          tools=tools
-                                          )
+        response: InferenceOutput = inference.go(model_name=self.model_name,
+                                                 history=history.get_as_dict() if save_to_history is True else history_save.get_as_dict(),
+                                                 endpoint=self.endpoint,
+                                                 api_token=self.api_token,
+                                                 model_settings=self.model_settings.get_settings(),
+                                                 stream=stream,
+                                                 json_output=(True if json_output is True else False),
+                                                 structured_output=structured_output,
+                                                 headers=self.headers,
+                                                 tools=tools
+                                                 )
         if stream is True:
-            return response[0]  # Only for the simple_chat() method and is of no importance.
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {response[0]}")
+            return response.raw_llm_response  # Only for the simple_chat() method and is of no importance.
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {response.raw_llm_response}")
         if save_to_history is True:
-            history.add(Message(MessageRole.ASSISTANT, response[0], structured_output=response[1]))
-        return response
+            history.add(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output))
+        return response.raw_llm_response

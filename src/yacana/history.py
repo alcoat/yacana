@@ -14,6 +14,7 @@ class MessageRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+    TOOL = "tool"
 
 
 class Message:
@@ -117,7 +118,9 @@ class History:
                 print('\033[92m[' + message.role.value + "]:\n" + message.content + '\033[0m')
             elif message.role == MessageRole.ASSISTANT:
                 print('\033[95m[' + message.role.value + "]:\n" + message.content + '\033[0m')
-            elif message.role == MessageRole.ASSISTANT:
+            elif message.role == MessageRole.SYSTEM:
+                print('\033[93m[' + message.role.value + "]:\n" + message.content + '\033[0m')
+            elif message.role == MessageRole.TOOL:
                 print('\033[96m[' + message.role.value + "]:\n" + message.content + '\033[0m')
             print("")
 

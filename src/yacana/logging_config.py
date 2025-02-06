@@ -19,6 +19,8 @@ class ColoredFormatter(logging.Formatter):
             log_color: str = '\033[92m'  # Green
         elif record.levelname == "INFO" and record.msg.startswith("[AI_RESPONSE]"):
             log_color: str = '\033[95m'  # Magenta
+        elif record.levelname == "INFO" and record.msg.startswith("[TOOL_RESPONSE]"):
+            log_color: str = '\033[96m'  # Magenta
         else:
             log_color: str = self.COLORS.get(record.levelname, self.RESET)
         log_message: str = super().format(record)

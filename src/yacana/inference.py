@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import openai
 from ollama import Client
 from openai import OpenAI
-from typing import List, Type, Dict, Any, T, Literal
+from typing import List, Type, Dict, Any, Literal, T
 
 from openai.types.chat import ChatCompletionToolChoiceOptionParam
 from pydantic import BaseModel
@@ -19,15 +19,26 @@ class ServerType(Enum):
     OPENAI = 3
 
 
+class InferenceOutput:
+    def __init__(self, raw_llm_response: str, structured_output: Type[T] | None, is_function_calling: bool):
+        self.raw_llm_response: str = raw_llm_response
+        self.structured_output: Type[T] = structured_output
+        self.is_function_calling: bool = is_function_calling
+
+    def __str__(self):
+        return self.raw_llm_response
+
+
 class Inference(ABC):
     @abstractmethod
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> T | str:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
         pass
 
 
 class OllamaInference(Inference):
 
-    def get_expected_output_format(self, json_output: bool, structured_output: Type[BaseModel] | None) -> dict[str, Any] | str:
+    @staticmethod
+    def _get_expected_output_format(json_output: bool, structured_output: Type[BaseModel] | None) -> dict[str, Any] | str:
         if structured_output:
             return structured_output.model_json_schema()
         elif json_output:
@@ -35,32 +46,32 @@ class OllamaInference(Inference):
         else:
             return ''
 
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> (str, T):
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
         client = Client(host=endpoint, headers=headers)
         response = client.chat(model=model_name,
                                messages=history,
-                               format=self.get_expected_output_format(json_output, structured_output),
+                               format=OllamaInference._get_expected_output_format(json_output, structured_output),
                                stream=stream,
                                options=model_settings
                                )
         if structured_output is None:
-            return response['message']['content'], None
+            return InferenceOutput(raw_llm_response=response['message']['content'], structured_output=None, is_function_calling=False)
         else:
-            return response['message']['content'], structured_output.model_validate_json(response['message']['content'])
+            return InferenceOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content']), is_function_calling=False)
 
 
 class VllmInference(Inference):
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> (str, T):
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
         raise NotImplemented("VLLM Inference is not implemented yet")
 
 
 class OpenAIInference(Inference):
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> (str, T):
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
 
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
-        print("ca devrait etre du json = ", all_function_calling_json)
+        #print("ca devrait etre du json = ", all_function_calling_json)
 
         tool_choice_option = self._find_right_tool_choice_option(tools)
         if structured_output is not None:
@@ -102,17 +113,17 @@ class OpenAIInference(Inference):
                         }
                     })
                 # We return the function calling as a JSON string and there is no structured output involved
-                return json.dumps(function_calling_answer), None  # @todo virer le tuple et faire une mini class avec 2 membres qui encapsule [0] en tant que text raw et [1] en tant que réponse structurée
+                return InferenceOutput(raw_llm_response=json.dumps(function_calling_answer), structured_output=None, is_function_calling=False)
             else:
                 # No tools were given, so we return the classic completion and no structured output is involved
-                return completion.choices[0].message.content, None
-        else:
+                return InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=None, is_function_calling=False)
+        else:  # Using structured output
             print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {tools}")
             completion = client.beta.chat.completions.parse(**params)
             if completion.choices[0].message.refusal is not None:
                 raise TaskCompletionRefusal(completion.choices[0].message.refusal)  # Refusal is only available for structured output and doesn't work very well
             # We return the structured output as raw text and as structured output (but no tool calling is involved)
-            return completion.choices[0].message.content, completion.choices[0].message.parsed
+            return InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=completion.choices[0].message.parsed, is_function_calling=False)
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
         """
