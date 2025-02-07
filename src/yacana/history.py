@@ -35,24 +35,33 @@ class Message:
 
     """
 
-    def __init__(self, role: MessageRole, content: str, images: List[str] | None = None, structured_output: Type[T] | None = None) -> None:
+    def __init__(self, role: MessageRole, content: str, images: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str | None = None) -> None:
         """
         Returns an instance of Message
         :param role: MessageRole: From whom is the message from. See the MessageRole Enum
         :param content: str : The actual message
         :param images: List[str] | None : An optional list of path pointing to images on the filesystem.
+        :param structured_output: Type[T] | None : An optional structured output that can be used to store the result of a tool call
+        :param tool_call_id: str | None : An optional unique identifier for the tool call (used by openAI to match the tool call with the response)
         """
         self.role: MessageRole = role
         self.content: str = content
         self.images: List[str] | None = images
         self.structured_output: Type[T] | None = structured_output
+        self.tool_call_id: str | None = tool_call_id
 
     def get_as_dict(self) -> Dict:
         """
-        Returns the alternation of messages that compose a conversation as a pure python dictionary
+        Returns the alternation of messages that compose a conversation as a pure python dictionary.
+        None entries are omitted.
         @return: Dict
         """
-        return {'role': self.role.value, 'content': self.content, 'images': self.images}
+        return {
+            'role': self.role.value,
+            'content': self.content,
+            **({'images': self.images} if self.images is not None else {}),
+            **({'tool_call_id': self.tool_call_id} if self.tool_call_id is not None else {})
+        }
 
     def __str__(self) -> str:
         """

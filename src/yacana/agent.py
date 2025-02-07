@@ -349,16 +349,17 @@ class Agent:
             self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output)
         elif len(tools) > 0:
             self._chat(self.history, task, images=images, json_output=json_output, structured_output=structured_output, tools=tools)
-            print("le json de tool calling ?\n", self.history.get_last().content)
+            #print("le json de tool calling ?\n", self.history.get_last().content)
+            print("pk tu pete sur ca ? = ", self.history.get_last().content)
             function_calling = json.loads(self.history.get_last().content)
-            for function_data in function_calling:
+            for function_data in function_calling["tool_calls"]:
                 if function_data["type"] == "function":  # @todo et on fait quoi si c'est pas une fonction ?
                     tool = next((tool for tool in tools if tool.tool_name == function_data["function"]["name"]), None)
                     if tool is None:
                         raise ValueError(f"Tool {function_data['function']['name']} not found in tools list")
                     print("found ", tool.tool_name)
                     tool_output: str = self._openai_tool_call(tool, function_data["function"]["arguments"])
-                    self.history.add(Message(MessageRole.TOOL, tool_output))
+                    self.history.add(Message(MessageRole.TOOL, tool_output, tool_call_id=self.history.get_last().tool_call_id))
                 else:
                     # @todo c'est ici le pb. Si chatGPT a choisit de ne pas utiliser de tool finalement alors c'est juste de l'inférence classique et faut choper choice[0].content
                     logging.error("Receiving a non-function type in the function calling list. This is not supported. (Continuing but you should abort...)")
@@ -472,11 +473,13 @@ class Agent:
                                                  json_output=(True if json_output is True else False),
                                                  structured_output=structured_output,
                                                  headers=self.headers,
-                                                 tools=tools
+                                                 tools=tools,
+                                                 images=images
                                                  )
         if stream is True:
             return response.raw_llm_response  # Only for the simple_chat() method and is of no importance.
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {response.raw_llm_response}")
         if save_to_history is True:
-            history.add(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output))
+            print("tool call id = ", response.tool_call_id)
+            history.add(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output, tool_call_id=response.tool_call_id))
         return response.raw_llm_response

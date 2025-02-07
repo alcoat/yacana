@@ -1,4 +1,5 @@
 import json
+import uuid
 from enum import Enum
 from abc import ABC, abstractmethod
 import openai
@@ -20,10 +21,10 @@ class ServerType(Enum):
 
 
 class InferenceOutput:
-    def __init__(self, raw_llm_response: str, structured_output: Type[T] | None, is_function_calling: bool):
+    def __init__(self, raw_llm_response: str, structured_output: Type[T] | None, tool_call_id: str | None = None):
         self.raw_llm_response: str = raw_llm_response
         self.structured_output: Type[T] = structured_output
-        self.is_function_calling: bool = is_function_calling
+        self.tool_call_id: str | None = tool_call_id
 
     def __str__(self):
         return self.raw_llm_response
@@ -31,7 +32,7 @@ class InferenceOutput:
 
 class Inference(ABC):
     @abstractmethod
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None, images: List[str] | None = None) -> InferenceOutput:
         pass
 
 
@@ -46,27 +47,28 @@ class OllamaInference(Inference):
         else:
             return ''
 
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None, images: List[str] | None = None) -> InferenceOutput:
         client = Client(host=endpoint, headers=headers)
         response = client.chat(model=model_name,
                                messages=history,
                                format=OllamaInference._get_expected_output_format(json_output, structured_output),
                                stream=stream,
-                               options=model_settings
+                               options=model_settings,
+                               images=images
                                )
         if structured_output is None:
-            return InferenceOutput(raw_llm_response=response['message']['content'], structured_output=None, is_function_calling=False)
+            return InferenceOutput(raw_llm_response=response['message']['content'], structured_output=None, tool_call_id=None)
         else:
-            return InferenceOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content']), is_function_calling=False)
+            return InferenceOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content']), tool_call_id=None)
 
 
 class VllmInference(Inference):
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None, images: List[str] | None = None) -> InferenceOutput:
         raise NotImplemented("VLLM Inference is not implemented yet")
 
 
 class OpenAIInference(Inference):
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None) -> InferenceOutput:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None, images: List[str] | None = None) -> InferenceOutput:
 
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
@@ -89,6 +91,8 @@ class OpenAIInference(Inference):
         # @todo modelsettings
         # @todo faut gérer les choices autres [0]
 
+        #print("current history = ", history)
+
         params = {
             "model": model_name,
             "messages": history,
@@ -97,12 +101,17 @@ class OpenAIInference(Inference):
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {})
         }
         print("tool choice = ", tool_choice_option)
-        # **({"stream": stream} if structured_output is None else {})
+        print("----")
+        print("current params = ", json.dumps(params, indent=2))
+        print("----")
         if structured_output is None:
             completion = client.chat.completions.create(**params)
-            if len(tools) > 0:
+            if tools is not None and len(tools) > 0:
                 print("retour de l'autre noob = ", completion.choices)
                 function_calling_answer = []
+
+                #print("huuuuuuummm", completion.model_dump_json())
+
                 for tool_call in completion.choices[0].message.tool_calls:
                     function_calling_answer.append({
                         "id": tool_call.id,
@@ -112,11 +121,12 @@ class OpenAIInference(Inference):
                             "arguments": json.loads(tool_call.function.arguments)
                         }
                     })
+                print("saloperie = ", json.loads(completion.model_dump_json())["choices"][0]["message"])
                 # We return the function calling as a JSON string and there is no structured output involved
-                return InferenceOutput(raw_llm_response=json.dumps(function_calling_answer), structured_output=None, is_function_calling=False)
+                return InferenceOutput(raw_llm_response=json.dumps(json.loads(completion.model_dump_json())["choices"][0]["message"]), structured_output=None, tool_call_id=tool_call.id) # @todo PB ICI ! Le tool_call c'est une instance de boucle... Donc quand il y a pls fonction qui sont retournées elles ont chacune leur tool_call_id. Et j'aurais besoin de savoir quel tool call correspond à quel id pour ensuite pouvoir uploder la réponse du tool dans l'historique. En gros l'id du tool doit matcher la fonction.
             else:
                 # No tools were given, so we return the classic completion and no structured output is involved
-                return InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=None, is_function_calling=False)
+                return InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=None, tool_call_id=None)
         else:  # Using structured output
             print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {tools}")
             completion = client.beta.chat.completions.parse(**params)
