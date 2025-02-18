@@ -86,4 +86,4 @@ class Tool:
         return [param_name for param_name in parameters]
 
     def _function_to_json_with_pydantic(self) -> None:
-        self._openai_function_schema = function_to_json_with_pydantic(self.tool_name, self.function_description, self.function_ref, )
+        self._openai_function_schema = function_to_json_with_pydantic(self.tool_name, self.function_description, self.function_ref)
