@@ -148,14 +148,14 @@ class GroupSolve:
 
                 # Giving prompt and AI output of first speaker to the second speaker
                 if self.reconcile_first_message is True:
-                    my_task2.agent.history.add(Message(MessageRole.USER, my_task1.task))
-                    my_task2.agent.history.add(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last().content))
+                    my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.task))
+                    my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last().content))
                 # Second speaker (has the history of the first speaker)
                 my_task2.solve()
 
                 if self.reconcile_first_message is True:
-                    my_task1.agent.history.add(Message(MessageRole.USER, my_task2.task))
-                    my_task1.agent.history.add(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last().content))
+                    my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.task))
+                    my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last().content))
 
                 # (str, (TaskX, TaskY))
                 last_generated_answer, tasks_run_order = self._set_shift_message()
@@ -296,14 +296,14 @@ class GroupSolve:
         # Adding task + answer to everyone except the one who just spoke in order to reconcile histories with all other agents
         for cur_task2 in self.tasks:
             if cur_task2.uuid != cur_task.uuid:
-                cur_task2.agent.history.add(user_message)
-                cur_task2.agent.history.add(Message(MessageRole.ASSISTANT, last_generated_answer))
+                cur_task2.agent.history.add_message(user_message)
+                cur_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, last_generated_answer))
 
     def _add_roleplay_prompts(self) -> None:
         for cur_task in self.tasks:
             other_speaker_names = ",".join(list(filter(None, [
                 f"[{cur_task2.agent.name}]" if cur_task2.uuid != cur_task.uuid else "" for cur_task2 in self.tasks])))
-            cur_task.agent.history.add(Message(MessageRole.USER,
+            cur_task.agent.history.add_message(Message(MessageRole.USER,
                                                      f"[TaskManager]: You are entering a roleplay with multiple "
                                                      f"speakers where each one has his own objectives to fulfill. "
                                                      f"Each message must follow this syntax '[speaker_name]: "
@@ -311,7 +311,7 @@ class GroupSolve:
                                                                       f"{other_speaker_names}.\nYour "
                                                                       f"speaker name is [{cur_task.agent.name}].\nI "
                                                                       f"will give you your task in the next message."))
-            cur_task.agent.history.add(Message(MessageRole.ASSISTANT,
+            cur_task.agent.history.add_message(Message(MessageRole.ASSISTANT,
                                                      f"[{cur_task.agent.name}]: Received and acknowledged. I'm ready "
                                                      f"to execute my tasks as {cur_task.agent.name}. Please proceed "
                                                      f"with my assignment."))
