@@ -137,7 +137,7 @@ class OpenAIInference(InferenceServer):
                 #InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=completion.choices[0].message.parsed, is_function_calling=False)
                 history_slot.add_message(Message(MessageRole.ASSISTANT, choice.message.content, structured_output=choice.message.parsed, is_yacana_builtin=True))
 
-            elif hasattr(choice.message, "tool_calls") and len(choice.message.tool_calls) > 0:
+            elif hasattr(choice.message, "tool_calls") and choice.message.tool_calls is not None and len(choice.message.tool_calls) > 0:
                 print("This is a tool_calling answer.")
                 tool_calls: List[ToolCall] = []  # @todo on pourait peut etre renomer ToolCall en InferencedToolCall pour montrer que c'est le résultat d'une inférence et pas un truc qu'on donne au départ. A voir pour le nom.
                 for tool_call in choice.message.tool_calls:

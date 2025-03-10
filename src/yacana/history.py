@@ -35,7 +35,14 @@ class ToolCall:
         self.arguments: dict = arguments
 
     def get_tool_call_as_dict(self):
-        return self.export()
+        return {
+            "id": self.call_id,
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "arguments": json.dumps(self.arguments)
+            }
+        }
 
     def export(self):
         return {
@@ -78,7 +85,7 @@ class Message:
         self.id = uuid.uuid4()
         self.role: MessageRole = role
         self.content: str | None = content
-        self.tool_calls: List[ToolCall] = tool_calls if tool_calls is not None else []
+        self.tool_calls: List[ToolCall] | None = tool_calls
         self.images: List[str] = images if images is not None else []
         self.structured_output: Type[T] | None = structured_output
         self.tool_call_id: str | None = tool_call_id
@@ -115,7 +122,7 @@ class Message:
         return {
             "role": self.role.value,
             "content": self.content,
-            **({'tool_calls': [tool_call.export() for tool_call in self.tool_calls]} if self.tool_calls is not None else {}),
+            **({'tool_calls': [tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls]} if self.tool_calls is not None else {}),
             ** ({'tool_call_id': self.tool_call_id} if self.tool_call_id is not None else {}),
         }
 
@@ -240,11 +247,13 @@ class History:
     def get_messages_as_dict(self) -> List[Dict]:
         formated_messages = []
         for slot in self.slots:
-            for message in slot.messages:
-                formated_messages.append({
-                    "role": message.role.value,
-                    "content": message.content
-                })
+            formated_messages.append(slot.get_message().get_message_as_dict())
+            #for message in slot.messages:
+            #   formated_messages.append({
+            #        "role": message.role.value,
+            #       "content": message.content,
+            #       **({"tool_calls": message.tool_calls} if message.tool_calls is not None and len(message.tool_calls) > 0 else {}),
+            #   })
         return formated_messages
 
     def pretty_print(self) -> None:
