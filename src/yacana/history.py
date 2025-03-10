@@ -34,6 +34,9 @@ class ToolCall:
         self.name: str = name
         self.arguments: dict = arguments
 
+    def get_tool_call_as_dict(self):
+        return self.export()
+
     def export(self):
         return {
             "id": self.call_id,
@@ -63,7 +66,7 @@ class Message:
 
     """
 
-    def __init__(self, role: MessageRole, content: str, images: List[str] | None = None, structured_output: Type[T] | None = None, tool_calls: List[ToolCall] | None = None, tool_call_id: str = None, is_yacana_builtin: bool = False) -> None:
+    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCall] | None = None, images: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, is_yacana_builtin: bool = False) -> None:
         """
         Returns an instance of Message
         :param role: MessageRole: From whom is the message from. See the MessageRole Enum
@@ -74,12 +77,16 @@ class Message:
         """
         self.id = uuid.uuid4()
         self.role: MessageRole = role
-        self.content: str = content
+        self.content: str | None = content
+        self.tool_calls: List[ToolCall] = tool_calls if tool_calls is not None else []
         self.images: List[str] = images if images is not None else []
         self.structured_output: Type[T] | None = structured_output
-        self.tool_calls: List[ToolCall] = tool_calls if tool_calls is not None else []
         self.tool_call_id: str | None = tool_call_id
         self.is_yacana_builtin: bool = is_yacana_builtin
+
+        # Checking that both @message and @tool_calls are neither None nor empty at the same time
+        if content is None and (tool_calls is None or (tool_calls is not None and len(tool_calls) == 0)):
+            raise ValueError("A Message must have a content or a tool call that is not None or [].")
 
     def export(self) -> Dict:
         """
@@ -111,6 +118,12 @@ class Message:
             **({'tool_calls': [tool_call.export() for tool_call in self.tool_calls]} if self.tool_calls is not None else {}),
             ** ({'tool_call_id': self.tool_call_id} if self.tool_call_id is not None else {}),
         }
+
+    def get_best_visual_form(self) -> str:
+        if self.content is not None:
+            return self.content
+        else:
+            return json.dumps([tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls])
 
 
 class HistorySlot:
@@ -234,7 +247,6 @@ class History:
                 })
         return formated_messages
 
-
     def pretty_print(self) -> None:
         """
         Prints the history on the std with shinny colors
@@ -243,13 +255,13 @@ class History:
         for slot in self.slots:
             message = slot.get_message()
             if message.role == MessageRole.USER:
-                print('\033[92m[' + message.role.value + "]:\n" + message.content + '\033[0m')
+                print('\033[92m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
             elif message.role == MessageRole.ASSISTANT:
-                print('\033[95m[' + message.role.value + "]:\n" + message.content + '\033[0m')
+                print('\033[95m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
             elif message.role == MessageRole.SYSTEM:
-                print('\033[93m[' + message.role.value + "]:\n" + message.content + '\033[0m')
+                print('\033[93m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
             elif message.role == MessageRole.TOOL:
-                print('\033[96m[' + message.role.value + "]:\n" + message.content + '\033[0m')
+                print('\033[96m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
             print("")
 
     def create_check_point(self) -> str:

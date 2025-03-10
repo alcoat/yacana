@@ -480,7 +480,7 @@ class Agent:
                                                  )
         if stream is True:
             return response.raw_llm_response  # Only for the simple_chat() method and is of no importance.
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().content}")
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_best_visual_form()}")
         if save_to_history is True:
             history.add_slot(history_slot) #add_message(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output, tool_call_id=response.tool_call_id))
         return history_slot.get_message().content #response.raw_llm_response
