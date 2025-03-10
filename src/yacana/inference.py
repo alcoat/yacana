@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 from enum import Enum
 from abc import ABC, abstractmethod
 from ollama import Client
 from openai import OpenAI
 from typing import List, Type, Any, Literal, T
+
+from openai.types.chat.chat_completion import Choice
 from pydantic import BaseModel
 
 from .history import HistorySlot, Message, MessageRole, ToolCall
@@ -79,21 +82,24 @@ class VllmInference(InferenceServer):
 
 
 class OpenAIInference(InferenceServer):
+
+    def is_structured_output(self, choice: Choice) -> bool:
+        return hasattr(choice.message, "parsed") and choice.message.parsed is not None
+
+    def is_tool_calling(self, choice: Choice) -> bool:
+        return hasattr(choice.message, "tool_calls") and choice.message.tool_calls is not None and len(choice.message.tool_calls) > 0
+
+    def is_common_chat(self, choice: Choice) -> bool:
+        return hasattr(choice.message, "content") and choice.message is not None
+
     def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, images: List[str] | None = None) -> HistorySlot:
 
         print(f"inference : model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
-        #print("ca devrait etre du json = ", all_function_calling_json)
-
         tool_choice_option = self._find_right_tool_choice_option(tools)
-        if structured_output is not None:
-            response_format = structured_output
-        elif json_output is True:
-            response_format = {"type": "json_object"}  # This is not the structured output feature, but only "best effort" to get a JSON object (as string)
-        else:
-            response_format = None
+        response_format = self._find_right_output_format(structured_output, json_output)
 
         client = OpenAI(
             api_key=api_token,
@@ -101,7 +107,6 @@ class OpenAIInference(InferenceServer):
 
         # @todo pour stream faudrait du code spécifique donc je ne vois pas bien comment on pourrait le faire
         # @todo modelsettings
-        # @todo faut gérer les choices autres [0]
 
         params = {
             "model": model_name,
@@ -117,84 +122,42 @@ class OpenAIInference(InferenceServer):
         print("----")
 
         history_slot = HistorySlot()
-        if structured_output is None: #@todo inverser la condition pour plus de clareté
+        if structured_output is None:
             completion = client.chat.completions.create(**params)
         else:  # Using structured output
             completion = client.beta.chat.completions.parse(**params)
 
         print("Résultat de l'inférence quelle quelle soit = ")
         print(completion.model_dump_json(indent=2))
+        logging.debug("Inference output: %s", completion.model_dump_json(indent=2))
 
         for choice in completion.choices:
             print("boucle !")
 
-            if hasattr(choice.message, "parsed") and choice.message.parsed is not None:  # @todo faire un wrapper sur les conditions pour plus de clareté
+            if self.is_structured_output(choice):
                 print("This is a structured_output answer.")
+                logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                # We return the structured output as raw text and as structured output (but no tool calling is involved)
-                #return StructuredOutput(raw_llm_response=completion.choices[0].message.content, structured_output=completion.choices[0].message.parsed)
-                #InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=completion.choices[0].message.parsed, is_function_calling=False)
                 history_slot.add_message(Message(MessageRole.ASSISTANT, choice.message.content, structured_output=choice.message.parsed, is_yacana_builtin=True))
 
-            elif hasattr(choice.message, "tool_calls") and choice.message.tool_calls is not None and len(choice.message.tool_calls) > 0:
+            elif self.is_tool_calling(choice):
                 print("This is a tool_calling answer.")
+                logging.debug("Response assessment is tool calling")
                 tool_calls: List[ToolCall] = []  # @todo on pourait peut etre renomer ToolCall en InferencedToolCall pour montrer que c'est le résultat d'une inférence et pas un truc qu'on donne au départ. A voir pour le nom.
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                # We return the function calling as a JSON string and there is no structured output involved
-                #return ToolCallingOutput(raw_llm_response=json.dumps(json.loads(completion.model_dump_json())["choices"][0]["message"]), tool_call_id=tool_call.id)
                 history_slot.add_message(Message(MessageRole.ASSISTANT, None, tool_calls=tool_calls, is_yacana_builtin=True))
-                # next step c'est appeler la/les fonctions de code
-                # next step générer les messages pour chaque tool_call (je pense que je vais juste ne pas passer par self._chat()
-            else:
+
+            elif self.is_common_chat(choice):
                 print("this is a classic chat answer.")
-                # No tools were given, so we return the classic completion and no structured output is involved
-                #return ChatOutput(raw_llm_response=completion.choices[0].message.content, message_content=completion.choices[0].message.content)
+                logging.debug("Response assessment is classic chat answer")
                 history_slot.add_message(Message(MessageRole.ASSISTANT, choice.message.content, is_yacana_builtin=True))
+            else:
+                raise ValueError("Unknown response from OpenAI API") # @todo error custom
 
         return history_slot
-
-
-    """
-            else:
-                print("This is not a structured_output answer.")
-
-
-                if tool_calls is not None and len(tool_calls) > 0:
-                    print("retour de l'autre noob = ", completion.choices)
-                    function_calling_answer = []
-
-                    #print("huuuuuuummm", completion.model_dump_json())
-
-
-                        message = Message(MessageRole.ASSISTANT, choice.message.content, tool_call_id=choice.message.tool_call_id, is_yacana_builtin=False)
-
-                    for tool_call in completion.choices[0].message.tool_calls:
-                        function_calling_answer.append({
-                            "id": tool_call.id,
-                            "type": "function",
-                            "function": {
-                                "name": tool_call.function.name,
-                                "arguments": json.loads(tool_call.function.arguments)
-                            }
-                        })
-                    print("saloperie = ", json.loads(completion.model_dump_json())["choices"][0]["message"])
-                    # We return the function calling as a JSON string and there is no structured output involved
-                    return ToolCallingOutput(raw_llm_response=json.dumps(json.loads(completion.model_dump_json())["choices"][0]["message"]), tool_call_id=tool_call.id)
-                    # -> InferenceOutput(raw_llm_response=json.dumps(json.loads(completion.model_dump_json())["choices"][0]["message"]), structured_output=None, tool_call_id=tool_call.id) # @todo PB ICI ! Le tool_call c'est une instance de boucle... Donc quand il y a pls fonction qui sont retournées elles ont chacune leur tool_call_id. Et j'aurais besoin de savoir quel tool call correspond à quel id pour ensuite pouvoir uploder la réponse du tool dans l'historique. En gros l'id du tool doit matcher la fonction.
-                else:
-                    # No tools were given, so we return the classic completion and no structured output is involved
-                    return ChatOutput(raw_llm_response=completion.choices[0].message.content, message_content=completion.choices[0].message.content) #InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=None, tool_call_id=None)
-            else:  # Using structured output
-                print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {tools}")
-                completion = client.beta.chat.completions.parse(**params)
-                if completion.choices[0].message.refusal is not None:
-                    raise TaskCompletionRefusal(completion.choices[0].message.refusal)  # Refusal is only available for structured output and doesn't work very well
-                # We return the structured output as raw text and as structured output (but no tool calling is involved)
-                return StructuredOutput(raw_llm_response=completion.choices[0].message.content, structured_output=completion.choices[0].message.parsed) #InferenceOutput(raw_llm_response=completion.choices[0].message.content, structured_output=completion.choices[0].message.parsed, is_function_calling=False)
-    """
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
         """
@@ -215,6 +178,14 @@ class OpenAIInference(InferenceServer):
             return "required"
         else:
             raise IllogicalConfiguration("OpenAI does not allow mixing required and optional tools.")
+
+    def _find_right_output_format(self, structured_output: Type[T] | None, json_output: bool) -> Any:
+        if structured_output is not None:
+            return structured_output
+        elif json_output is True:
+            return {"type": "json_object"}  # This is NOT the "structured output" feature, but only "best effort" to get a JSON object (as string)
+        else:
+            return None
 
 
 class InferenceFactory:

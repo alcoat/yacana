@@ -153,6 +153,9 @@ class HistorySlot:
         else:
             return self.messages[message_index]
 
+    def get_messages(self) -> List[Message]:
+        return self.messages
+
     def set_raw_llm_json(self, raw_llm_json: str) -> None:
         self.raw_llm_json = raw_llm_json
 
