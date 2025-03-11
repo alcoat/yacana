@@ -458,11 +458,12 @@ class Agent:
 
     def _chat(self, history: History, query: str | None, images: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
         if query is not None:
+            message = Message(MessageRole.USER, query, images=images)
             if save_to_history is True:
-                history.add_message(Message(MessageRole.USER, query, images=images))
+                history.add_message(message)
             else:
                 history_save = copy.deepcopy(history)
-                history_save.add_message(Message(MessageRole.USER, query, images=images))
+                history_save.add_message(message)
 
             logging.info(f"[PROMPT][To: {self.name}]: {query}")
         inference: InferenceServer = InferenceFactory.get_inference(self.server_type)

@@ -124,6 +124,7 @@ class Message:
             "content": self.content,
             **({'tool_calls': [tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls]} if self.tool_calls is not None else {}),
             ** ({'tool_call_id': self.tool_call_id} if self.tool_call_id is not None else {}),
+            **({'images': self.images} if self.images is not None else {}),
         }
 
     def get_best_visual_form(self) -> str:
@@ -251,12 +252,6 @@ class History:
         formated_messages = []
         for slot in self.slots:
             formated_messages.append(slot.get_message().get_message_as_dict())
-            #for message in slot.messages:
-            #   formated_messages.append({
-            #        "role": message.role.value,
-            #       "content": message.content,
-            #       **({"tool_calls": message.tool_calls} if message.tool_calls is not None and len(message.tool_calls) > 0 else {}),
-            #   })
         return formated_messages
 
     def pretty_print(self) -> None:

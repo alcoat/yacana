@@ -93,13 +93,11 @@ class OllamaInference(InferenceServer):
                                messages=history,
                                format=OllamaInference._get_expected_output_format(json_output, structured_output),
                                stream=stream,
-                               options=model_settings
+                               options=model_settings,
                                )
         if structured_output is None:
-            #return ChatOutput(raw_llm_response=response['message']['content'], message_content=response['message']['content']) #InferenceOutput(raw_llm_response=response['message']['content'], structured_output=None, tool_call_id=None)
             history_slot.add_message(Message(MessageRole.ASSISTANT, response['message']['content'], tool_call_id="", is_yacana_builtin=True))
         else:
-            #return StructuredOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content'])) #InferenceOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content']), tool_call_id=None)
             history_slot.add_message(Message(MessageRole.ASSISTANT, str(response['message']['content']), structured_output=structured_output.model_validate_json(response['message']['content'])))
 
         history_slot.set_raw_llm_json(self._response_to_json(response))
