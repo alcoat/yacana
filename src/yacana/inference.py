@@ -3,10 +3,10 @@ import logging
 import os
 from enum import Enum
 from abc import ABC, abstractmethod
-from ollama import Client
+from ollama import Client, ChatResponse
 from openai import OpenAI
-from typing import List, Type, Any, Literal, T
-
+from typing import List, Type, Any, Literal, T, Dict
+from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice
 from pydantic import BaseModel
 
@@ -56,6 +56,36 @@ class OllamaInference(InferenceServer):
         else:
             return ''
 
+    def _response_to_json(self, response: Any) -> str:
+        try:
+            result: Dict[str, Any] = {
+                'model': getattr(response, 'model', None),
+                'created_at': getattr(response, 'created_at', None),
+                'done': getattr(response, 'done', None),
+                'done_reason': getattr(response, 'done_reason', None),
+                'total_duration': getattr(response, 'total_duration', None),
+                'load_duration': getattr(response, 'load_duration', None),
+                'prompt_eval_count': getattr(response, 'prompt_eval_count', None),
+                'prompt_eval_duration': getattr(response, 'prompt_eval_duration', None),
+                'eval_count': getattr(response, 'eval_count', None),
+                'eval_duration': getattr(response, 'eval_duration', None),
+            }
+
+            # Extract 'message' if present
+            message = getattr(response, 'message', None)
+            if message is not None:
+                result['message'] = {
+                    'role': getattr(message, 'role', None),
+                    'content': getattr(message, 'content', None),
+                    'images': getattr(message, 'images', None),
+                    'tool_calls': getattr(message, 'tool_calls', None),
+                }
+
+            # Return the JSON string representation
+            return json.dumps(result, indent=4)
+        except Exception as e:
+            raise TypeError(f"Failed to convert response to JSON: {e}")
+
     def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, images: List[str] | None = None) -> HistorySlot:
         history_slot = HistorySlot()
         client = Client(host=endpoint, headers=headers)
@@ -63,8 +93,7 @@ class OllamaInference(InferenceServer):
                                messages=history,
                                format=OllamaInference._get_expected_output_format(json_output, structured_output),
                                stream=stream,
-                               options=model_settings,
-                               images=images
+                               options=model_settings
                                )
         if structured_output is None:
             #return ChatOutput(raw_llm_response=response['message']['content'], message_content=response['message']['content']) #InferenceOutput(raw_llm_response=response['message']['content'], structured_output=None, tool_call_id=None)
@@ -73,7 +102,7 @@ class OllamaInference(InferenceServer):
             #return StructuredOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content'])) #InferenceOutput(raw_llm_response=response['message']['content'], structured_output=structured_output.model_validate_json(response['message']['content']), tool_call_id=None)
             history_slot.add_message(Message(MessageRole.ASSISTANT, str(response['message']['content']), structured_output=structured_output.model_validate_json(response['message']['content'])))
 
-        history_slot.set_raw_llm_json(json.dumps(response))
+        history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot
 
 class VllmInference(InferenceServer):
@@ -126,6 +155,8 @@ class OpenAIInference(InferenceServer):
             completion = client.chat.completions.create(**params)
         else:  # Using structured output
             completion = client.beta.chat.completions.parse(**params)
+
+        history_slot.set_raw_llm_json(completion.model_dump_json())
 
         print("Résultat de l'inférence quelle quelle soit = ")
         print(completion.model_dump_json(indent=2))
