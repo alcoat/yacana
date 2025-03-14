@@ -39,7 +39,7 @@ class Task:
         Only useful when the task is part of a GroupSolve(). Allows to keep the self reflection process done by the LLM in the next GS iteration. May be useful if the LLM has problems with reasoning.
     forget : bool
         When this task has finished resolving and this is set to False, the Agent won't remember it happened. Useful when doing yes/no questions for routing purposes and no need to keep the answer in the history.
-    images : List[str] | None
+    medias : List[str] | None
         An optional list of path pointing to images on the filesystem.
 
     Methods
@@ -49,7 +49,7 @@ class Task:
     """
 
     def __init__(self, prompt: str, agent: Agent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
-                 images: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
+                 medias: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
                  llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False) -> None:
         """
         Returns a Task instance.
@@ -73,7 +73,7 @@ class Task:
         self.llm_stops_by_itself: bool = llm_stops_by_itself
         self.use_self_reflection: bool = use_self_reflection
         self.forget: bool = forget
-        self.images: List[str] | None = images
+        self.medias: List[str] | None = medias
         self._uuid: str = str(uuid.uuid4())
 
         if len(self.tools) > 0 and self.structured_output is not None:
@@ -110,7 +110,7 @@ class Task:
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
         try:
-            answer: Message = self.agent._interact(self.task, self.tools, self.json_output, self.structured_output, self.images)
+            answer: Message = self.agent._interact(self.task, self.tools, self.json_output, self.structured_output, self.medias)
         except MaxToolErrorIter as e:
             if self.raise_when_max_tool_error_iter:
                 self._reset_agent_history()

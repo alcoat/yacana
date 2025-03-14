@@ -41,7 +41,7 @@ class InferenceOutput:
 
 class InferenceServer(ABC):
     @abstractmethod
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, images: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
         pass
 
 
@@ -86,7 +86,7 @@ class OllamaInference(InferenceServer):
         except Exception as e:
             raise TypeError(f"Failed to convert response to JSON: {e}")
 
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, images: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
         history_slot = HistorySlot()
         client = Client(host=endpoint, headers=headers)
         response = client.chat(model=model_name,
@@ -104,7 +104,7 @@ class OllamaInference(InferenceServer):
         return history_slot
 
 class VllmInference(InferenceServer):
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, images: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
         raise NotImplemented("VLLM Inference is not implemented yet")
 
 
@@ -119,7 +119,7 @@ class OpenAIInference(InferenceServer):
     def is_common_chat(self, choice: Choice) -> bool:
         return hasattr(choice.message, "content") and choice.message is not None
 
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, images: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
 
         print(f"inference : model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
