@@ -4,7 +4,7 @@ from typing import List, Callable
 
 from .exceptions import IllogicalConfiguration
 from .function_to_json_schema import function_to_json_with_pydantic
-from .history import History, Message, MessageRole
+from .history import History, GenericMessage, MessageRole
 
 
 class Tool:
@@ -61,13 +61,13 @@ class Tool:
 
         for example in self.usage_examples:
             tmp = ", ".join([f"{key} is {value}" for key, value in example.items()])
-            history.add_message(Message(MessageRole.USER,
+            history.add_message(GenericMessage(MessageRole.USER,
                                 f"For training purpose let's try calling the tool {self.tool_name} with theses parameter{'s' if len(example.items()) > 1 else ''}: {tmp}"))
-            history.add_message(Message(MessageRole.ASSISTANT, json.dumps(example)))
+            history.add_message(GenericMessage(MessageRole.ASSISTANT, json.dumps(example)))
         if len(self.usage_examples) > 0:
-            history.add_message(Message(MessageRole.USER,
+            history.add_message(GenericMessage(MessageRole.USER,
                                 f"{'These were all' if len(self.usage_examples) > 1 else 'This was a'} great tool call{'s' if len(self.usage_examples) > 1 else ''}"))
-            history.add_message(Message(MessageRole.ASSISTANT, "Great ! I understand how it works."))
+            history.add_message(GenericMessage(MessageRole.ASSISTANT, "Great ! I understand how it works."))
         return history
 
     @staticmethod

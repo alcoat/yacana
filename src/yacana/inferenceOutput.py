@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Type, TypeVar, Any, List
 
-from src.yacana import Message
+from src.yacana import GenericMessage
 
 T = TypeVar("T")
 
@@ -16,7 +16,7 @@ class InferenceOutputType(Enum):
 class InferenceOutput(ABC):
     def __init__(self, raw_llm_response: str):
         self._raw_llm_response: str = raw_llm_response
-        self._messages: List[Message] = []
+        self._messages: List[GenericMessage] = []
 
     @property
     def raw_llm_response(self) -> str:
@@ -27,18 +27,18 @@ class InferenceOutput(ABC):
         self._raw_llm_response = value
 
     @property
-    def messages(self) -> List[Message]:
+    def messages(self) -> List[GenericMessage]:
         return self._messages
 
     @messages.setter
-    def messages(self, value: List[Message]):
+    def messages(self, value: List[GenericMessage]):
         self._messages = value
 
 
 class InferenceProcessor(ABC):
 
     @abstractmethod
-    def process_choice(self, choice: Any) -> List[Message]:
+    def process_choice(self, choice: Any) -> List[GenericMessage]:
         raise NotImplementedError("Subclasses should implement this method.")
 
 
@@ -46,7 +46,7 @@ class ChatOutput(InferenceOutput):
 
     def __init__(self, raw_llm_response: str, processor: InferenceProcessor):
         super().__init__(raw_llm_response)
-        self.messages: List[Message] = processor.process_choice(raw_llm_response)
+        self.messages: List[GenericMessage] = processor.process_choice(raw_llm_response)
 
 
 class StructuredOutput(InferenceOutput):

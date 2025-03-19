@@ -4,7 +4,7 @@ from typing import List, Type
 
 from pydantic import BaseModel
 
-from .agent import Agent, Message
+from .agent import Agent, GenericMessage
 from .exceptions import MaxToolErrorIter, IllogicalConfiguration
 from .history import History
 from .inference import ServerType
@@ -100,7 +100,7 @@ class Task:
         """
         self.tools.append(tool)
 
-    def solve(self) -> Message | None:
+    def solve(self) -> GenericMessage | None:
         """
         This will call the assigned LLM to perform the inference on the prompt define in the task. The LLM will try to solve the task. If it has tools it will use them and multiple calls will
         probably be made to the inference server. Yacana uses percussive maintenance to force the LLM to obey.
@@ -110,7 +110,7 @@ class Task:
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
         try:
-            answer: Message = self.agent._interact(self.task, self.tools, self.json_output, self.structured_output, self.medias)
+            answer: GenericMessage = self.agent._interact(self.task, self.tools, self.json_output, self.structured_output, self.medias)
         except MaxToolErrorIter as e:
             if self.raise_when_max_tool_error_iter:
                 self._reset_agent_history()

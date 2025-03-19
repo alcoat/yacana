@@ -7,7 +7,7 @@ from typing import List, Iterator, Type, Dict, T
 from pydantic import BaseModel
 
 from .exceptions import MaxToolErrorIter, ToolError
-from .history import History, Message, MessageRole, HistorySlot
+from .history import History, GenericMessage, MessageRole, HistorySlot, OpenAIToolCallingMessage, Message
 from .inference import InferenceFactory, ServerType, InferenceServer
 from .logging_config import LoggerManager
 from .modelSettings import ModelSettings
@@ -99,7 +99,7 @@ class Agent:
                     print(chunk['message']['content'], end='', flush=True)
                     complete_llm_answer.append(chunk['message']['content'])
                 print("")
-                self.history.add_message(Message(MessageRole.ASSISTANT, "".join(complete_llm_answer)))
+                self.history.add_message(GenericMessage(MessageRole.ASSISTANT, "".join(complete_llm_answer)))
             else:
                 print(llm_response)
 
@@ -121,7 +121,7 @@ class Agent:
             "server_type": self.server_type.name,
             "custom_headers": self.headers,
             "endpoint": self.endpoint,
-            "history": self.history.export()
+            "history": self.history._export()
         }
         with open(file_path, 'w') as file:
             json.dump(final, file, indent=4)
@@ -181,10 +181,10 @@ class Agent:
                 logging.warning("More than one tool was proposed. Trying again.\n")
 
             # No tool or too many tools found
-            local_history.add_message(Message(MessageRole.USER,
+            local_history.add_message(GenericMessage(MessageRole.USER,
                                               "You didn't only output a tool name. Let's try again with only outputting the tool name to use."))
             logging.info(f"[prompt]: You didn't only output a tool name. Let's try again with only outputting the tool name to use.\n")
-            local_history.add_message(Message(MessageRole.ASSISTANT,
+            local_history.add_message(GenericMessage(MessageRole.ASSISTANT,
                                               "I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !"))
             logging.info(f"[AI_RESPONSE]: I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !\n")
             max_tool_name_use_iter += 1
@@ -243,27 +243,27 @@ class Agent:
 
     def _reconcile_history_multi_tools(self, tool_training_history: History, local_history: History, tool: Tool, tool_output: str):
         # Master history + local history get fake USER prompt to ask for tool output
-        self.history.add_message(Message(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
-        local_history.add_message(Message(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
+        self.history.add_message(GenericMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
+        local_history.add_message(GenericMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
 
         # Master history + local history get fake ASSISTANT prompt calling the tool correctly
-        self.history.add_message(Message(MessageRole.ASSISTANT, tool_training_history.get_last().content))
-        local_history.add_message(Message(MessageRole.ASSISTANT, tool_training_history.get_last().content))
+        self.history.add_message(GenericMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content))
+        local_history.add_message(GenericMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content))
 
         # Master history + local history get fake USER prompt with the answer of the tool
         # @todo Finishing with a user prompt will render 2 consecutive USER prompts in the final history. This might be resolved by this kind of trick: 'USER: You will receive the tool output now' => 'ASSISTANT: Yes I got the tool output just now. It is the following: <output>'
         # Enphasing on the above @todo we now have access to a tool type so the alternation with user and assistant is probably not a problem anymore
-        self.history.add_message(Message(MessageRole.TOOL, tool_output))
-        local_history.add_message(Message(MessageRole.TOOL, tool_output))
+        self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output))
+        local_history.add_message(GenericMessage(MessageRole.TOOL, tool_output))
 
     def _reconcile_history_solo_tool(self, last_tool_call: str, tool_output: str, task: str, tool: Tool):
-        self.history.add_message(Message(MessageRole.USER, task))
+        self.history.add_message(GenericMessage(MessageRole.USER, task))
         self.history.add_message(
-            Message(MessageRole.ASSISTANT,
+            GenericMessage(MessageRole.ASSISTANT,
                     f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly."))
-        self.history.add_message(Message(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
-        self.history.add_message(Message(MessageRole.ASSISTANT, last_tool_call))
-        self.history.add_message(Message(MessageRole.TOOL, tool_output))
+        self.history.add_message(GenericMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
+        self.history.add_message(GenericMessage(MessageRole.ASSISTANT, last_tool_call))
+        self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output))
 
     def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
         """
@@ -283,8 +283,8 @@ class Agent:
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
         # Syncing with global history
-        self.history.add_message(Message(MessageRole.USER, tool_continue_prompt))
-        self.history.add_message(Message(MessageRole.ASSISTANT, ai_tool_continue_answer))
+        self.history.add_message(GenericMessage(MessageRole.USER, tool_continue_prompt))
+        self.history.add_message(GenericMessage(MessageRole.ASSISTANT, ai_tool_continue_answer))
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
@@ -297,7 +297,7 @@ class Agent:
             logging.info("Exiting tool calls loop\n")
             return False
 
-    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None) -> Message:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None) -> GenericMessage:
         if self.server_type == ServerType.OLLAMA:
             return self._interact_ollama(task, tools, json_output, structured_output, medias)
         elif self.server_type == ServerType.OPENAI:
@@ -307,10 +307,10 @@ class Agent:
         else:
             raise ValueError(f"Server type {self.server_type} is not supported.")
 
-    def _interact_vllm(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None) -> Message:
+    def _interact_vllm(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None) -> GenericMessage:
         raise NotImplemented()
 
-    def _openai_tool_call(self, tool: Tool, function_args: Dict) -> str:
+    def _call_openai_tool(self, tool: Tool, function_args: Dict) -> str:
         max_call_error: int = tool.max_call_error
         max_custom_error: int = tool.max_custom_error
         tool_output: str = ""
@@ -343,9 +343,9 @@ class Agent:
                 self._chat(self.history, f"The tool returned an error: `{tool_output}`\nUsing this error message, fix the JSON you generated.")
         return tool_output
 
-    def _interact_openai(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> Message:
+    def _interact_openai(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None) -> GenericMessage:
         tools: List[Tool] = [] if tools is None else tools
-        if len(tools) == 0:
+        if len(tools) == 0:  # @todo implicitement si tu mets des tools du coup ca coupe l'herbe sous le pied à l'image car ca n'ira pas là. Pour le moment les 2 sont mutuellement exclusif.
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output)
         elif len(tools) > 0:
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, tools=tools)
@@ -355,8 +355,9 @@ class Agent:
                 if tool is None:
                     raise ValueError(f"Tool {tool_call.name} not found in tools list")  # @todo Autre chose qu'un valueError, genre une classe custom ?
                 print("found ", tool.tool_name)
-                tool_output: str = self._openai_tool_call(tool, tool_call.arguments)
-                self.history.add_message(Message(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id))
+                tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
+                self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, is_yacana_builtin=True))
+                #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, is_yacana_builtin=True))  # @todo nb 5 & 6
             logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
             self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output)
             """
@@ -367,7 +368,7 @@ class Agent:
             """
         return self.history.get_last()
 
-    def _interact_ollama(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None) -> Message:
+    def _interact_ollama(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None) -> GenericMessage:
         tools: List[Tool] = [] if tools is None else tools
 
         if len(tools) == 0:
@@ -425,9 +426,9 @@ class Agent:
             ai_may_use_tools: str = self._chat(local_history, tool_router, save_to_history=False)
 
             if "yes" in ai_may_use_tools.lower():
-                self.history.add_message(Message(MessageRole.USER, task))
+                self.history.add_message(GenericMessage(MessageRole.USER, task))
                 self.history.add_message(
-                    Message(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly."))
+                    GenericMessage(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly."))
                 while True:
                     tool: Tool = self._choose_tool_by_name(local_history, tools)
                     tool_training_history = copy.deepcopy(local_history)
@@ -456,19 +457,23 @@ class Agent:
 
         return self.history.get_last()
 
-    def _chat(self, history: History, query: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
-        if query is not None:
-            message = Message(MessageRole.USER, query, images=medias)
+    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
+        """
+        if task is not None:
+            #message = GenericMessage(MessageRole.USER, task, medias=medias)
             if save_to_history is True:
-                history.add_message(message)
+                #history.add_message(message)
+                pass
             else:
                 history_save = copy.deepcopy(history)
-                history_save.add_message(message)
-
-            logging.info(f"[PROMPT][To: {self.name}]: {query}")
+                #history_save.add_message(message)
+        """
+        if task is not None:
+            logging.info(f"[PROMPT][To: {self.name}]: {task}")
         inference: InferenceServer = InferenceFactory.get_inference(self.server_type)
         history_slot: HistorySlot = inference.go(model_name=self.model_name,
-                                                 history=history.get_messages_as_dict() if save_to_history is True else history_save.get_messages_as_dict(),
+                                                 task=task,
+                                                 history=history if save_to_history is True else copy.deepcopy(history),
                                                  endpoint=self.endpoint,
                                                  api_token=self.api_token,
                                                  model_settings=self.model_settings.get_settings(),

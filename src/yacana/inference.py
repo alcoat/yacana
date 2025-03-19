@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice
 from pydantic import BaseModel
 
-from .history import HistorySlot, Message, MessageRole, ToolCall
+from .history import HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage
 from .tool import Tool
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
 
@@ -41,7 +41,7 @@ class InferenceOutput:
 
 class InferenceServer(ABC):
     @abstractmethod
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, task: str | None, history: History, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
         pass
 
 
@@ -86,25 +86,35 @@ class OllamaInference(InferenceServer):
         except Exception as e:
             raise TypeError(f"Failed to convert response to JSON: {e}")
 
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, task: str | None, history: History, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
+        if task is not None:
+            if medias is not None:
+                history.add_message(OllamaMediasMessage(MessageRole.USER, task, medias, is_yacana_builtin=True))
+            else:
+                history.add_message(OllamaTextMessage(MessageRole.USER, task, is_yacana_builtin=True))
+
         history_slot = HistorySlot()
         client = Client(host=endpoint, headers=headers)
-        response = client.chat(model=model_name,
-                               messages=history,
-                               format=OllamaInference._get_expected_output_format(json_output, structured_output),
-                               stream=stream,
-                               options=model_settings,
-                               )
+        params = {
+            "model": model_name,
+            "messages": history.get_messages_as_dict(),
+            "format": OllamaInference._get_expected_output_format(json_output, structured_output),
+            "stream": stream,
+            "options": model_settings
+        }
+        print("1 ", str(medias))
+        print("2 ", str(params))
+        response = client.chat(**params)
         if structured_output is None:
-            history_slot.add_message(Message(MessageRole.ASSISTANT, response['message']['content'], tool_call_id="", is_yacana_builtin=True))
+            history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], is_yacana_builtin=True))
         else:
-            history_slot.add_message(Message(MessageRole.ASSISTANT, str(response['message']['content']), structured_output=structured_output.model_validate_json(response['message']['content'])))
+            history_slot.add_message(GenericMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output=structured_output.model_validate_json(response['message']['content'])))
 
         history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot
 
 class VllmInference(InferenceServer):
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, task: str | None, history: History, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
         raise NotImplemented("VLLM Inference is not implemented yet")
 
 
@@ -119,8 +129,16 @@ class OpenAIInference(InferenceServer):
     def is_common_chat(self, choice: Choice) -> bool:
         return hasattr(choice.message, "content") and choice.message is not None
 
-    def go(self, model_name: str, history: list, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
+    def go(self, model_name: str, task: str | None, history: History, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
 
+        # @todo ici on est momentanément obligé de faire un check car je dois ajouter 1 ou plus messages lié au tool calling et j'ai besoin de variable que je n'ai
+        # pas dans cette fonctions. Mais sinon c'est le même principe que medias. Et si je merge cette classe dans l'agent alors j'aurais accès à ces variables plus
+        # facilement.
+        if task is not None:
+            if medias is not None:
+                history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, is_yacana_builtin=True))
+            else:
+                history.add_message(OllamaTextMessage(MessageRole.USER, task, is_yacana_builtin=True))
         print(f"inference : model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
@@ -137,7 +155,7 @@ class OpenAIInference(InferenceServer):
 
         params = {
             "model": model_name,
-            "messages": history,
+            "messages": history.get_messages_as_dict(),
             **({"response_format": response_format} if response_format is not None else {}),
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {})
@@ -168,7 +186,7 @@ class OpenAIInference(InferenceServer):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(Message(MessageRole.ASSISTANT, choice.message.content, structured_output=choice.message.parsed, is_yacana_builtin=True))
+                history_slot.add_message(GenericMessage(MessageRole.ASSISTANT, choice.message.content, structured_output=choice.message.parsed, is_yacana_builtin=True))
 
             elif self.is_tool_calling(choice):
                 print("This is a tool_calling answer.")
@@ -177,12 +195,13 @@ class OpenAIInference(InferenceServer):
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(Message(MessageRole.ASSISTANT, None, tool_calls=tool_calls, is_yacana_builtin=True))
+                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, is_yacana_builtin=True))
+                #history_slot.add_message(GenericMessage(MessageRole.ASSISTANT, None, tool_calls=tool_calls, is_yacana_builtin=True)) # @todo nb4
 
             elif self.is_common_chat(choice):
                 print("this is a classic chat answer.")
                 logging.debug("Response assessment is classic chat answer")
-                history_slot.add_message(Message(MessageRole.ASSISTANT, choice.message.content, is_yacana_builtin=True))
+                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, is_yacana_builtin=True))
             else:
                 raise ValueError("Unknown response from OpenAI API") # @todo error custom
 

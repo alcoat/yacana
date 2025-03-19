@@ -4,7 +4,7 @@ from typing import List
 import logging
 from typing_extensions import Tuple
 
-from .agent import Message, MessageRole
+from .agent import GenericMessage, MessageRole
 from .task import Task
 from .exceptions import ReachedTaskCompletion, IllogicalConfiguration
 
@@ -148,14 +148,14 @@ class GroupSolve:
 
                 # Giving prompt and AI output of first speaker to the second speaker
                 if self.reconcile_first_message is True:
-                    my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.task))
-                    my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last().content))
+                    my_task2.agent.history.add_message(GenericMessage(MessageRole.USER, my_task1.task))
+                    my_task2.agent.history.add_message(GenericMessage(MessageRole.ASSISTANT, my_task1.agent.history.get_last().content))
                 # Second speaker (has the history of the first speaker)
                 my_task2.solve()
 
                 if self.reconcile_first_message is True:
-                    my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.task))
-                    my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last().content))
+                    my_task1.agent.history.add_message(GenericMessage(MessageRole.USER, my_task2.task))
+                    my_task1.agent.history.add_message(GenericMessage(MessageRole.ASSISTANT, my_task2.agent.history.get_last().content))
 
                 # (str, (TaskX, TaskY))
                 last_generated_answer, tasks_run_order = self._set_shift_message()
@@ -182,7 +182,7 @@ class GroupSolve:
 
             for cur_task in self.tasks:
                 # Changing the way the task is written to match the multi-agent format
-                user_message: Message = Message(MessageRole.USER,
+                user_message: GenericMessage = GenericMessage(MessageRole.USER,
                                                 f"[TaskManager]: {cur_task.agent.name}: this is your main task: `" + cur_task.task + "`")
                 copy_task: Task = self._duplicate_task(cur_task, user_message.content)
                 last_generated_answer: str = self._solve_copy(copy_task)
@@ -194,7 +194,7 @@ class GroupSolve:
             try:
                 while self.max_iter > 0 and (exit_after_next_group_chat is None or exit_after_next_group_chat > 0):
                     for cur_task in self.tasks:
-                        user_message: Message = Message(MessageRole.USER,
+                        user_message: GenericMessage = GenericMessage(MessageRole.USER,
                                                         f"[TaskManager]: {cur_task.agent.name} it's your turn to speak now.")
                         copy_task: Task = self._duplicate_task(cur_task, user_message.content)
                         last_generated_answer: str = self._solve_copy(copy_task)
@@ -292,18 +292,18 @@ class GroupSolve:
                 logging.error("While checking if the task was completed Yacana couldn't determine if the LLM said Yes or No. As a decision must be made Yacana will assume it is a Yes. If you encounter this frequently please open an issue on the github. Thx !")
         return exit_after_next_chat, exit_after_next_group_chat
 
-    def _reconcile_history(self, cur_task: Task, user_message: Message, last_generated_answer: str):
+    def _reconcile_history(self, cur_task: Task, user_message: GenericMessage, last_generated_answer: str):
         # Adding task + answer to everyone except the one who just spoke in order to reconcile histories with all other agents
         for cur_task2 in self.tasks:
             if cur_task2.uuid != cur_task.uuid:
                 cur_task2.agent.history.add_message(user_message)
-                cur_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, last_generated_answer))
+                cur_task2.agent.history.add_message(GenericMessage(MessageRole.ASSISTANT, last_generated_answer))
 
     def _add_roleplay_prompts(self) -> None:
         for cur_task in self.tasks:
             other_speaker_names = ",".join(list(filter(None, [
                 f"[{cur_task2.agent.name}]" if cur_task2.uuid != cur_task.uuid else "" for cur_task2 in self.tasks])))
-            cur_task.agent.history.add_message(Message(MessageRole.USER,
+            cur_task.agent.history.add_message(GenericMessage(MessageRole.USER,
                                                      f"[TaskManager]: You are entering a roleplay with multiple "
                                                      f"speakers where each one has his own objectives to fulfill. "
                                                      f"Each message must follow this syntax '[speaker_name]: "
@@ -311,7 +311,7 @@ class GroupSolve:
                                                                       f"{other_speaker_names}.\nYour "
                                                                       f"speaker name is [{cur_task.agent.name}].\nI "
                                                                       f"will give you your task in the next message."))
-            cur_task.agent.history.add_message(Message(MessageRole.ASSISTANT,
+            cur_task.agent.history.add_message(GenericMessage(MessageRole.ASSISTANT,
                                                      f"[{cur_task.agent.name}]: Received and acknowledged. I'm ready "
                                                      f"to execute my tasks as {cur_task.agent.name}. Please proceed "
                                                      f"with my assignment."))
