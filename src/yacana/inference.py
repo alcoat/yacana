@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice
 from pydantic import BaseModel
 
-from .history import HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage
+from .history import HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
 from .tool import Tool
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
 
@@ -102,16 +102,15 @@ class OllamaInference(InferenceServer):
             "stream": stream,
             "options": model_settings
         }
-        print("1 ", str(medias))
-        print("2 ", str(params))
         response = client.chat(**params)
         if structured_output is None:
             history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], is_yacana_builtin=True))
         else:
-            history_slot.add_message(GenericMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output=structured_output.model_validate_json(response['message']['content'])))
+            history_slot.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), is_yacana_builtin=True))
 
         history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot
+
 
 class VllmInference(InferenceServer):
     def go(self, model_name: str, task: str | None, history: History, endpoint: str, api_token: str, model_settings: dict, stream: bool, json_output: bool, structured_output: Type[T] | None, headers: dict, tools: List[Tool] | None = None, medias: List[str] | None = None) -> HistorySlot:
@@ -162,8 +161,8 @@ class OpenAIInference(InferenceServer):
         }
         print("tool choice = ", tool_choice_option)
         print("----")
-        print("current params = ", json.dumps(params, indent=2))
-        print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}")
+        #print("current params = ", json.dumps(params, indent=2))
+        #print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}")
         print("----")
 
         history_slot = HistorySlot()
@@ -186,7 +185,7 @@ class OpenAIInference(InferenceServer):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(GenericMessage(MessageRole.ASSISTANT, choice.message.content, structured_output=choice.message.parsed, is_yacana_builtin=True))
+                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, is_yacana_builtin=True))
 
             elif self.is_tool_calling(choice):
                 print("This is a tool_calling answer.")

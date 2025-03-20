@@ -7,7 +7,7 @@ from typing import List, Iterator, Type, Dict, T
 from pydantic import BaseModel
 
 from .exceptions import MaxToolErrorIter, ToolError
-from .history import History, GenericMessage, MessageRole, HistorySlot, OpenAIToolCallingMessage, Message
+from .history import History, GenericMessage, MessageRole, HistorySlot, OpenAIToolCallingMessage, Message, OllamaTextMessage
 from .inference import InferenceFactory, ServerType, InferenceServer
 from .logging_config import LoggerManager
 from .modelSettings import ModelSettings
@@ -99,7 +99,7 @@ class Agent:
                     print(chunk['message']['content'], end='', flush=True)
                     complete_llm_answer.append(chunk['message']['content'])
                 print("")
-                self.history.add_message(GenericMessage(MessageRole.ASSISTANT, "".join(complete_llm_answer)))
+                self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, "".join(complete_llm_answer), is_yacana_builtin=True))
             else:
                 print(llm_response)
 
@@ -181,11 +181,11 @@ class Agent:
                 logging.warning("More than one tool was proposed. Trying again.\n")
 
             # No tool or too many tools found
-            local_history.add_message(GenericMessage(MessageRole.USER,
-                                              "You didn't only output a tool name. Let's try again with only outputting the tool name to use."))
+            local_history.add_message(OllamaTextMessage(MessageRole.USER,
+                                              "You didn't only output a tool name. Let's try again with only outputting the tool name to use.", is_yacana_builtin=True))
             logging.info(f"[prompt]: You didn't only output a tool name. Let's try again with only outputting the tool name to use.\n")
-            local_history.add_message(GenericMessage(MessageRole.ASSISTANT,
-                                              "I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !"))
+            local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT,
+                                              "I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !", is_yacana_builtin=True))
             logging.info(f"[AI_RESPONSE]: I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !\n")
             max_tool_name_use_iter += 1
             # Forcing LLM to be less chatty and more focused
@@ -243,27 +243,27 @@ class Agent:
 
     def _reconcile_history_multi_tools(self, tool_training_history: History, local_history: History, tool: Tool, tool_output: str):
         # Master history + local history get fake USER prompt to ask for tool output
-        self.history.add_message(GenericMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
-        local_history.add_message(GenericMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
+        self.history.add_message(OllamaTextMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", is_yacana_builtin=True))
+        local_history.add_message(OllamaTextMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", is_yacana_builtin=True))
 
         # Master history + local history get fake ASSISTANT prompt calling the tool correctly
-        self.history.add_message(GenericMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content))
-        local_history.add_message(GenericMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content))
+        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content, is_yacana_builtin=True))
+        local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content, is_yacana_builtin=True))
 
         # Master history + local history get fake USER prompt with the answer of the tool
         # @todo Finishing with a user prompt will render 2 consecutive USER prompts in the final history. This might be resolved by this kind of trick: 'USER: You will receive the tool output now' => 'ASSISTANT: Yes I got the tool output just now. It is the following: <output>'
         # Enphasing on the above @todo we now have access to a tool type so the alternation with user and assistant is probably not a problem anymore
-        self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output))
-        local_history.add_message(GenericMessage(MessageRole.TOOL, tool_output))
+        self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, is_yacana_builtin=True))
+        local_history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, is_yacana_builtin=True))
 
     def _reconcile_history_solo_tool(self, last_tool_call: str, tool_output: str, task: str, tool: Tool):
-        self.history.add_message(GenericMessage(MessageRole.USER, task))
+        self.history.add_message(OllamaTextMessage(MessageRole.USER, task, is_yacana_builtin=True))
         self.history.add_message(
-            GenericMessage(MessageRole.ASSISTANT,
-                    f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly."))
-        self.history.add_message(GenericMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON."))
-        self.history.add_message(GenericMessage(MessageRole.ASSISTANT, last_tool_call))
-        self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output))
+            OllamaTextMessage(MessageRole.ASSISTANT,
+                    f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly.", is_yacana_builtin=True))
+        self.history.add_message(OllamaTextMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", is_yacana_builtin=True))
+        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, last_tool_call, is_yacana_builtin=True))
+        self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, is_yacana_builtin=True))
 
     def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
         """
@@ -283,8 +283,8 @@ class Agent:
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
         # Syncing with global history
-        self.history.add_message(GenericMessage(MessageRole.USER, tool_continue_prompt))
-        self.history.add_message(GenericMessage(MessageRole.ASSISTANT, ai_tool_continue_answer))
+        self.history.add_message(OllamaTextMessage(MessageRole.USER, tool_continue_prompt, is_yacana_builtin=True))
+        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, is_yacana_builtin=True))
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
@@ -426,9 +426,9 @@ class Agent:
             ai_may_use_tools: str = self._chat(local_history, tool_router, save_to_history=False)
 
             if "yes" in ai_may_use_tools.lower():
-                self.history.add_message(GenericMessage(MessageRole.USER, task))
+                self.history.add_message(OllamaTextMessage(MessageRole.USER, task, is_yacana_builtin=True))
                 self.history.add_message(
-                    GenericMessage(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly."))
+                    OllamaTextMessage(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly.", is_yacana_builtin=True))
                 while True:
                     tool: Tool = self._choose_tool_by_name(local_history, tools)
                     tool_training_history = copy.deepcopy(local_history)

@@ -1,3 +1,4 @@
+import copy
 import json
 import uuid
 from datetime import datetime
@@ -26,12 +27,6 @@ class SlotPosition(Enum):
     """
     BOTTOM = -1
     TOP = -2
-
-
-class Medias():
-
-    def __init__(self, URIs: List[str]):
-        self.URIs = URIs
 
 
 class ToolCall:
@@ -138,16 +133,17 @@ class GenericMessage(ABC):
 
 class Message(GenericMessage):
     """
-    For Yacana users
+    For Yacana users or simple text based interactions
     """
 
-    def __init__(self, role: MessageRole, content: str, medias: List[str] | None = None, structured_output: Type[T] | None = None) -> None:
+    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False) -> None:
         tool_calls = None
         tool_call_id = None
-        is_yacana_builtin = False
+        medias = None
+        structured_output = None
         super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
 
-    def get_message_as_dict(self): # @todo A revoir car là c'est générique donc bah le user on ne sait pas contre quel server il va l'envoyer
+    def get_message_as_dict(self):  # @todo A revoir car là c'est générique donc bah le user on ne sait pas contre quel server il va l'envoyer
         return {
             "role": self.role.value,
             "content": self.content,
@@ -164,6 +160,7 @@ class Message(GenericMessage):
             **({'images': self.medias} if self.medias is not None else {}),
         }
     """
+
 
 class OpenAITextMessage(GenericMessage):
     
@@ -244,6 +241,21 @@ class OpenAIToolCallingMessage(GenericMessage):
         }
 
 
+class OpenAIStructuredOutputMessage(GenericMessage):
+
+    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False):
+        tool_calls = None
+        medias = None
+        tool_call_id = None
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+
+    def get_message_as_dict(self):
+        return {
+            "role": self.role.value,
+            "content": self.content,
+        }
+
+
 class OllamaTextMessage(GenericMessage):
 
     def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False):
@@ -276,7 +288,7 @@ class OllamaMediasMessage(GenericMessage):
             **({'images': self.medias} if self.medias is not None else {}),
         }
 
-"""
+
 class OllamaStructuredOutputMessage(GenericMessage):
 
     def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False):
@@ -290,7 +302,6 @@ class OllamaStructuredOutputMessage(GenericMessage):
             "role": self.role.value,
             "content": self.content,
         }
-"""
 
 
 class HistorySlot:
@@ -361,14 +372,12 @@ class History:
     __str__() -> str
     """
 
-
     def __init__(self) -> None:
         """
         Returns a History instance
         """
         self.slots: List[HistorySlot] = []
-        # Looks like { "uid": { history_as_dict }, ... }
-        self._checkpoints: Dict[str, List[Dict]] = {}
+        self._checkpoints: Dict[str, list[HistorySlot]] = {}
 
     def add_slot(self, history_slot: HistorySlot, position: int | SlotPosition = SlotPosition.BOTTOM) -> None:
         """
@@ -437,7 +446,7 @@ class History:
         @return: str : A unique identifier that can be used to load the checkpoint at any time.
         """
         uid: str = str(uuid.uuid4())
-        self._checkpoints[uid] = self._export()
+        self._checkpoints[uid] = copy.deepcopy(self.slots)
         return uid
 
     def load_check_point(self, uid: str) -> None:
@@ -447,8 +456,7 @@ class History:
         @param uid:
         @return:
         """
-        self.slots = []
-        self._load_as_dict(self._checkpoints[uid])
+        self.slots = self._checkpoints[uid]
 
     def get_last(self) -> GenericMessage:
         """
