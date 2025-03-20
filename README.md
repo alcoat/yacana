@@ -234,21 +234,21 @@ for invoice_file in files:
 ## Roadmap
 
 ❗ New features for the next update:
-* Compatibility with **OpenAI** for basic inference. [Status]: Done. ✔️
+* Compatibility with **OpenAI** for basic inference. [Status]: ✔️
   * Supporting OpenAI is not the core of Yacana but should be available for local and cloud-based projects to work with the same API if needed. 
-* Compatibility with **vision models** on Ollama. [Status]: Done. ✔️
+* Compatibility with **vision models** on Ollama. [Status]: ✔️
   * For instance, using llama3.2-vision. Available on dev branch for Ollama.
-* Compatibility with **medias** on OpenAI. [Status]: Todo. 🚧
+* Compatibility with **medias** on OpenAI. [Status]: ✔️
   * For instance, uploading images or audio.
-* Compatibility with **VLLM** [Status]: Todo. 🚧
+* Compatibility with **VLLM** [Status]: 🚧
   * When the support for OpenAI is done we can hope to use the OpenAI mode on VLLM, allowing few changes to the code base.
-* Adding **"structured output"** on Ollama. [Status]: Done. ✔️
+* Adding **"structured output"** on Ollama. [Status]: ✔️
   * This allows reliable JSON output
-* Adding **"structured output"** on OpenAI. [Status]: Done. ✔️
+* Adding **"structured output"** on OpenAI. [Status]: ✔️
   * This allows reliable JSON output
-* Adding **tool calling** on OpenAI: [Status]: WIP. 🚧
+* Adding **tool calling** on OpenAI: [Status]: ✔️
   * Having the same API for Ollama and OpenAI local tool calling will be great!
-* **Reworking history** to allow multi-LLM output per Task (OpenAI stuff) and adding custom metadata on each message. [Status]: todo. 🚧
+* **Reworking history** to allow multi-LLM output per Task (OpenAI stuff) and adding custom metadata on each message. [Status]: 🚧
 
 
 ❕ Lower priority
