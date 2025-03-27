@@ -197,17 +197,12 @@ class OpenAiAgent(GenericAgent):
             return completion
         all_chunks = ""
         for chunk in completion:
-            if chunk.choices[0].delta.content is not None:
-                all_chunks += chunk.choices[0].delta.content
-            print(str(chunk))
-            print(chunk.choices[0].delta)
-            print("****************")
-            print("1 json =", chunk.model_dump_json(indent=2))
-            if chunk.choices[0].delta.refusal is not True:
-                streaming_callback(chunk.choices[0].delta.content)
+            if chunk.choices[0].delta.refusal in (False, None):
+                if chunk.choices[0].delta.content is not None:
+                    all_chunks += chunk.choices[0].delta.content
+                    streaming_callback(chunk.choices[0].delta.content)
             else:
-                raise ValueError("Got a refusal from the LLM. This is not supported in streaming mode.")
-
+                raise TaskCompletionRefusal("Got a refusal from the LLM. This is not supported in streaming mode.")
         return Dotdict({
             "choices": [
                 {
@@ -229,8 +224,6 @@ class OpenAiAgent(GenericAgent):
                 history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, is_yacana_builtin=True))
             else:
                 history.add_message(OpenAITextMessage(MessageRole.USER, task, is_yacana_builtin=True))
-        if streaming_callback is not None and structured_output is not None:
-            raise IllogicalConfiguration("You can't have streaming_callback and structured_output at the same time. Having incomplete JSON is useless.")
         print(f"inference : model_name: {self.model_name}, history: {history}, endpoint: {self.endpoint}, api_token: {self.api_token}, model_settings: {self.model_settings.get_settings()}, stream: {str(streaming_callback)}, json_output: {json_output}, structured_output: {structured_output}, headers: {self.headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
@@ -262,18 +255,18 @@ class OpenAiAgent(GenericAgent):
 
         history_slot = HistorySlot()
         if structured_output is not None:
-            completion = client.beta.chat.completions.parse(**params)
+            response = client.beta.chat.completions.parse(**params)
         else:
-            completion = client.chat.completions.create(**params)
-            completion = self._dispatch_chunk_if_streaming(completion, streaming_callback)
+            response = client.chat.completions.create(**params)
+            response = self._dispatch_chunk_if_streaming(response, streaming_callback)
 
-        history_slot.set_raw_llm_json(completion.model_dump_json())
+        history_slot.set_raw_llm_json(response.model_dump_json())
 
         print("Résultat de l'inférence quelle quelle soit = ")
-        print(completion.model_dump_json(indent=2))
-        logging.debug("Inference output: %s", completion.model_dump_json(indent=2))
+        print(response.model_dump_json(indent=2))
+        logging.debug("Inference output: %s", response.model_dump_json(indent=2))
 
-        for choice in completion.choices:
+        for choice in response.choices:
             print("boucle !")
 
             if self.is_structured_output(choice):

@@ -11,10 +11,16 @@ class Dotdict(dict):
         super().__init__(*args, **kwargs)
         for key, value in self.items():
             if isinstance(value, dict):
-                self[key] = Dotdict(value)  # Recursively convert
+                self[key] = Dotdict(value)
             elif isinstance(value, list):
                 self[key] = [Dotdict(item) if isinstance(item, dict) else item for item in value]
 
+    def __getitem__(self, key):
+        """Ensure dict-style access also returns Dotdict for nested dicts"""
+        value = super().__getitem__(key)
+        if isinstance(value, dict):
+            return Dotdict(value)
+        return value
 
     def model_dump_json(self, **kwargs):
         """Mimics the pydantic model_dump_json() method"""

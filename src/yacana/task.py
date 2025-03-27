@@ -79,6 +79,9 @@ class Task:
         if len(self.tools) > 0 and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")
 
+        if self.streaming_callback is not None and self.structured_output is not None:
+            raise IllogicalConfiguration("You can't have streaming_callback and structured_output at the same time. Having incomplete JSON is useless.")
+
         # Only used when @forget is True
         self.save_history: History | None = None
 

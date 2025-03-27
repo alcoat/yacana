@@ -1,12 +1,13 @@
 import copy
 from json import JSONDecodeError
 from . import GenericAgent
-from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration
+from .Utils import Dotdict
+from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
 from .modelSettings import ModelSettings
 import json
 import logging
 from ollama import Client
-from typing import List, Type, Any, T, Dict, Callable
+from typing import List, Type, Any, T, Dict, Callable, Mapping
 from collections.abc import Iterator
 from pydantic import BaseModel
 from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
@@ -349,6 +350,23 @@ class OllamaAgent(GenericAgent):
         except Exception as e:
             raise TypeError(f"Failed to convert response to JSON: {e}")
 
+    def _dispatch_chunk_if_streaming(self, completion: Mapping[str, Any] | Iterator[Mapping[str, Any]], streaming_callback: Callable | None) -> Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]:
+        if streaming_callback is None:
+            return completion
+        all_chunks = ""
+        for chunk in completion:
+            if chunk['message']['content'] is not None:
+                all_chunks += chunk['message']['content']
+                streaming_callback(chunk['message']['content'])
+            else:
+                raise TaskCompletionRefusal("Streaming LLMs response returned no data (content == None).")
+        return Dotdict({
+                    "message": {
+                        "content": all_chunks,
+                    }
+                }
+            )
+
     def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
@@ -367,10 +385,11 @@ class OllamaAgent(GenericAgent):
             "options": self.model_settings.get_settings()
         }
         response = client.chat(**params)
-        if structured_output is None:
-            history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], is_yacana_builtin=True))
-        else:
+        if structured_output is not None:
             history_slot.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), is_yacana_builtin=True))
+        else:
+            response = self._dispatch_chunk_if_streaming(response, streaming_callback)
+            history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], is_yacana_builtin=True))
 
         history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot
