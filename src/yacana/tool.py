@@ -4,7 +4,7 @@ from typing import List, Callable
 
 from .exceptions import IllogicalConfiguration
 from .function_to_json_schema import function_to_json_with_pydantic
-from .history import History, GenericMessage, MessageRole, OllamaTextMessage
+from .history import History, MessageRole, OllamaTextMessage
 
 
 class Tool:

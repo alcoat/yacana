@@ -117,7 +117,7 @@ class GenericMessage(ABC):
     def get_message_as_dict(self):
         raise(NotImplementedError("This method should be implemented in the child class"))
 
-    def get_best_visual_form(self) -> str:
+    def get_as_pretty(self) -> str:
         if self.content is not None:
             return self.content
         else:
@@ -430,13 +430,13 @@ class History:
         for slot in self.slots:
             message = slot.get_message()
             if message.role == MessageRole.USER:
-                print('\033[92m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
+                print('\033[92m[' + message.role.value + "]:\n" + message.get_as_pretty() + '\033[0m')
             elif message.role == MessageRole.ASSISTANT:
-                print('\033[95m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
+                print('\033[95m[' + message.role.value + "]:\n" + message.get_as_pretty() + '\033[0m')
             elif message.role == MessageRole.SYSTEM:
-                print('\033[93m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
+                print('\033[93m[' + message.role.value + "]:\n" + message.get_as_pretty() + '\033[0m')
             elif message.role == MessageRole.TOOL:
-                print('\033[96m[' + message.role.value + "]:\n" + message.get_best_visual_form() + '\033[0m')
+                print('\033[96m[' + message.role.value + "]:\n" + message.get_as_pretty() + '\033[0m')
             print("")
 
     def create_check_point(self) -> str:

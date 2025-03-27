@@ -4,7 +4,7 @@ from typing import List
 import logging
 from typing_extensions import Tuple
 
-from .agent import GenericMessage, MessageRole
+from .generic_agent import GenericMessage, MessageRole
 from .history import Message
 from .task import Task
 from .exceptions import ReachedTaskCompletion, IllogicalConfiguration
@@ -149,13 +149,13 @@ class GroupSolve:
 
                 # Giving prompt and AI output of first speaker to the second speaker
                 if self.reconcile_first_message is True:
-                    my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.task, is_yacana_builtin=True))
+                    my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.prompt, is_yacana_builtin=True))
                     my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last().content, is_yacana_builtin=True))
                 # Second speaker (has the history of the first speaker)
                 my_task2.solve()
 
                 if self.reconcile_first_message is True:
-                    my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.task, is_yacana_builtin=True))
+                    my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.prompt, is_yacana_builtin=True))
                     my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last().content, is_yacana_builtin=True))
 
                 # (str, (TaskX, TaskY))
@@ -184,7 +184,7 @@ class GroupSolve:
             for cur_task in self.tasks:
                 # Changing the way the task is written to match the multi-agent format
                 user_message: GenericMessage = Message(MessageRole.USER,
-                                                f"[TaskManager]: {cur_task.agent.name}: this is your main task: `" + cur_task.task + "`", is_yacana_builtin=True)
+                                                f"[TaskManager]: {cur_task.agent.name}: this is your main task: `" + cur_task.prompt + "`", is_yacana_builtin=True)
                 copy_task: Task = self._duplicate_task(cur_task, user_message.content)
                 last_generated_answer: str = self._solve_copy(copy_task)
                 self._reconcile_history(cur_task, user_message, last_generated_answer)
@@ -245,7 +245,7 @@ class GroupSolve:
         @return: Task : The copy of the Task with the new prompt
         """
         copy_task2: Task = copy.deepcopy(task_to_duplicate)
-        copy_task2.task = last_generated_answer
+        copy_task2.prompt = last_generated_answer
         copy_task2.agent = task_to_duplicate.agent
         return copy_task2
 
@@ -261,9 +261,9 @@ class GroupSolve:
             if copy_task.use_self_reflection is False:
                 history_save = copy.deepcopy(copy_task.agent.history)
             # @copy_task is already a copy and won't be reused so no use to deepcopy it again.
-            copy_task.task = ("[TaskManager]: " if len(self.tasks) >= 3 else "") + "In your opinion, what objectives from your initial task have you NOT completed ?"
+            copy_task.prompt = ("[TaskManager]: " if len(self.tasks) >= 3 else "") + "In your opinion, what objectives from your initial task have you NOT completed ?"
 
-            Task(copy_task.task, copy_task.agent).solve()
+            Task(copy_task.prompt, copy_task.agent).solve()
             if copy_task.use_self_reflection is True:
                 history_save = copy.deepcopy(copy_task.agent.history)
 

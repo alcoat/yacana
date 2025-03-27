@@ -1,13 +1,12 @@
 import copy
 import uuid
-from typing import List, Type
+from typing import List, Type, Callable
 
 from pydantic import BaseModel
 
-from .agent import Agent, GenericMessage
+from .generic_agent import GenericAgent, GenericMessage
 from .exceptions import MaxToolErrorIter, IllogicalConfiguration
 from .history import History
-from .inference import ServerType
 from .logging_config import LoggerManager
 from .tool import Tool
 
@@ -23,9 +22,9 @@ class Task:
 
     Attributes
     ----------
-    task : str
+    prompt : str
         The task to solve. It is the prompt given to the assigned LLM
-    agent : Agent
+    agent : GenericAgent
         The agent assigned to this task
     json_output : bool
         If True, will force the LLM to answer as JSON. Its using Ollama json mode for now. We shall see how to implement that on other inference backends. Either way you should ask for a JSON output in the task prompt.
@@ -48,9 +47,9 @@ class Task:
     solve(self) -> Message | None:
     """
 
-    def __init__(self, prompt: str, agent: Agent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
+    def __init__(self, prompt: str, agent: GenericAgent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
                  medias: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
-                 llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False) -> None:
+                 llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False, streaming_callback: Callable | None = None) -> None:
         """
         Returns a Task instance.
         @param prompt: str: The task to solve. It is the prompt given to the assigned LLM
@@ -64,8 +63,8 @@ class Task:
         @param use_self_reflection: bool: Only useful when the task is part of a GroupSolve(). Allows to keep the self reflection process done by the LLM in the next GS iteration. May be useful if the LLM has problems with reasoning.
         @param forget: bool: When this task has finished resolving and this is set to True, the Agent won't remember it happened. Useful when doing yes/no questions for routing purposes and no need to keep the answer in the history.
         """
-        self.task: str = prompt
-        self.agent: Agent = agent
+        self.prompt: str = prompt
+        self.agent: GenericAgent = agent
         self.json_output: bool = json_output
         self.structured_output: Type[BaseModel] | None = structured_output
         self.tools: List[Tool] = tools if tools is not None else []
@@ -75,6 +74,7 @@ class Task:
         self.forget: bool = forget
         self.medias: List[str] | None = medias
         self._uuid: str = str(uuid.uuid4())
+        self.streaming_callback: Callable | None = streaming_callback
 
         if len(self.tools) > 0 and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")
@@ -82,7 +82,7 @@ class Task:
         # Only used when @forget is True
         self.save_history: History | None = None
 
-        self._update_tool_schema_if_openai()
+        #self._update_tool_schema_if_openai()
 
     @property
     def uuid(self) -> str:
@@ -110,7 +110,7 @@ class Task:
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
         try:
-            answer: GenericMessage = self.agent._interact(self.task, self.tools, self.json_output, self.structured_output, self.medias)
+            answer: GenericMessage = self.agent._interact(self.prompt, self.tools, self.json_output, self.structured_output, self.medias, self.streaming_callback)
         except MaxToolErrorIter as e:
             if self.raise_when_max_tool_error_iter:
                 self._reset_agent_history()
@@ -127,14 +127,14 @@ class Task:
         if self.forget is True:
             self.agent.history = self.save_history
 
-    def _update_tool_schema_if_openai(self):
-        """
-        Update the tool schema if the task is using an OpenAI agent as the inference server.
-        We do not need this schema for Ollama as it is not useful. Therefor it's the Task role to trigger the
-        tool's schema update only if the agent is an OpenAI agent. It's some kind of "lazy loading".
-        """
-        if self.agent.server_type is ServerType.OPENAI or self.agent.server_type is ServerType.VLLM:
-            for tool in self.tools:
-                if tool._openai_function_schema is None:
-                    tool._function_to_json_with_pydantic()
+    #def _update_tool_schema_if_openai(self):
+    #    """
+    #    Update the tool schema if the task is using an OpenAI agent as the inference server.
+    #    We do not need this schema for Ollama as it is not useful. Therefor it's the Task role to trigger the
+    #    tool's schema update only if the agent is an OpenAI agent. It's some kind of "lazy loading".
+    #    """
+    #    if isinstance(self.agent, OpenAiAgent) or isinstance(self.agent, str):  # "@todo VLLM"
+    #        for tool in self.tools:
+    #            if tool._openai_function_schema is None:
+    #                tool._function_to_json_with_pydantic()
 

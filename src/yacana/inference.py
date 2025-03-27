@@ -1,16 +1,14 @@
 import json
 import logging
-import os
 from enum import Enum
 from abc import ABC, abstractmethod
-from ollama import Client, ChatResponse
+from ollama import Client
 from openai import OpenAI
 from typing import List, Type, Any, Literal, T, Dict
-from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice
 from pydantic import BaseModel
 
-from .history import HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
+from .history import HistorySlot, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
 from .tool import Tool
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
 
@@ -235,6 +233,7 @@ class OpenAIInference(InferenceServer):
             return None
 
 
+"""
 class InferenceFactory:
     @staticmethod
     def get_inference(server_type: ServerType) -> InferenceServer:
@@ -246,3 +245,4 @@ class InferenceFactory:
             return OpenAIInference()
         else:
             raise ValueError("Unsupported server type")
+"""
