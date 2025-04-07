@@ -1,7 +1,6 @@
 from typing import Callable
 from pydantic import create_model
 import inspect
-import json
 
 
 def function_to_json_with_pydantic(tool_name: str, description: str, func: Callable) -> dict:

@@ -1,16 +1,17 @@
 import copy
 from json import JSONDecodeError
-from . import GenericAgent
-from .Utils import Dotdict
-from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
-from .modelSettings import ModelSettings
 import json
 import logging
 from ollama import Client
 from typing import List, Type, Any, T, Dict, Callable, Mapping
 from collections.abc import Iterator
 from pydantic import BaseModel
-from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
+
+from .generic_agent import GenericAgent
+from .model_settings import OllamaModelSettings
+from .utils import Dotdict
+from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
+from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage
 from .tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class OllamaAgent(GenericAgent):
     get_agent_from_state(file_path: str) -> 'Agent'
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: ModelSettings = None, streaming_callback: Callable | None = None) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, streaming_callback: Callable | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -58,7 +59,10 @@ class OllamaAgent(GenericAgent):
         :param headers: dict : Custom headers to be sent with the inference request. If None, an empty dictionary will be used.
         :param model_settings: ModelSettings : All settings that Ollama currently supports as model configuration. This needs to be tested with other inference servers. This allows modifying deep behavioral patterns of the LLM.
         """
-        super().__init__(name, model_name, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, model_settings=model_settings, streaming_callback=streaming_callback)
+        model_settings = OllamaModelSettings() if model_settings is None else model_settings
+        if not isinstance(model_settings, OllamaModelSettings):
+            raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, streaming_callback=streaming_callback)
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
         max_tool_name_use_iter: int = 0

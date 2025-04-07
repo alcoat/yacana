@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from .history import History, GenericMessage, MessageRole, Message, OllamaTextMessage
 from .logging_config import LoggerManager
-from .modelSettings import ModelSettings
+from .model_settings import OllamaModelSettings, OpenAiModelSettings
 from .tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -43,8 +43,8 @@ class GenericAgent(ABC):
     get_agent_from_state(file_path: str) -> 'Agent'
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, model_settings: ModelSettings = None, streaming_callback: Callable | None = None) -> None:
+    def __init__(self, name: str, model_name: str, model_settings: OllamaModelSettings | OpenAiModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
+                 api_token: str = "", headers=None, streaming_callback: Callable | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -60,7 +60,9 @@ class GenericAgent(ABC):
         self.name: str = name
         self.model_name: str = model_name
         self.system_prompt: str | None = system_prompt
-        self.model_settings: ModelSettings = ModelSettings() if model_settings is None else model_settings
+        if model_settings is None:
+            raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
+        self.model_settings: OllamaModelSettings | OpenAiModelSettings = model_settings
         self.api_token: str = api_token
         self.headers = {} if headers is None else headers
         self.endpoint: str | None = endpoint
@@ -153,41 +155,3 @@ class GenericAgent(ABC):
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None) -> GenericMessage:
         raise NotImplemented(f"This method must be subclassed by the child class. It starts the inference using given parameters.")
 
-
-
-
-
-"""
-    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, stream: bool = False, tools: List[Tool] | None = None) -> str | Iterator:
-        #if task is not None:
-        #    #message = GenericMessage(MessageRole.USER, task, medias=medias)
-        #    if save_to_history is True:
-        #        #history.add_message(message)
-        #        pass
-        #    else:
-        #        history_save = copy.deepcopy(history)
-        #        #history_save.add_message(message)
-        
-        if task is not None:
-            logging.info(f"[PROMPT][To: {self.name}]: {task}")
-        inference: InferenceServer = InferenceFactory.get_inference(self.server_type)
-        history_slot: HistorySlot = inference.go(model_name=self.model_name,
-                                                 task=task,
-                                                 history=history if save_to_history is True else copy.deepcopy(history),
-                                                 endpoint=self.endpoint,
-                                                 api_token=self.api_token,
-                                                 model_settings=self.model_settings.get_settings(),
-                                                 stream=stream,
-                                                 json_output=(True if json_output is True else False),
-                                                 structured_output=structured_output,
-                                                 headers=self.headers,
-                                                 tools=tools,
-                                                 medias=medias
-                                                 )
-        if stream is True:
-            return response.raw_llm_response  # Only for the simple_chat() method and is of no importance.
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_best_visual_form()}")
-        if save_to_history is True:
-            history.add_slot(history_slot) #add_message(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output, tool_call_id=response.tool_call_id))
-        return history_slot.get_message().content #response.raw_llm_response
-"""

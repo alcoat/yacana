@@ -1,7 +1,6 @@
 import copy
 import uuid
 from typing import List, Type, Callable
-
 from pydantic import BaseModel
 
 from .generic_agent import GenericAgent, GenericMessage

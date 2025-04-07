@@ -2,25 +2,20 @@ import copy
 import json
 import logging
 from json import JSONDecodeError
-from typing import T, Callable
-
-from openai.types.chat import ChatCompletionChunk
-
-from . import GenericAgent
-from .Utils import Dotdict
-from .exceptions import MaxToolErrorIter, ToolError
-from .history import OpenAIToolCallingMessage
-from .modelSettings import ModelSettings
-
 from openai import OpenAI, Stream
-from typing import List, Type, Any, Literal, T, Dict
+from typing import List, Type, Any, Literal, T, Dict, Callable
 from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice, ChatCompletion
 from pydantic import BaseModel
 
-from .history import HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
+from openai.types.chat import ChatCompletionChunk
+
+from .generic_agent import GenericAgent
+from .model_settings import OpenAiModelSettings
+from .utils import Dotdict
+from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
+from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
 from .tool import Tool
-from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +52,7 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, model_settings: ModelSettings = None, streaming_callback: Callable | None = None) -> None:
+                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, streaming_callback: Callable | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -68,9 +63,13 @@ class OpenAiAgent(GenericAgent):
         :param headers: dict : Custom headers to be sent with the inference request. If None, an empty dictionary will be used.
         :param model_settings: ModelSettings : All settings that Ollama currently supports as model configuration. This needs to be tested with other inference servers. This allows modifying deep behavioral patterns of the LLM.
         """
-        super().__init__(name, model_name, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, model_settings=model_settings, streaming_callback=streaming_callback)
+        model_settings = OpenAiModelSettings() if model_settings is None else model_settings
+        if not isinstance(model_settings, OpenAiModelSettings):
+            raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback)
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
+
 
     def _use_other_tool(self, local_history: History) -> bool:
         tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
@@ -213,6 +212,9 @@ class OpenAiAgent(GenericAgent):
             ]
         })
 
+    def _merge_model_settings(self, current_settings: Dict) -> Dict:
+        current_settings
+
     def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, tools: List[Tool] | None = None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
 
         # @todo ici on est momentanément obligé de faire un check car je dois ajouter 1 ou plus messages lié au tool calling et j'ai besoin de variable que je n'ai
@@ -236,16 +238,23 @@ class OpenAiAgent(GenericAgent):
             base_url=self.endpoint
         )
 
-        # @todo pour stream faudrait du code spécifique donc je ne vois pas bien comment on pourrait le faire
         # @todo modelsettings
+        # @todo access passing any params
+        # @todo save and restore
+        # @todo tests multi turn
+        # @todo clean inference file
+        # @todo simple conversation
+        # @todo plus de tests multimodal
 
         params = {
             "model": self.model_name,
             "messages": history.get_messages_as_dict(),
-            "stream": True if streaming_callback is not None else False,
+            "max_completion_tokens": 5,
+            **({"stream": True} if streaming_callback is not None else {}),
             **({"response_format": response_format} if response_format is not None else {}),
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {}),
+            **self.model_settings.get_settings()
         }
         print("tool choice = ", tool_choice_option)
         print("----")
