@@ -1,10 +1,16 @@
 import logging
 from typing import Callable
+from enum import Enum
 
 from .model_settings import OllamaModelSettings, OpenAiModelSettings
 from .ollama_agent import OllamaAgent
 from .open_ai_agent import OpenAiAgent
-from .inference import ServerType
+
+
+class ServerType(Enum):
+    OLLAMA = 1
+    VLLM = 2
+    OPENAI = 3
 
 
 class Agent:

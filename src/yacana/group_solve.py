@@ -150,13 +150,13 @@ class GroupSolve:
                 # Giving prompt and AI output of first speaker to the second speaker
                 if self.reconcile_first_message is True:
                     my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.prompt, is_yacana_builtin=True))
-                    my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last().content, is_yacana_builtin=True))
+                    my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last_message().content, is_yacana_builtin=True))
                 # Second speaker (has the history of the first speaker)
                 my_task2.solve()
 
                 if self.reconcile_first_message is True:
                     my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.prompt, is_yacana_builtin=True))
-                    my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last().content, is_yacana_builtin=True))
+                    my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last_message().content, is_yacana_builtin=True))
 
                 # (str, (TaskX, TaskY))
                 last_generated_answer, tasks_run_order = self._set_shift_message()
@@ -223,13 +223,13 @@ class GroupSolve:
         # Assigning shift message to either Agents and sets a custom message if user gave one. If not, the opposite agent's ANSWER will be used as PROMPT (shift message).
         if self.shift_owner is my_task1:
             if self.shift_content is None:
-                last_generated_answer: str = my_task2.agent.history.get_last().content
+                last_generated_answer: str = my_task2.agent.history.get_last_message().content
             else:
                 last_generated_answer: str = self.shift_content
             tasks_run_order: Tuple = (my_task1, my_task2)
         elif self.shift_owner is my_task2:
             if self.shift_content is None:
-                last_generated_answer: str = my_task1.agent.history.get_last().content
+                last_generated_answer: str = my_task1.agent.history.get_last_message().content
             else:
                 last_generated_answer: str = self.shift_content
             tasks_run_order: Tuple = (my_task2, my_task1)

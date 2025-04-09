@@ -324,6 +324,11 @@ class HistorySlot:
         else:
             return self.messages[message_index]
 
+    def get_last_message(self) -> GenericMessage:
+        if len(self.messages) <= 0:
+            raise IndexError("Index error: Slot is empty (no messages)")
+        return self.messages[-1]
+
     def get_messages(self) -> List[GenericMessage]:
         return self.messages
 
@@ -398,6 +403,16 @@ class History:
         else:
             self.slots.insert(position, history_slot)
 
+    def get_last_slot(self) -> HistorySlot:
+        """
+        Returns the last slot of the history. Not very useful but a good syntactic sugar to get the last item from
+        the conversation
+        @return: HistorySlot
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        return self.slots[-1]
+
     def add_message(self, message: GenericMessage) -> None:
         """
         Adds a new slot (HistorySlot) to the history containing the Message. each slot has a main message that compose the complete conversation.
@@ -458,14 +473,14 @@ class History:
         """
         self.slots = self._checkpoints[uid]
 
-    def get_last(self) -> GenericMessage:
+    def get_last_message(self) -> GenericMessage:
         """
         Returns the last message of the history. Not very useful but a good syntactic sugar to get the last item from
         the conversation
         @return: Message
         """
         if len(self.slots) <= 0:
-            raise IndexError("Index error: History is empty (no slots, so no messages)")
+            raise IndexError("History is empty (no slots, so no messages)")
         return self.slots[-1].get_message()
 
     def clean(self) -> None:

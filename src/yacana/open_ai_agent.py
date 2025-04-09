@@ -52,7 +52,7 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, streaming_callback: Callable | None = None) -> None:
+                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -66,7 +66,7 @@ class OpenAiAgent(GenericAgent):
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback)
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config)
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
 
@@ -135,7 +135,7 @@ class OpenAiAgent(GenericAgent):
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         elif len(tools) > 0:
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, tools=tools)
-            for tool_call in self.history.get_last().tool_calls:
+            for tool_call in self.history.get_last_message().tool_calls:
                 tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
                 if tool is None:
                     raise ValueError(f"Tool {tool_call.name} not found in tools list")  # @todo Autre chose qu'un valueError, genre une classe custom ?
@@ -151,7 +151,7 @@ class OpenAiAgent(GenericAgent):
                 self.history.add_message(Message(MessageRole.ASSISTANT))
                 # @todo c'est ici le pb. Si chatGPT a choisit de ne pas utiliser de tool finalement alors c'est juste de l'inférence classique et faut choper choice[0].content
             """
-        return self.history.get_last()
+        return self.history.get_last_message()
 
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
         """
@@ -212,14 +212,7 @@ class OpenAiAgent(GenericAgent):
             ]
         })
 
-    def _merge_model_settings(self, current_settings: Dict) -> Dict:
-        current_settings
-
     def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, tools: List[Tool] | None = None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
-
-        # @todo ici on est momentanément obligé de faire un check car je dois ajouter 1 ou plus messages lié au tool calling et j'ai besoin de variable que je n'ai
-        # pas dans cette fonctions. Mais sinon c'est le même principe que medias. Et si je merge cette classe dans l'agent alors j'aurais accès à ces variables plus
-        # facilement.
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
             if medias is not None:
@@ -238,12 +231,9 @@ class OpenAiAgent(GenericAgent):
             base_url=self.endpoint
         )
 
-        # @todo modelsettings
-        # @todo access passing any params
+
         # @todo save and restore
         # @todo tests multi turn
-        # @todo clean inference file
-        # @todo simple conversation
         # @todo plus de tests multimodal
 
         params = {
@@ -254,7 +244,8 @@ class OpenAiAgent(GenericAgent):
             **({"response_format": response_format} if response_format is not None else {}),
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {}),
-            **self.model_settings.get_settings()
+            **self.model_settings.get_settings(),
+            **self._runtime_config
         }
         print("tool choice = ", tool_choice_option)
         print("----")

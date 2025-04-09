@@ -1,7 +1,7 @@
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Type, T, Callable
+from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
 from .history import History, GenericMessage, MessageRole, Message, OllamaTextMessage
@@ -44,7 +44,7 @@ class GenericAgent(ABC):
     """
 
     def __init__(self, name: str, model_name: str, model_settings: OllamaModelSettings | OpenAiModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, streaming_callback: Callable | None = None) -> None:
+                 api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -67,37 +67,11 @@ class GenericAgent(ABC):
         self.headers = {} if headers is None else headers
         self.endpoint: str | None = endpoint
         self.streaming_callback: Callable | None = streaming_callback
+        self._runtime_config = runtime_config if runtime_config is not None else {}
 
         self.history: History = History()
         if self.system_prompt is not None:
             self.history.add_message(Message(MessageRole.SYSTEM, system_prompt))
-
-
-    def simple_chat(self, custom_prompt: str = "> ", stream: bool = True) -> None:
-        """
-        Use for testing but this is not how the framework is intended to be used. It creates a simple chatbot that
-        keeps track of the history.
-        @param custom_prompt: str : Set the prompt style for user input
-        @param stream: bool : If set to True you will see the result of your output as the LLM generates tokens instead of waiting for it to complete.
-        @return: None
-        """
-        LoggerManager.set_log_level(None)
-        print("Type 'quit' then enter to exit.")
-
-        while True:
-            user_query: str = input(custom_prompt)
-            if user_query == "quit":
-                break
-            llm_response: str = self._chat(self.history, user_query, stream=stream)
-            if stream is True:
-                complete_llm_answer: List[str] = []
-                for chunk in llm_response:
-                    print(chunk['message']['content'], end='', flush=True)
-                    complete_llm_answer.append(chunk['message']['content'])
-                print("")
-                self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, "".join(complete_llm_answer), is_yacana_builtin=True))
-            else:
-                print(llm_response)
 
     def export_state(self, file_path: str) -> None:
         """

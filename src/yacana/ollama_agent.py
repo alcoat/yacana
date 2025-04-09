@@ -48,7 +48,7 @@ class OllamaAgent(GenericAgent):
     get_agent_from_state(file_path: str) -> 'Agent'
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, streaming_callback: Callable | None = None) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -62,7 +62,7 @@ class OllamaAgent(GenericAgent):
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, streaming_callback=streaming_callback)
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config)
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
         max_tool_name_use_iter: int = 0
@@ -119,7 +119,7 @@ class OllamaAgent(GenericAgent):
         while True:
             additional_prompt_help: str = ""
             try:
-                args: dict = json.loads(tool_training_history.get_last().content)
+                args: dict = json.loads(tool_training_history.get_last_message().content)
                 tool_output: str = tool.function_ref(**args)
                 if tool_output is None:
                     tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
@@ -156,8 +156,8 @@ class OllamaAgent(GenericAgent):
         local_history.add_message(OllamaTextMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", is_yacana_builtin=True))
 
         # Master history + local history get fake ASSISTANT prompt calling the tool correctly
-        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content, is_yacana_builtin=True))
-        local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last().content, is_yacana_builtin=True))
+        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last_message().content, is_yacana_builtin=True))
+        local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last_message().content, is_yacana_builtin=True))
 
         # Master history + local history get fake USER prompt with the answer of the tool
         # @todo Finishing with a user prompt will render 2 consecutive USER prompts in the final history. This might be resolved by this kind of trick: 'USER: You will receive the tool output now' => 'ASSISTANT: Yes I got the tool output just now. It is the following: <output>'
@@ -237,7 +237,7 @@ class OllamaAgent(GenericAgent):
                 tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
                 if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
                     self._chat(self.history, task, medias=medias, json_output=json_output, structured_output=structured_output)  # !!Actual function calling
-                    return self.history.get_last()
+                    return self.history.get_last_message()
 
             # If getting here the tool call is inevitable
             task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
@@ -248,7 +248,7 @@ class OllamaAgent(GenericAgent):
             # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
             #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
 
-            self._reconcile_history_solo_tool(local_history.get_last().content, tool_output, task, tool)
+            self._reconcile_history_solo_tool(local_history.get_last_message().content, tool_output, task, tool)
 
         elif len(tools) > 1:
             if streaming_callback is not None:
@@ -297,7 +297,7 @@ class OllamaAgent(GenericAgent):
                 # Getting here means that no tools were selected by the LLM and we act like tools == 0
                 self._chat(self.history, task, medias=medias, json_output=json_output)
 
-        return self.history.get_last()
+        return self.history.get_last_message()
 
     def _stream(self):
         pass
@@ -312,8 +312,8 @@ class OllamaAgent(GenericAgent):
                                              )
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
         if save_to_history is True:
-            history.add_slot(history_slot)  #add_message(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output, tool_call_id=response.tool_call_id))
-        return history_slot.get_message().content  #response.raw_llm_response
+            history.add_slot(history_slot)
+        return history_slot.get_message().content
 
     @staticmethod
     def _get_expected_output_format(json_output: bool, structured_output: Type[BaseModel] | None) -> dict[str, Any] | str:
@@ -386,7 +386,8 @@ class OllamaAgent(GenericAgent):
             "messages": history.get_messages_as_dict(),
             "format": self._get_expected_output_format(json_output, structured_output),
             "stream": True if streaming_callback is not None else False,
-            "options": self.model_settings.get_settings()
+            "options": self.model_settings.get_settings(),
+            **self._runtime_config
         }
         response = client.chat(**params)
         if structured_output is not None:
@@ -395,5 +396,6 @@ class OllamaAgent(GenericAgent):
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
             history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], is_yacana_builtin=True))
 
+        print("comment ca peut être none ??", str(self._response_to_json(response)))
         history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot
