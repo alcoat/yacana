@@ -44,7 +44,7 @@ class OpenAiAgent(GenericAgent):
     Methods
     ----------
     simple_chat(custom_prompt: str = "> ", stream: bool = True) -> None
-    export_state(self, file_path: str) -> None
+    export_to_file(self, file_path: str) -> None
 
     ClassMethods
     ----------
@@ -52,7 +52,7 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
+                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, **kwargs) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -245,7 +245,7 @@ class OpenAiAgent(GenericAgent):
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {}),
             **self.model_settings.get_settings(),
-            **self._runtime_config
+            **self.runtime_config
         }
         print("tool choice = ", tool_choice_option)
         print("----")

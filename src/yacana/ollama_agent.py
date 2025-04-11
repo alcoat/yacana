@@ -41,14 +41,14 @@ class OllamaAgent(GenericAgent):
     Methods
     ----------
     simple_chat(custom_prompt: str = "> ", stream: bool = True) -> None
-    export_state(self, file_path: str) -> None
+    export_to_file(self, file_path: str) -> None
 
     ClassMethods
     ----------
     get_agent_from_state(file_path: str) -> 'Agent'
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, **kwargs) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -387,7 +387,7 @@ class OllamaAgent(GenericAgent):
             "format": self._get_expected_output_format(json_output, structured_output),
             "stream": True if streaming_callback is not None else False,
             "options": self.model_settings.get_settings(),
-            **self._runtime_config
+            **self.runtime_config
         }
         response = client.chat(**params)
         if structured_output is not None:
@@ -396,6 +396,5 @@ class OllamaAgent(GenericAgent):
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
             history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], is_yacana_builtin=True))
 
-        print("comment ca peut être none ??", str(self._response_to_json(response)))
         history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot

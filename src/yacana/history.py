@@ -3,7 +3,7 @@ import json
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Type, T
+from typing import List, Dict, Type, T, Any
 from typing_extensions import Self
 from abc import ABC, abstractmethod
 
@@ -75,7 +75,9 @@ class GenericMessage(ABC):
 
     """
 
-    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCall] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, is_yacana_builtin: bool = False) -> None:
+    _registry = {}
+
+    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCall] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, is_yacana_builtin: bool = False, id: uuid.UUID | None = None) -> None:
         """
         Returns an instance of Message
         :param role: MessageRole: From whom is the message from. See the MessageRole Enum
@@ -84,7 +86,7 @@ class GenericMessage(ABC):
         :param structured_output: Type[T] | None : An optional structured output that can be used to store the result of a tool call
         :param tool_calls: str | None : An optional unique identifier for the tool call (used by openAI to match the tool call with the response)
         """
-        self.id = uuid.uuid4()
+        self.id = str(uuid.uuid4()) if id is None else str(id)
         self.role: MessageRole = role
         self.content: str | None = content
         self.tool_calls: List[ToolCall] | None = tool_calls
@@ -97,13 +99,22 @@ class GenericMessage(ABC):
         if content is None and (tool_calls is None or (tool_calls is not None and len(tool_calls) == 0)):
             raise ValueError("A Message must have a content or a tool call that is not None or [].")
 
-    def _export(self) -> Dict:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        GenericMessage._registry[cls.__name__] = cls
+
+    def _export(self) -> str:
         """
         Returns a pure python dictionary mainly to save the object into a file.
         None entries are omitted.
         @return: Dict
         """
-        return {
+        members = self.__dict__.copy()
+        members["type"] = self.__class__.__name__
+        members["role"] = self.role.value
+        return members
+
+        """return {
             'id': str(self.id),
             'role': self.role.value,
             'content': self.content,
@@ -111,7 +122,15 @@ class GenericMessage(ABC):
             **({'structured_output': self.structured_output} if self.structured_output is not None else {}),
             **({'medias': self.medias} if self.medias is not None else {}),
             **({'tool_calls': [tool_call._export() for tool_call in self.tool_calls]} if self.tool_calls is not None else {})
-        }
+        }"""
+
+    @staticmethod
+    def create_instance(members: Dict):
+        #  Converting the role string to its matching enum
+        members["role"]: MessageRole = next((role for role in MessageRole if role.value == members["role"]), None)
+        cls_name = members.pop("type")
+        cls = GenericMessage._registry.get(cls_name)
+        return cls(**members)
 
     @abstractmethod
     def get_message_as_dict(self):
@@ -136,7 +155,7 @@ class Message(GenericMessage):
     For Yacana users or simple text based interactions
     """
 
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False) -> None:
+    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs) -> None:
         tool_calls = None
         tool_call_id = None
         medias = None
@@ -164,7 +183,7 @@ class Message(GenericMessage):
 
 class OpenAITextMessage(GenericMessage):
     
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False):
+    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs):
         tool_calls = None
         structured_output = None
         tool_call_id = None
@@ -179,11 +198,11 @@ class OpenAITextMessage(GenericMessage):
 
 class OpenAIMediaMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False):
+    def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False, **kwargs):
         tool_calls = None
         structured_output = None
         tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin,)
 
     def get_message_as_dict(self):
         message = {
@@ -202,7 +221,7 @@ class OpenAIMediaMessage(GenericMessage):
 
 class OpenAIFunctionCallingMessage(GenericMessage):
 
-    def __init__(self, tool_calls: List[ToolCall], is_yacana_builtin: bool = False):
+    def __init__(self, tool_calls: List[ToolCall], is_yacana_builtin: bool = False, **kwargs):
         role = MessageRole.ASSISTANT
         content = None
         medias = None
@@ -220,7 +239,7 @@ class OpenAIFunctionCallingMessage(GenericMessage):
 
 class OpenAIToolCallingMessage(GenericMessage):
 
-    def __init__(self, content: str, tool_call_id: str, is_yacana_builtin: bool = False):
+    def __init__(self, content: str, tool_call_id: str, is_yacana_builtin: bool = False, **kwargs):
         """
         Response from the LLM when a tool is called.
         :param content: In this context it will fe the output of the tool. We keep the variable name as is for consistency with the other messages.
@@ -243,7 +262,7 @@ class OpenAIToolCallingMessage(GenericMessage):
 
 class OpenAIStructuredOutputMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False):
+    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False, **kwargs):
         tool_calls = None
         medias = None
         tool_call_id = None
@@ -258,7 +277,7 @@ class OpenAIStructuredOutputMessage(GenericMessage):
 
 class OllamaTextMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False):
+    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs):
         tool_calls = None
         medias = None
         structured_output = None
@@ -275,7 +294,7 @@ class OllamaTextMessage(GenericMessage):
 
 class OllamaMediasMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False):
+    def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False, **kwargs):
         tool_calls = None
         tool_call_id = None
         structured_output = None
@@ -291,7 +310,7 @@ class OllamaMediasMessage(GenericMessage):
 
 class OllamaStructuredOutputMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False):
+    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False, **kwargs):
         tool_calls = None
         medias = None
         tool_call_id = None
@@ -306,12 +325,12 @@ class OllamaStructuredOutputMessage(GenericMessage):
 
 class HistorySlot:
 
-    def __init__(self, messages: List[GenericMessage] = None, raw_llm_json: str = None):
-        self.id = uuid.uuid4()
-        self.creation_time = int(datetime.now().timestamp())
+    def __init__(self, messages: List[GenericMessage] = None, raw_llm_json: str = None, **kwargs):
+        self.id = str(kwargs.get('id', uuid.uuid4()))
+        self.creation_time: int = int(kwargs.get('creation_time', datetime.now().timestamp()))
         self.messages: List[GenericMessage] = [] if messages is None else messages
-        self.raw_llm_json = raw_llm_json
-        self.currently_selected_message_index = 0
+        self.raw_llm_json: str = raw_llm_json
+        self.currently_selected_message_index: int = 0
 
     def add_message(self, message: GenericMessage):
         self.messages.append(message)
@@ -348,7 +367,20 @@ class HistorySlot:
             if i != self.currently_selected_message_index:
                 self.messages.pop(i)
 
-    def _export(self):
+    @staticmethod
+    def create_instance(members: Dict):
+        print("genre c'est none = ", members)
+        members["messages"] = [GenericMessage.create_instance(message) for message in members["messages"] if message is not None]
+        return HistorySlot(**members)
+
+    def _export(self) -> Dict:
+        members = self.__dict__.copy()
+        members["type"] = self.__class__.__name__
+        members["messages"] = [message._export() for message in self.messages if message is not None]
+        return members
+
+
+"""
         return {
             'id': str(self.id),
             'creation_time': self.creation_time,
@@ -356,6 +388,8 @@ class HistorySlot:
             'raw_llm_json': self.raw_llm_json,
             'currently_selected_message_index': self.currently_selected_message_index
         }
+"""
+
 
 
 class History:
@@ -377,7 +411,7 @@ class History:
     __str__() -> str
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         """
         Returns a History instance
         """
@@ -421,15 +455,70 @@ class History:
         """
         self.slots.append(HistorySlot([message]))
 
-    def _export(self) -> List[Dict]:
+    def _export(self) -> Dict:
         """
         Returns the RAW history (aka list of slots and messages) as a pure python dictionary
         @return: The list of slots and messages as a python dictionary
         """
-        history_as_dict: List[Dict] = []
+        members_as_dict = self.__dict__.copy()
+
+        # Exporting checkpoints
+        for uid, slots in self._checkpoints.items():
+            exported_slots = [slot._export() for slot in slots]
+            members_as_dict["_checkpoints"][uid] = exported_slots
+
+        # Exporting slots
+        slots_list: List[Dict] = []
         for slot in self.slots:
-            history_as_dict.append(slot._export())
-        return history_as_dict
+            slots_list.append(slot._export())
+        members_as_dict["slots"] = slots_list
+        return members_as_dict
+
+    @staticmethod
+    def create_instance(members: Dict):
+        """
+        !!Warning!! This is a concatenation of the given dict to the existing one.
+        Loads a list of messages as raw List. ie: [
+        {
+            "role": "system",
+            "content": "You are an AI assistant"
+        },
+        ...
+        ]
+        @param messages_dict: A python dictionary
+        @return: None
+        """
+
+        # Loading slots
+        members["slots"] = [HistorySlot.create_instance(slot) for slot in members["slots"]]
+
+        # Loading checkpoints
+        for uid, slot in members["_checkpoints"]:
+            members["_checkpoints"][uid] = [HistorySlot.create_instance(slot) for slot in slot]
+        return History(**members)
+
+
+
+        for slot_dict in slots_as_dict:
+            new_slot = HistorySlot()
+            for message_dict in slot_dict["messages"]:
+                #  Converting the string to an enum
+                matching_enum: MessageRole = next((role for role in MessageRole if role.value == message_dict["role"]),
+                                                  None)
+                if matching_enum is None:
+                    raise ValueError("Invalid role during import")
+
+                #  Inflating tool calls objects
+                tool_calls: List[ToolCall] = []
+                for tool_call in message_dict["tool_calls"]:
+                    tool_calls.append(ToolCall(tool_call["id"], tool_call["function"]["name"], tool_call["function"]["arguments"]))
+                message_dict["role"] = matching_enum
+                new_slot.add_message(GenericMessage(**message_dict, tool_calls=tool_calls))
+            self.slots.append(new_slot)
+
+        #self._messages.append(Message(matching_enum, message_dict["content"]))
+        #matching_enum: MessageRole = next((role for role in MessageRole if role.value == slot_dict["messages"][slot_dict["currently_selected_message_index"]]["role"]), None)
+        #self._messages.append(Message(matching_enum, slot_dict["content"]))
 
     def get_messages_as_dict(self) -> List[Dict]:
         formated_messages = []
@@ -492,40 +581,6 @@ class History:
             self.slots = [self.slots[0]]
         else:
             self.slots = []
-
-    def _load_as_dict(self, slots_as_dict: List[dict]) -> None:
-        """
-        !!Warning!! This is a concatenation of the given dict to the existing one.
-        Loads a list of messages as raw List. ie: [
-        {
-            "role": "system",
-            "content": "You are an AI assistant"
-        },
-        ...
-        ]
-        @param messages_dict: A python dictionary
-        @return: None
-        """
-        for slot_dict in slots_as_dict:
-            new_slot = HistorySlot()
-            for message_dict in slot_dict["messages"]:
-                #  Converting the string to an enum
-                matching_enum: MessageRole = next((role for role in MessageRole if role.value == message_dict["role"]),
-                                                  None)
-                if matching_enum is None:
-                    raise ValueError("Invalid role during import")
-
-                #  Inflating tool calls objects
-                tool_calls: List[ToolCall] = []
-                for tool_call in message_dict["tool_calls"]:
-                    tool_calls.append(ToolCall(tool_call["id"], tool_call["function"]["name"], tool_call["function"]["arguments"]))
-                message_dict["role"] = matching_enum
-                new_slot.add_message(GenericMessage(**message_dict, tool_calls=tool_calls))
-            self.slots.append(new_slot)
-
-        #self._messages.append(Message(matching_enum, message_dict["content"]))
-        #matching_enum: MessageRole = next((role for role in MessageRole if role.value == slot_dict["messages"][slot_dict["currently_selected_message_index"]]["role"]), None)
-        #self._messages.append(Message(matching_enum, slot_dict["content"]))
 
     def _concat_history(self, history: Self) -> None:
         """

@@ -4,9 +4,9 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
-from .history import History, GenericMessage, MessageRole, Message, OllamaTextMessage
+from .history import History, GenericMessage, MessageRole, Message
 from .logging_config import LoggerManager
-from .model_settings import OllamaModelSettings, OpenAiModelSettings
+from .model_settings import ModelSettings
 from .tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -36,14 +36,16 @@ class GenericAgent(ABC):
     Methods
     ----------
     simple_chat(custom_prompt: str = "> ", stream: bool = True) -> None
-    export_state(self, file_path: str) -> None
+    export_to_file(self, file_path: str) -> None
 
     ClassMethods
     ----------
     get_agent_from_state(file_path: str) -> 'Agent'
     """
 
-    def __init__(self, name: str, model_name: str, model_settings: OllamaModelSettings | OpenAiModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
+    _registry = {}
+
+    def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
                  api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
         """
         Returns a new Agent
@@ -62,18 +64,22 @@ class GenericAgent(ABC):
         self.system_prompt: str | None = system_prompt
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
-        self.model_settings: OllamaModelSettings | OpenAiModelSettings = model_settings
+        self.model_settings: ModelSettings = model_settings
         self.api_token: str = api_token
         self.headers = {} if headers is None else headers
         self.endpoint: str | None = endpoint
         self.streaming_callback: Callable | None = streaming_callback
-        self._runtime_config = runtime_config if runtime_config is not None else {}
+        self.runtime_config = runtime_config if runtime_config is not None else {}
 
         self.history: History = History()
         if self.system_prompt is not None:
             self.history.add_message(Message(MessageRole.SYSTEM, system_prompt))
 
-    def export_state(self, file_path: str) -> None:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        GenericAgent._registry[cls.__name__] = cls
+
+    def export_to_file(self, file_path: str, save_token=True) -> None:
         """
         Exports the current agent configuration to a file. This contains all the agents data and history.
         This means that you can use the @get_agent_from_state method to load this agent back again and continue where
@@ -82,22 +88,21 @@ class GenericAgent(ABC):
         @param file_path: str: Path of the file in which you wish the data to be saved. Specify the path + filename. Be wary when using relative path.
         @return:
         """
-        final: dict = {
-            "name": self.name,
-            "model_name": self.model_name,
-            "system_prompt": self.system_prompt,
-            "model_settings": self.model_settings.get_settings(),
-            "api_token": self.api_token,
-            "server_type": self.server_type.name,
-            "custom_headers": self.headers,
-            "endpoint": self.endpoint,
-            "history": self.history._export()
-        }
+        if save_token is True:
+            logging.warning("Saving the agent state will leak API keys and other sensitive information to the destination file. Set 'save_token' to False to avoid this.")
+        members_as_dict = self.__dict__.copy()
+        members_as_dict["type"] = self.__class__.__name__
+        members_as_dict["model_settings"] = self.model_settings._export() #self.model_settings.get_settings()
+        members_as_dict["history"] = self.history._export()
+
         with open(file_path, 'w') as file:
-            json.dump(final, file, indent=4)
+            json.dump(members_as_dict, file, indent=4)
+        if self.streaming_callback is not None:
+            logging.info("Streaming callbacks cannot be exported. Please reassign the streaming callback after loading the agent from state.")
+        logging.info("Agent state successfully exported to %s", file_path)
 
     @classmethod
-    def get_agent_from_state(cls, file_path: str) -> 'GenericAgent':
+    def import_from_file(cls, file_path: str) -> 'GenericAgent':
         """
         Loads the state previously exported from the @export_state() method. This will return an Agent in the same state
         as it was before it was saved allowing you to resume the agent conversation even after the program has exited.
@@ -105,12 +110,12 @@ class GenericAgent(ABC):
         @return: Agent : A newly created Agent that is a copy from disk of a previously exported agent
         """
         with open(file_path, 'r') as file:
-            state = json.load(file)
+            members: Dict = json.load(file)
 
-        model_settings = ModelSettings(**state['model_settings'])
+
+        """model_settings = ModelSettings(**state['model_settings'])
         history = History()
         history._load_as_dict(state['history'])
-
         agent = cls(
             name=state['name'],
             model_name=state['model_name'],
@@ -121,9 +126,14 @@ class GenericAgent(ABC):
             headers=state['custom_headers'],
             model_settings=model_settings
         )
+        agent.history = history"""
 
-        agent.history = history
-        return agent
+        cls_name = members.pop("type")
+        members["model_settings"] = ModelSettings.create_instance(members["model_settings"])
+        members["history"] = History.create_instance(members["history"])
+        cls = GenericAgent._registry.get(cls_name)
+        print('erffff', members)
+        return cls(**members)
 
     @abstractmethod
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None) -> GenericMessage:

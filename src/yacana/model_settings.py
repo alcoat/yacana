@@ -1,8 +1,55 @@
+import json
 import logging
 from typing import List, Dict, Any
+from abc import ABC, abstractmethod
 
 
-class OllamaModelSettings:
+class ModelSettings(ABC):
+
+    _registry = {}
+
+    def __init__(self):
+        self._initial_values = {}
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        ModelSettings._registry[cls.__name__] = cls
+
+    def _export(self) -> Dict:
+        members = self.__dict__.copy()
+        members["type"] = self.__class__.__name__
+        members.pop("_initial_values", None)
+        print("members = ", members)
+        return members
+
+    @staticmethod
+    def create_instance(members: Dict):
+        cls_name = members.pop("type")
+        cls = ModelSettings._registry.get(cls_name)
+        return cls(**members)
+
+    def get_settings(self) -> dict:
+        """
+        Returns a dictionary of all the settings and their current values, excluding None values.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the machine settings that have been set.
+        """
+
+        return {key: value for key, value in self.__dict__.items() if value is not None and not key.startswith("_")}
+
+    def reset(self) -> None:
+        """
+        Reset all properties to their initial values
+        @return: None
+        """
+        for key, value in self._initial_values.items():
+            setattr(self, f"{key}", value)
+
+
+class OllamaModelSettings(ModelSettings):
     """Class to encapsulate the settings available into the inference server.
     Note that these are all recognised by Ollama but may have no effect when using other inference servers.
     
@@ -20,11 +67,12 @@ class OllamaModelSettings:
                  repeat_penalty: float = None,
                  temperature: float = None,
                  seed: int = None,
-                 stop: str = None,
+                 stop: List[str] = None,
                  tfs_z: float = None,
                  num_predict: int = None,
                  top_k: int = None,
-                 top_p: float = None) -> None:
+                 top_p: float = None,
+                 **kwargs) -> None:
         """
         @param mirostat: Like a volume control for the machine’s “creativity.” (Example: 0 is off, 1 is on, 2 is extra on)
         @param mirostat_eta: Adjusts how quickly the machine learns from what it’s currently talking about. (Example: 0.1)
@@ -43,227 +91,32 @@ class OllamaModelSettings:
         @param top_k: Limits the machine’s word choices to the top contenders. (Example: 40)
         @param top_p: Works with top_k to fine-tune the variety of the machine’s responses. (Example: 0.9)
         """
+        super().__init__()
         # Initialize all properties
-        self._mirostat = mirostat
-        self._mirostat_eta = mirostat_eta
-        self._mirostat_tau = mirostat_tau
-        self._num_ctx = num_ctx
-        self._num_gqa = num_gqa
-        self._num_gpu = num_gpu
-        self._num_thread = num_thread
-        self._repeat_last_n = repeat_last_n
-        self._repeat_penalty = repeat_penalty
-        self._temperature = temperature
-        self._seed = seed
-        self._stop = stop
-        self._tfs_z = tfs_z
-        self._num_predict = num_predict
-        self._top_k = top_k
-        self._top_p = top_p
+        self.mirostat = mirostat
+        self.mirostat_eta = mirostat_eta
+        self.mirostat_tau = mirostat_tau
+        self.num_ctx = num_ctx
+        self.num_gqa = num_gqa
+        self.num_gpu = num_gpu
+        self.num_thread = num_thread
+        self.repeat_last_n = repeat_last_n
+        self.repeat_penalty = repeat_penalty
+        self.temperature = temperature
+        self.seed = seed
+        self.stop = stop
+        self.tfs_z = tfs_z
+        self.num_predict = num_predict
+        self.top_k = top_k
+        self.top_p = top_p
 
         # Store the initial values for resetting
-        self._initial_values = {
-            'mirostat': mirostat,
-            'mirostat_eta': mirostat_eta,
-            'mirostat_tau': mirostat_tau,
-            'num_ctx': num_ctx,
-            'num_gqa': num_gqa,
-            'num_gpu': num_gpu,
-            'num_thread': num_thread,
-            'repeat_last_n': repeat_last_n,
-            'repeat_penalty': repeat_penalty,
-            'temperature': temperature,
-            'seed': seed,
-            'stop': stop,
-            'tfs_z': tfs_z,
-            'num_predict': num_predict,
-            'top_k': top_k,
-            'top_p': top_p,
-        }
-
-    # Getter and setter for mirostat
-    @property
-    def mirostat(self) -> int:
-        return self._mirostat
-
-    @mirostat.setter
-    def mirostat(self, value: int) -> None:
-        self._mirostat = value
-
-    # Getter and setter for mirostat_eta
-    @property
-    def mirostat_eta(self) -> float:
-        return self._mirostat_eta
-
-    @mirostat_eta.setter
-    def mirostat_eta(self, value: float) -> None:
-        self._mirostat_eta = value
-
-    # Getter and setter for mirostat_tau
-    @property
-    def mirostat_tau(self) -> float:
-        return self._mirostat_tau
-
-    @mirostat_tau.setter
-    def mirostat_tau(self, value: float) -> None:
-        self._mirostat_tau = value
-
-    # Getter and setter for num_ctx
-    @property
-    def num_ctx(self) -> int:
-        return self._num_ctx
-
-    @num_ctx.setter
-    def num_ctx(self, value: int) -> None:
-        self._num_ctx = value
-
-    # Getter and setter for num_gqa
-    @property
-    def num_gqa(self) -> int:
-        return self._num_gqa
-
-    @num_gqa.setter
-    def num_gqa(self, value: int) -> None:
-        self._num_gqa = value
-
-    # Getter and setter for num_gpu
-    @property
-    def num_gpu(self) -> int:
-        return self._num_gpu
-
-    @num_gpu.setter
-    def num_gpu(self, value: int) -> None:
-        self._num_gpu = value
-
-    # Getter and setter for num_thread
-    @property
-    def num_thread(self) -> int:
-        return self._num_thread
-
-    @num_thread.setter
-    def num_thread(self, value: int) -> None:
-        self._num_thread = value
-
-    # Getter and setter for repeat_last_n
-    @property
-    def repeat_last_n(self) -> int:
-        return self._repeat_last_n
-
-    @repeat_last_n.setter
-    def repeat_last_n(self, value: int) -> None:
-        self._repeat_last_n = value
-
-    # Getter and setter for repeat_penalty
-    @property
-    def repeat_penalty(self) -> float:
-        return self._repeat_penalty
-
-    @repeat_penalty.setter
-    def repeat_penalty(self, value: float) -> None:
-        self._repeat_penalty = value
-
-    # Getter and setter for temperature
-    @property
-    def temperature(self) -> float:
-        return self._temperature
-
-    @temperature.setter
-    def temperature(self, value: float) -> None:
-        self._temperature = value
-
-    # Getter and setter for seed
-    @property
-    def seed(self) -> int:
-        return self._seed
-
-    @seed.setter
-    def seed(self, value: int) -> None:
-        self._seed = value
-
-    # Getter and setter for stop
-    @property
-    def stop(self) -> str:
-        return self._stop
-
-    @stop.setter
-    def stop(self, value: str) -> None:
-        self._stop = value
-
-    # Getter and setter for tfs_z
-    @property
-    def tfs_z(self) -> float:
-        return self._tfs_z
-
-    @tfs_z.setter
-    def tfs_z(self, value: float) -> None:
-        self._tfs_z = value
-
-    # Getter and setter for num_predict
-    @property
-    def num_predict(self) -> int:
-        return self._num_predict
-
-    @num_predict.setter
-    def num_predict(self, value: int) -> None:
-        self._num_predict = value
-
-    # Getter and setter for top_k
-    @property
-    def top_k(self) -> int:
-        return self._top_k
-
-    @top_k.setter
-    def top_k(self, value: int) -> None:
-        self._top_k = value
-
-    # Getter and setter for top_p
-    @property
-    def top_p(self) -> float:
-        return self._top_p
-
-    @top_p.setter
-    def top_p(self, value: float) -> None:
-        self._top_p = value
-
-    def reset(self) -> None:
-        """
-        Reset all properties to their initial values
-        @return: None
-        """
-        for key, value in self._initial_values.items():
-            setattr(self, f"_{key}", value)
-
-    def get_settings(self) -> dict:
-        """
-        Returns a dictionary of all the settings and their current values, excluding None values.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the machine settings that have been set.
-        """
-        settings = {
-            "mirostat": self.mirostat,
-            "mirostat_eta": self.mirostat_eta,
-            "mirostat_tau": self.mirostat_tau,
-            "num_ctx": self.num_ctx,
-            "num_gqa": self.num_gqa,
-            "num_gpu": self.num_gpu,
-            "num_thread": self.num_thread,
-            "repeat_last_n": self.repeat_last_n,
-            "repeat_penalty": self.repeat_penalty,
-            "temperature": self.temperature,
-            "seed": self.seed,
-            "stop": self.stop,
-            "tfs_z": self.tfs_z,
-            "num_predict": self.num_predict,
-            "top_k": self.top_k,
-            "top_p": self.top_p,
-        }
-        return {key: value for key, value in settings.items() if value is not None}
+        self._initial_values = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
 
 
-class OpenAiModelSettings:
+
+
+class OpenAiModelSettings(ModelSettings):
     """Class to encapsulate the settings available into the inference server.
     Note that these are all recognised by Ollama but may have no effect when using other inference servers.
 
@@ -290,7 +143,8 @@ class OpenAiModelSettings:
                  top_logprobs: int = None,
                  top_p: float = None,
                  user: str = None,
-                 web_search_options: Any = None) -> None:
+                 web_search_options: Any = None,
+                 **kwargs) -> None:
         """
         @param audio: Parameters for audio output. Required when audio output is requested with modalities: ["audio"]
         @param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
@@ -314,248 +168,33 @@ class OpenAiModelSettings:
         @param user: A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         @param web_search_options: This tool searches the web for relevant results to use in a response.
         """
+        super().__init__()
         # Initialize all properties
-        self._audio = audio
-        self._frequency_penalty = frequency_penalty
-        self._logit_bias = logit_bias
-        self._logprobs = logprobs
-        self._max_completion_tokens = max_completion_tokens
-        self._metadata = metadata
-        self._modalities = modalities
-        self._n = n
-        self._prediction = prediction
-        self._presence_penalty = presence_penalty
-        self._reasoning_effort = reasoning_effort
-        self._seed = seed
-        self._service_tier = service_tier
-        self._stop = stop
-        self._store = store
-        self._stream_options = stream_options
-        self._temperature = temperature
-        self._top_logprobs = top_logprobs
-        self._top_p = top_p
-        self._user = user
-        self._web_search_options = web_search_options
+        self.audio = audio
+        self.frequency_penalty = frequency_penalty
+        self.logit_bias = logit_bias
+        self.logprobs = logprobs
+        self.max_completion_tokens = max_completion_tokens
+        self.metadata = metadata
+        self.modalities = modalities
+        self.n = n
+        self.prediction = prediction
+        self.presence_penalty = presence_penalty
+        self.reasoning_effort = reasoning_effort
+        self.seed = seed
+        self.service_tier = service_tier
+        self.stop = stop
+        self.store = store
+        self.stream_options = stream_options
+        self.temperature = temperature
+        self.top_logprobs = top_logprobs
+        self.top_p = top_p
+        self.user = user
+        self.web_search_options = web_search_options
 
 
         # Store the initial values for resetting
-        self._initial_values = {
-            'audio': audio,
-            'frequency_penalty': frequency_penalty,
-            'logit_bias': logit_bias,
-            'logprobs': logprobs,
-            'max_completion_tokens': max_completion_tokens,
-            'metadata': metadata,
-            'modalities': modalities,
-            'n': n,
-            'prediction': prediction,
-            'presence_penalty': presence_penalty,
-            'reasoning_effort': reasoning_effort,
-            'seed': seed,
-            'service_tier': service_tier,
-            'stop': stop,
-            'store': store,
-            'stream_options': stream_options,
-            'temperature': temperature,
-            'top_logprobs': top_logprobs,
-            'top_p': top_p,
-            'user': user,
-            'web_search_options': web_search_options
-        }
-
-    # Getter and setter for audio
-    @property
-    def audio(self) -> Any:
-        return self._audio
-
-    @audio.setter
-    def audio(self, value: Any) -> None:
-        self._audio = value
-        logging.warning("Setting this may raise errors if the Agent is exported as this value is probably not serializable.")
-
-    # Getter and setter for logit_bias
-    @property
-    def logit_bias(self) -> Dict:
-        return self._logit_bias
-
-    @logit_bias.setter
-    def logit_bias(self, value: Dict) -> None:
-        self._logit_bias = value
-
-    # Getter and setter for logprobs
-    @property
-    def logprobs(self) -> bool:
-        return self._logprobs
-
-    @logprobs.setter
-    def logprobs(self, value: bool) -> None:
-        self._logprobs = value
-
-    # Getter and setter for max_completion_tokens
-    @property
-    def max_completion_tokens(self) -> int:
-        return self._max_completion_tokens
-
-    @max_completion_tokens.setter
-    def max_completion_tokens(self, value: int) -> None:
-        self._max_completion_tokens = value
-
-    # Getter and setter for metadata
-    @property
-    def metadata(self) -> Dict:
-        return self._metadata
-
-    @metadata.setter
-    def metadata(self, value: Dict) -> None:
-        self._metadata = value
-        logging.warning("Setting this may raise errors if the Agent is exported as this value is probably not serializable.")
-
-    # Getter and setter for modalities
-    @property
-    def modalities(self) -> List[str]:
-        return self._modalities
-
-    @modalities.setter
-    def modalities(self, value: List[str]) -> None:
-        self._modalities = value
-
-    # Getter and setter for n
-    @property
-    def n(self) -> int:
-        return self._n
-
-    @n.setter
-    def n(self, value: int) -> None:
-        self._n = value
-
-    # Getter and setter for prediction
-    @property
-    def prediction(self) -> Any:
-        return self._prediction
-
-    @prediction.setter
-    def prediction(self, value: Any) -> None:
-        self._prediction = value
-        logging.warning("Setting this may raise errors if the Agent is exported as this value is probably not serializable.")
-
-    # Getter and setter for reasoning_effort
-    @property
-    def reasoning_effort(self) -> str:
-        return self._reasoning_effort
-
-    @reasoning_effort.setter
-    def reasoning_effort(self, value: str) -> None:
-        self._reasoning_effort = value
-
-    # Getter and setter for service_tier
-    @property
-    def service_tier(self) -> str:
-        return self._service_tier
-
-    @service_tier.setter
-    def service_tier(self, value: str) -> None:
-        self._service_tier = value
-
-    # Getter and setter for stop
-    @property
-    def stop(self) -> str | List:
-        return self._stop
-
-    @stop.setter
-    def stop(self, value: str | List) -> None:
-        self._stop = value
-
-    # Getter and setter for store
-    @property
-    def store(self) -> bool:
-        return self._store
-
-    @store.setter
-    def store(self, value: bool) -> None:
-        self._store = value
-
-    # Getter and setter for stream_options
-    @property
-    def stream_options(self) -> Any:
-        return self._stream_options
-
-    @stream_options.setter
-    def stream_options(self, value: Any) -> None:
-        self._stream_options = value
-        logging.warning("Setting this may raise errors if the Agent is exported as this value is probably not serializable.")
-
-    # Getter and setter for top_logprobs
-    @property
-    def top_logprobs(self) -> int:
-        return self._top_logprobs
-
-    @top_logprobs.setter
-    def top_logprobs(self, value: int) -> None:
-        self._top_logprobs = value
-
-    # Getter and setter for user
-    @property
-    def user(self) -> str:
-        return self._user
-
-    @user.setter
-    def user(self, value: str) -> None:
-        self._user = value
-
-    # Getter and setter for web_search_options
-    @property
-    def web_search_options(self) -> Any:
-        return self._web_search_options
-
-    @web_search_options.setter
-    def web_search_options(self, value: Any) -> None:
-        self._web_search_options = value
-        logging.warning("Setting this may raise errors if the Agent is exported as this value is probably not serializable.")
-
-    # Getter and setter for frequency_penalty
-    @property
-    def frequency_penalty(self) -> float:
-        return self._frequency_penalty
-
-    @frequency_penalty.setter
-    def frequency_penalty(self, value: float) -> None:
-        self._frequency_penalty = value
-
-    # Getter and setter for presence_penalty
-    @property
-    def presence_penalty(self) -> float:
-        return self._presence_penalty
-
-    @presence_penalty.setter
-    def presence_penalty(self, value: float) -> None:
-        self._presence_penalty = value
-
-    # Getter and setter for seed
-    @property
-    def seed(self) -> int:
-        return self._seed
-
-    @seed.setter
-    def seed(self, value: int) -> None:
-        self._seed = value
-
-    # Getter and setter for temperature
-    @property
-    def temperature(self) -> float:
-        return self._temperature
-
-    @temperature.setter
-    def temperature(self, value: float) -> None:
-        self._temperature = value
-
-    # Getter and setter for top_p
-    @property
-    def top_p(self) -> float:
-        return self._top_p
-
-    @top_p.setter
-    def top_p(self, value: float) -> None:
-        self._top_p = value
+        self._initial_values = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
 
     def reset(self) -> None:
         """
@@ -563,38 +202,5 @@ class OpenAiModelSettings:
         @return: None
         """
         for key, value in self._initial_values.items():
-            setattr(self, f"_{key}", value)
+            setattr(self, f"{key}", value)
 
-    def get_settings(self) -> dict:
-        """
-        Returns a dictionary of all the settings and their current values, excluding None values.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the machine settings that have been set.
-        """
-        settings = {
-            "audio": self.audio,
-            "frequency_penalty": self.frequency_penalty,
-            "logit_bias": self.logit_bias,
-            "logprobs": self.logprobs,
-            "max_completion_tokens": self.max_completion_tokens,
-            "metadata": self.metadata,
-            "modalities": self.modalities,
-            "n": self.n,
-            "prediction": self.prediction,
-            "presence_penalty": self.presence_penalty,
-            "reasoning_effort": self.reasoning_effort,
-            "seed": self.seed,
-            "service_tier": self.service_tier,
-            "stop": self.stop,
-            "store": self.store,
-            "stream_options": self.stream_options,
-            "temperature": self.temperature,
-            "top_logprobs": self.top_logprobs,
-            "top_p": self.top_p,
-            "user": self.user,
-            "web_search_options": self.web_search_options
-        }
-        return {key: value for key, value in settings.items() if value is not None}
