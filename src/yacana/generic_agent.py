@@ -46,7 +46,7 @@ class GenericAgent(ABC):
     _registry = {}
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
+                 api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, history: History | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -71,8 +71,8 @@ class GenericAgent(ABC):
         self.streaming_callback: Callable | None = streaming_callback
         self.runtime_config = runtime_config if runtime_config is not None else {}
 
-        self.history: History = History()
-        if self.system_prompt is not None:
+        self.history: History = history if history is not None else History()
+        if self.system_prompt is not None and history is None:
             self.history.add_message(Message(MessageRole.SYSTEM, system_prompt))
 
     def __init_subclass__(cls, **kwargs):
@@ -112,28 +112,16 @@ class GenericAgent(ABC):
         with open(file_path, 'r') as file:
             members: Dict = json.load(file)
 
-
-        """model_settings = ModelSettings(**state['model_settings'])
-        history = History()
-        history._load_as_dict(state['history'])
-        agent = cls(
-            name=state['name'],
-            model_name=state['model_name'],
-            system_prompt=state.get('system_prompt'),
-            endpoint=state['endpoint'],
-            api_token=state['api_token'],
-            server_type=state['server_type'],
-            headers=state['custom_headers'],
-            model_settings=model_settings
-        )
-        agent.history = history"""
-
         cls_name = members.pop("type")
         members["model_settings"] = ModelSettings.create_instance(members["model_settings"])
         members["history"] = History.create_instance(members["history"])
+        print("pfffffffffffffff", members["history"])
         cls = GenericAgent._registry.get(cls_name)
-        print('erffff', members)
-        return cls(**members)
+        print("cls = ", cls)
+        a: GenericAgent = cls(**members)
+        print("---------------------------------")
+        print(a.history.get_messages_as_dict())
+        return a
 
     @abstractmethod
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None) -> GenericMessage:

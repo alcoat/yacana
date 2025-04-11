@@ -66,7 +66,7 @@ class OpenAiAgent(GenericAgent):
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config)
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None))
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
 

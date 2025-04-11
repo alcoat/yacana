@@ -5,6 +5,7 @@ from enum import Enum
 from .model_settings import OllamaModelSettings, OpenAiModelSettings
 from .ollama_agent import OllamaAgent
 from .open_ai_agent import OpenAiAgent
+from .generic_agent import GenericAgent
 
 
 class ServerType(Enum):
@@ -13,7 +14,7 @@ class ServerType(Enum):
     OPENAI = 3
 
 
-class Agent:
+class Agent(GenericAgent):
 
     def __new__(cls, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434",
                 api_token: str = "", server_type=ServerType.OLLAMA, headers=None, model_settings: OllamaModelSettings | OpenAiModelSettings = None, streaming_callback: Callable | None = None):

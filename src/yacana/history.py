@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Type, T, Any
+import importlib
 
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -130,10 +131,9 @@ class GenericMessage(ABC):
         #    members["structured_output"] = GenericMessage.dict_to_structured_output(members["structured_output"], globals())
         cls_name = members.pop("type")
         cls = GenericMessage._registry.get(cls_name)
-        print("heu ", cls)
         message = cls(**members)
         if message.structured_output is not None:
-            message.structured_output = message.dict_to_structured_output(members["structured_output"], globals())
+            message.structured_output = message.dict_to_structured_output(members["structured_output"])
         return message
 
     @abstractmethod
@@ -153,7 +153,7 @@ class GenericMessage(ABC):
         """
         raise NotImplemented("This method should be implemented in the child Message class when 'structured_output' is not None")
 
-    def dict_to_structured_output(self, data: Dict, namespace: Dict[str, type]):
+    def dict_to_structured_output(self, data: Dict):
         raise NotImplemented("This method should be implemented in the child Message class when 'structured_output' is not None")
 
     def __str__(self) -> str:
@@ -289,11 +289,17 @@ class OllamaUserMessage(GenericMessage):
 
     def structured_output_to_dict(self) -> Dict:
         return {
-            "__class__": self.structured_output.__name__
+            "__class__": f"{self.structured_output.__module__}.{self.structured_output.__name__}"
         }
 
-    def dict_to_structured_output(self, data: Dict, namespace: Dict[str, type]):
-        return namespace[data["__class__"]]
+    def dict_to_structured_output(self, data: Dict):
+        full_class_path = data["__class__"]
+        module_name, class_name = full_class_path.rsplit(".", 1)
+
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+
+        return cls
 
 
 class OllamaTextMessage(GenericMessage):
@@ -342,12 +348,17 @@ class OllamaStructuredOutputMessage(GenericMessage):
 
     def structured_output_to_dict(self) -> Dict:
         return {
-            "__class__": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-            "data": obj.model_dump()
+            "__class__": f"{self.structured_output.__class__.__module__}.{self.structured_output.__class__.__name__}",
+            "data": self.structured_output.model_dump()
         }
 
-    def dict_to_structured_output(self, data: Dict, namespace: Dict[str, type]):
-        cls = namespace[data["__class__"]]
+    def dict_to_structured_output(self, data: Dict):
+        full_class_path = data["__class__"]
+        module_name, class_name = full_class_path.rsplit(".", 1)
+
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+
         return cls(**data["data"])
 
 
@@ -431,8 +442,8 @@ class History:
         """
         Returns a History instance
         """
-        self.slots: List[HistorySlot] = []
-        self._checkpoints: Dict[str, list[HistorySlot]] = {}
+        self.slots: List[HistorySlot] = kwargs.get('slots', [])
+        self._checkpoints: Dict[str, list[HistorySlot]] = kwargs.get('_checkpoints', {})
 
     def add_slot(self, history_slot: HistorySlot, position: int | SlotPosition = SlotPosition.BOTTOM) -> None:
         """
@@ -511,8 +522,10 @@ class History:
         # Loading checkpoints
         for uid, slot in members["_checkpoints"]:
             members["_checkpoints"][uid] = [HistorySlot.create_instance(slot) for slot in slot]
-        return History(**members)
 
+        h = History(**members)
+        print("but why = ", h.get_messages_as_dict())
+        return h
 
         """
         for slot_dict in slots_as_dict:
