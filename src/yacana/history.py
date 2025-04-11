@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Type, T, Any
+
+from pydantic import BaseModel
 from typing_extensions import Self
 from abc import ABC, abstractmethod
 
@@ -94,16 +96,20 @@ class GenericMessage(ABC):
         self.structured_output: Type[T] | None = structured_output
         self.tool_call_id: str | None = tool_call_id
         self.is_yacana_builtin: bool = is_yacana_builtin
+        print("Message : ", self.__class__.__name__)
 
         # Checking that both @message and @tool_calls are neither None nor empty at the same time
         if content is None and (tool_calls is None or (tool_calls is not None and len(tool_calls) == 0)):
             raise ValueError("A Message must have a content or a tool call that is not None or [].")
 
+        #if structured_output is not None:
+        #    self.dict_to_structured_output(structured_output, globals())
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         GenericMessage._registry[cls.__name__] = cls
 
-    def _export(self) -> str:
+    def _export(self) -> Dict:
         """
         Returns a pure python dictionary mainly to save the object into a file.
         None entries are omitted.
@@ -112,25 +118,23 @@ class GenericMessage(ABC):
         members = self.__dict__.copy()
         members["type"] = self.__class__.__name__
         members["role"] = self.role.value
+        if members["structured_output"] is not None:
+            members["structured_output"] = self.structured_output_to_dict()
         return members
-
-        """return {
-            'id': str(self.id),
-            'role': self.role.value,
-            'content': self.content,
-            'is_yacana_builtin': self.is_yacana_builtin,
-            **({'structured_output': self.structured_output} if self.structured_output is not None else {}),
-            **({'medias': self.medias} if self.medias is not None else {}),
-            **({'tool_calls': [tool_call._export() for tool_call in self.tool_calls]} if self.tool_calls is not None else {})
-        }"""
 
     @staticmethod
     def create_instance(members: Dict):
         #  Converting the role string to its matching enum
         members["role"]: MessageRole = next((role for role in MessageRole if role.value == members["role"]), None)
+        #if members["structured_output"] is not None:
+        #    members["structured_output"] = GenericMessage.dict_to_structured_output(members["structured_output"], globals())
         cls_name = members.pop("type")
         cls = GenericMessage._registry.get(cls_name)
-        return cls(**members)
+        print("heu ", cls)
+        message = cls(**members)
+        if message.structured_output is not None:
+            message.structured_output = message.dict_to_structured_output(members["structured_output"], globals())
+        return message
 
     @abstractmethod
     def get_message_as_dict(self):
@@ -141,6 +145,16 @@ class GenericMessage(ABC):
             return self.content
         else:
             return json.dumps([tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls])
+
+    def structured_output_to_dict(self) -> Dict:
+        """
+        Returns the structured output as a dictionary.
+        :return: Any
+        """
+        raise NotImplemented("This method should be implemented in the child Message class when 'structured_output' is not None")
+
+    def dict_to_structured_output(self, data: Dict, namespace: Dict[str, type]):
+        raise NotImplemented("This method should be implemented in the child Message class when 'structured_output' is not None")
 
     def __str__(self) -> str:
         """
@@ -156,11 +170,7 @@ class Message(GenericMessage):
     """
 
     def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs) -> None:
-        tool_calls = None
-        tool_call_id = None
-        medias = None
-        structured_output = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, is_yacana_builtin=is_yacana_builtin)
 
     def get_message_as_dict(self):  # @todo A revoir car là c'est générique donc bah le user on ne sait pas contre quel server il va l'envoyer
         return {
@@ -168,17 +178,6 @@ class Message(GenericMessage):
             "content": self.content,
             **({'images': self.medias} if self.medias is not None else {}),
         }
-
-    """
-    def get_message_as_dict(self):
-        return {
-            "role": self.role.value,
-            "content": self.content,
-            **({'tool_calls': [tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls]} if self.tool_calls is not None else {}),
-            ** ({'tool_call_id': self.tool_call_id} if self.tool_call_id is not None else {}),
-            **({'images': self.medias} if self.medias is not None else {}),
-        }
-    """
 
 
 class OpenAITextMessage(GenericMessage):
@@ -275,14 +274,11 @@ class OpenAIStructuredOutputMessage(GenericMessage):
         }
 
 
-class OllamaTextMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs):
-        tool_calls = None
-        medias = None
-        structured_output = None
-        tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+class OllamaUserMessage(GenericMessage):
+
+    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, medias: List[str] = None, structured_output: Type[T] = None, **kwargs):
+        super().__init__(role, content, medias=medias, structured_output=structured_output, is_yacana_builtin=is_yacana_builtin)
 
     def get_message_as_dict(self):
         return {
@@ -291,7 +287,28 @@ class OllamaTextMessage(GenericMessage):
             **({'images': self.medias} if self.medias is not None else {}),
         }
 
+    def structured_output_to_dict(self) -> Dict:
+        return {
+            "__class__": self.structured_output.__name__
+        }
 
+    def dict_to_structured_output(self, data: Dict, namespace: Dict[str, type]):
+        return namespace[data["__class__"]]
+
+
+class OllamaTextMessage(GenericMessage):
+
+    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs):
+        super().__init__(role, content, is_yacana_builtin=is_yacana_builtin)
+
+    def get_message_as_dict(self):
+        return {
+            "role": self.role.value,
+            "content": self.content,
+            **({'images': self.medias} if self.medias is not None else {}),
+        }
+
+"""
 class OllamaMediasMessage(GenericMessage):
 
     def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False, **kwargs):
@@ -306,6 +323,7 @@ class OllamaMediasMessage(GenericMessage):
             "content": self.content,
             **({'images': self.medias} if self.medias is not None else {}),
         }
+"""
 
 
 class OllamaStructuredOutputMessage(GenericMessage):
@@ -321,6 +339,16 @@ class OllamaStructuredOutputMessage(GenericMessage):
             "role": self.role.value,
             "content": self.content,
         }
+
+    def structured_output_to_dict(self) -> Dict:
+        return {
+            "__class__": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
+            "data": obj.model_dump()
+        }
+
+    def dict_to_structured_output(self, data: Dict, namespace: Dict[str, type]):
+        cls = namespace[data["__class__"]]
+        return cls(**data["data"])
 
 
 class HistorySlot:
@@ -378,18 +406,6 @@ class HistorySlot:
         members["type"] = self.__class__.__name__
         members["messages"] = [message._export() for message in self.messages if message is not None]
         return members
-
-
-"""
-        return {
-            'id': str(self.id),
-            'creation_time': self.creation_time,
-            'messages': [message._export() for message in self.messages],
-            'raw_llm_json': self.raw_llm_json,
-            'currently_selected_message_index': self.currently_selected_message_index
-        }
-"""
-
 
 
 class History:
@@ -498,7 +514,7 @@ class History:
         return History(**members)
 
 
-
+        """
         for slot_dict in slots_as_dict:
             new_slot = HistorySlot()
             for message_dict in slot_dict["messages"]:
@@ -515,7 +531,7 @@ class History:
                 message_dict["role"] = matching_enum
                 new_slot.add_message(GenericMessage(**message_dict, tool_calls=tool_calls))
             self.slots.append(new_slot)
-
+        """
         #self._messages.append(Message(matching_enum, message_dict["content"]))
         #matching_enum: MessageRole = next((role for role in MessageRole if role.value == slot_dict["messages"][slot_dict["currently_selected_message_index"]]["role"]), None)
         #self._messages.append(Message(matching_enum, slot_dict["content"]))

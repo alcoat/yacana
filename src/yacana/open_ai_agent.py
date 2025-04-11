@@ -14,7 +14,7 @@ from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
-from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaTextMessage, OllamaMediasMessage, OllamaStructuredOutputMessage, OpenAIStructuredOutputMessage
+from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage
 from .tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,8 @@ class OpenAiAgent(GenericAgent):
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
         # Syncing with global history
-        self.history.add_message(OllamaTextMessage(MessageRole.USER, tool_continue_prompt, is_yacana_builtin=True))
-        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, is_yacana_builtin=True))
+        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, is_yacana_builtin=True))
+        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, is_yacana_builtin=True))
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
@@ -284,7 +284,6 @@ class OpenAiAgent(GenericAgent):
                     tool_calls.append(ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
                 history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, is_yacana_builtin=True))
-                #history_slot.add_message(GenericMessage(MessageRole.ASSISTANT, None, tool_calls=tool_calls, is_yacana_builtin=True)) # @todo nb4
 
             elif self.is_common_chat(choice):
                 print("this is a classic chat answer.")
