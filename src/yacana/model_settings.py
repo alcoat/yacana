@@ -19,7 +19,6 @@ class ModelSettings(ABC):
         members = self.__dict__.copy()
         members["type"] = self.__class__.__name__
         members.pop("_initial_values", None)
-        print("members = ", members)
         return members
 
     @staticmethod

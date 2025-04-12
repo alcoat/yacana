@@ -76,8 +76,8 @@ class OpenAiAgent(GenericAgent):
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
         # Syncing with global history
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, is_yacana_builtin=True))
-        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, is_yacana_builtin=True))
+        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=["yacana_builtin"]))
+        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, tags=["yacana_builtin"]))
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
@@ -141,8 +141,8 @@ class OpenAiAgent(GenericAgent):
                     raise ValueError(f"Tool {tool_call.name} not found in tools list")  # @todo Autre chose qu'un valueError, genre une classe custom ?
                 print("found ", tool.tool_name)
                 tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
-                self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, is_yacana_builtin=True))
-                #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, is_yacana_builtin=True))  # @todo nb 5 & 6
+                self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=["yacana_builtin"]))
+                #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, tags=["yacana_builtin"]))  # @todo nb 5 & 6
             logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
             self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
             """
@@ -216,9 +216,9 @@ class OpenAiAgent(GenericAgent):
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
             if medias is not None:
-                history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, is_yacana_builtin=True))
+                history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, tags=["yacana_builtin"]))
             else:
-                history.add_message(OpenAITextMessage(MessageRole.USER, task, is_yacana_builtin=True))
+                history.add_message(OpenAITextMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
         print(f"inference : model_name: {self.model_name}, history: {history}, endpoint: {self.endpoint}, api_token: {self.api_token}, model_settings: {self.model_settings.get_settings()}, stream: {str(streaming_callback)}, json_output: {json_output}, structured_output: {structured_output}, headers: {self.headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
@@ -274,7 +274,7 @@ class OpenAiAgent(GenericAgent):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, is_yacana_builtin=True))
+                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=["yacana_builtin"]))
 
             elif self.is_tool_calling(choice):
                 print("This is a tool_calling answer.")
@@ -283,12 +283,12 @@ class OpenAiAgent(GenericAgent):
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, is_yacana_builtin=True))
+                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=["yacana_builtin"]))
 
             elif self.is_common_chat(choice):
                 print("this is a classic chat answer.")
                 logging.debug("Response assessment is classic chat answer")
-                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, is_yacana_builtin=True))
+                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=["yacana_builtin"]))
             else:
                 raise ValueError("Unknown response from OpenAI API")  # @todo error custom
 

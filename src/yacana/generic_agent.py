@@ -115,13 +115,8 @@ class GenericAgent(ABC):
         cls_name = members.pop("type")
         members["model_settings"] = ModelSettings.create_instance(members["model_settings"])
         members["history"] = History.create_instance(members["history"])
-        print("pfffffffffffffff", members["history"])
         cls = GenericAgent._registry.get(cls_name)
-        print("cls = ", cls)
-        a: GenericAgent = cls(**members)
-        print("---------------------------------")
-        print(a.history.get_messages_as_dict())
-        return a
+        return cls(**members)
 
     @abstractmethod
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None) -> GenericMessage:

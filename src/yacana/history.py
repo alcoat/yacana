@@ -80,7 +80,7 @@ class GenericMessage(ABC):
 
     _registry = {}
 
-    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCall] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, is_yacana_builtin: bool = False, id: uuid.UUID | None = None) -> None:
+    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCall] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, tags: List[str] | None = None, id: uuid.UUID | None = None) -> None:
         """
         Returns an instance of Message
         :param role: MessageRole: From whom is the message from. See the MessageRole Enum
@@ -96,8 +96,7 @@ class GenericMessage(ABC):
         self.medias: List[str] = medias if medias is not None else []
         self.structured_output: Type[T] | None = structured_output
         self.tool_call_id: str | None = tool_call_id
-        self.is_yacana_builtin: bool = is_yacana_builtin
-        print("Message : ", self.__class__.__name__)
+        self.tags: List[str] = tags if tags is not None else []
 
         # Checking that both @message and @tool_calls are neither None nor empty at the same time
         if content is None and (tool_calls is None or (tool_calls is not None and len(tool_calls) == 0)):
@@ -131,6 +130,7 @@ class GenericMessage(ABC):
         #    members["structured_output"] = GenericMessage.dict_to_structured_output(members["structured_output"], globals())
         cls_name = members.pop("type")
         cls = GenericMessage._registry.get(cls_name)
+        #print("normalement ca ca devrait être les id du json = ", members["id"])
         message = cls(**members)
         if message.structured_output is not None:
             message.structured_output = message.dict_to_structured_output(members["structured_output"])
@@ -145,6 +145,24 @@ class GenericMessage(ABC):
             return self.content
         else:
             return json.dumps([tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls])
+
+    def add_tag(self, tag: str) -> None:
+        """
+        Adds a tag to the message. Tags are used to filter messages in the history.
+        :param tag: str
+        :return: None
+        """
+        if tag not in self.tags:
+            self.tags.append(tag)
+
+    def remove_tag(self, tag: str) -> None:
+        """
+        Removes a tag from the message. Tags are used to filter messages in the history.
+        :param tag: str
+        :return: None
+        """
+        if tag in self.tags:
+            self.tags.remove(tag)
 
     def structured_output_to_dict(self) -> Dict:
         """
@@ -169,8 +187,8 @@ class Message(GenericMessage):
     For Yacana users or simple text based interactions
     """
 
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs) -> None:
-        super().__init__(role, content, is_yacana_builtin=is_yacana_builtin)
+    def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs) -> None:
+        super().__init__(role, content, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):  # @todo A revoir car là c'est générique donc bah le user on ne sait pas contre quel server il va l'envoyer
         return {
@@ -182,11 +200,11 @@ class Message(GenericMessage):
 
 class OpenAITextMessage(GenericMessage):
     
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs):
+    def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs):
         tool_calls = None
         structured_output = None
         tool_call_id = None
-        super().__init__(role, content, tool_calls, None, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, tool_calls, None, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -197,11 +215,11 @@ class OpenAITextMessage(GenericMessage):
 
 class OpenAIMediaMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False, **kwargs):
+    def __init__(self, role: MessageRole, content: str, medias: List[str], tags: List[str] = None, **kwargs):
         tool_calls = None
         structured_output = None
         tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin,)
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         message = {
@@ -220,13 +238,13 @@ class OpenAIMediaMessage(GenericMessage):
 
 class OpenAIFunctionCallingMessage(GenericMessage):
 
-    def __init__(self, tool_calls: List[ToolCall], is_yacana_builtin: bool = False, **kwargs):
+    def __init__(self, tool_calls: List[ToolCall], tags: List[str] = None, **kwargs):
         role = MessageRole.ASSISTANT
         content = None
         medias = None
         structured_output = None
         tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -238,18 +256,18 @@ class OpenAIFunctionCallingMessage(GenericMessage):
 
 class OpenAIToolCallingMessage(GenericMessage):
 
-    def __init__(self, content: str, tool_call_id: str, is_yacana_builtin: bool = False, **kwargs):
+    def __init__(self, content: str, tool_call_id: str, tags: List[str] = None, **kwargs):
         """
         Response from the LLM when a tool is called.
         :param content: In this context it will fe the output of the tool. We keep the variable name as is for consistency with the other messages.
         :param tool_call_id:
-        :param is_yacana_builtin:
+        :param tags:
         """
         role = MessageRole.TOOL
         tool_calls = None
         medias = None
         structured_output = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -261,11 +279,11 @@ class OpenAIToolCallingMessage(GenericMessage):
 
 class OpenAIStructuredOutputMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False, **kwargs):
+    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], tags: List[str] = None, **kwargs):
         tool_calls = None
         medias = None
         tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -277,8 +295,8 @@ class OpenAIStructuredOutputMessage(GenericMessage):
 
 class OllamaUserMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, medias: List[str] = None, structured_output: Type[T] = None, **kwargs):
-        super().__init__(role, content, medias=medias, structured_output=structured_output, is_yacana_builtin=is_yacana_builtin)
+    def __init__(self, role: MessageRole, content: str, tags: List[str] = None, medias: List[str] = None, structured_output: Type[T] = None, **kwargs):
+        super().__init__(role, content, medias=medias, structured_output=structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -304,8 +322,8 @@ class OllamaUserMessage(GenericMessage):
 
 class OllamaTextMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, is_yacana_builtin: bool = False, **kwargs):
-        super().__init__(role, content, is_yacana_builtin=is_yacana_builtin)
+    def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs):
+        super().__init__(role, content, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -334,11 +352,11 @@ class OllamaMediasMessage(GenericMessage):
 
 class OllamaStructuredOutputMessage(GenericMessage):
 
-    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], is_yacana_builtin: bool = False, **kwargs):
+    def __init__(self, role: MessageRole, content: str, structured_output: Type[T], tags: List[str] = None, **kwargs):
         tool_calls = None
         medias = None
         tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
+        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         return {
@@ -382,12 +400,12 @@ class HistorySlot:
         else:
             return self.messages[message_index]
 
-    def get_last_message(self) -> GenericMessage:
+    def get_message(self) -> GenericMessage:
         if len(self.messages) <= 0:
             raise IndexError("Index error: Slot is empty (no messages)")
-        return self.messages[-1]
+        return self.messages[self.currently_selected_message_index]
 
-    def get_messages(self) -> List[GenericMessage]:
+    def get_all_messages(self) -> List[GenericMessage]:
         return self.messages
 
     def set_raw_llm_json(self, raw_llm_json: str) -> None:
@@ -408,7 +426,6 @@ class HistorySlot:
 
     @staticmethod
     def create_instance(members: Dict):
-        print("genre c'est none = ", members)
         members["messages"] = [GenericMessage.create_instance(message) for message in members["messages"] if message is not None]
         return HistorySlot(**members)
 
@@ -463,6 +480,14 @@ class History:
                 self.slots.insert(0, history_slot)
         else:
             self.slots.insert(position, history_slot)
+
+    def delete_slot(self, index: int) -> None:
+        """
+        Deletes a slot from the history. This will remove all the messages within the slot.
+        @param index: int : The index of the slot to delete
+        @return: None
+        """
+        self.slots.pop(index)
 
     def get_last_slot(self) -> HistorySlot:
         """
@@ -522,32 +547,7 @@ class History:
         # Loading checkpoints
         for uid, slot in members["_checkpoints"]:
             members["_checkpoints"][uid] = [HistorySlot.create_instance(slot) for slot in slot]
-
-        h = History(**members)
-        print("but why = ", h.get_messages_as_dict())
-        return h
-
-        """
-        for slot_dict in slots_as_dict:
-            new_slot = HistorySlot()
-            for message_dict in slot_dict["messages"]:
-                #  Converting the string to an enum
-                matching_enum: MessageRole = next((role for role in MessageRole if role.value == message_dict["role"]),
-                                                  None)
-                if matching_enum is None:
-                    raise ValueError("Invalid role during import")
-
-                #  Inflating tool calls objects
-                tool_calls: List[ToolCall] = []
-                for tool_call in message_dict["tool_calls"]:
-                    tool_calls.append(ToolCall(tool_call["id"], tool_call["function"]["name"], tool_call["function"]["arguments"]))
-                message_dict["role"] = matching_enum
-                new_slot.add_message(GenericMessage(**message_dict, tool_calls=tool_calls))
-            self.slots.append(new_slot)
-        """
-        #self._messages.append(Message(matching_enum, message_dict["content"]))
-        #matching_enum: MessageRole = next((role for role in MessageRole if role.value == slot_dict["messages"][slot_dict["currently_selected_message_index"]]["role"]), None)
-        #self._messages.append(Message(matching_enum, slot_dict["content"]))
+        return History(**members)
 
     def get_messages_as_dict(self) -> List[Dict]:
         formated_messages = []
@@ -591,6 +591,16 @@ class History:
         """
         self.slots = self._checkpoints[uid]
 
+    def get_message(self, index) -> GenericMessage:
+        """
+        Returns the message at the given index
+        @param index: int : The index of the message to return
+        @return: Message
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        return self.slots[index].get_message()
+
     def get_last_message(self) -> GenericMessage:
         """
         Returns the last message of the history. Not very useful but a good syntactic sugar to get the last item from
@@ -600,6 +610,15 @@ class History:
         if len(self.slots) <= 0:
             raise IndexError("History is empty (no slots, so no messages)")
         return self.slots[-1].get_message()
+
+    def get_all_messages(self) -> List[Message]:
+        """
+        Returns a list of Messages. Each message is the main message of each slots.
+        @return: Message
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        return [slot.get_message() for slot in self.slots]
 
     def clean(self) -> None:
         """
