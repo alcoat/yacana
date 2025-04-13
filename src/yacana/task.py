@@ -1,6 +1,6 @@
 import copy
 import uuid
-from typing import List, Type, Callable
+from typing import List, Type, Callable, Dict
 from pydantic import BaseModel
 
 from .generic_agent import GenericAgent, GenericMessage
@@ -48,7 +48,7 @@ class Task:
 
     def __init__(self, prompt: str, agent: GenericAgent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
                  medias: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
-                 llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False, streaming_callback: Callable | None = None) -> None:
+                 llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
         """
         Returns a Task instance.
         @param prompt: str: The task to solve. It is the prompt given to the assigned LLM
@@ -67,13 +67,14 @@ class Task:
         self.json_output: bool = json_output
         self.structured_output: Type[BaseModel] | None = structured_output
         self.tools: List[Tool] = tools if tools is not None else []
-        self.raise_when_max_tool_error_iter: bool = raise_when_max_tool_error_iter  # Not a huge fan. Maybe add a callbak that would be called when we reach max iter instead of raising
+        self.raise_when_max_tool_error_iter: bool = raise_when_max_tool_error_iter  # @todo remove this feature : Not a huge fan. Maybe add a callbak that would be called when we reach max iter instead of raising
         self.llm_stops_by_itself: bool = llm_stops_by_itself
         self.use_self_reflection: bool = use_self_reflection
         self.forget: bool = forget
         self.medias: List[str] | None = medias
         self._uuid: str = str(uuid.uuid4())
         self.streaming_callback: Callable | None = streaming_callback
+        self.runtime_config = runtime_config if runtime_config is not None else {}
 
         if len(self.tools) > 0 and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")
@@ -112,7 +113,7 @@ class Task:
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
         try:
-            answer: GenericMessage = self.agent._interact(self.prompt, self.tools, self.json_output, self.structured_output, self.medias, self.streaming_callback)
+            answer: GenericMessage = self.agent._interact(self.prompt, self.tools, self.json_output, self.structured_output, self.medias, self.streaming_callback, self.runtime_config)
         except MaxToolErrorIter as e:
             if self.raise_when_max_tool_error_iter:
                 self._reset_agent_history()

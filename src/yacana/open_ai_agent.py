@@ -66,7 +66,7 @@ class OpenAiAgent(GenericAgent):
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None))
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
 
@@ -129,8 +129,10 @@ class OpenAiAgent(GenericAgent):
             if tool._openai_function_schema is None:
                 tool._function_to_json_with_pydantic()
 
-    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None, streaming_callback: Callable | None = None) -> GenericMessage:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None) -> GenericMessage:
         self._update_tool_definition(tools)
+        self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
+
         if len(tools) == 0:  # @todo implicitement si tu mets des tools du coup ca coupe l'herbe sous le pied à l'image car ca n'ira pas là. Pour le moment les 2 sont mutuellement exclusif.
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         elif len(tools) > 0:
@@ -233,7 +235,6 @@ class OpenAiAgent(GenericAgent):
         )
 
 
-        # @todo save and restore
         # @todo tests multi turn
         # @todo plus de tests multimodal
 
@@ -245,7 +246,8 @@ class OpenAiAgent(GenericAgent):
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
             **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {}),
             **self.model_settings.get_settings(),
-            **self.runtime_config
+            **self.runtime_config,
+            **self.task_runtime_config
         }
         print("tool choice = ", tool_choice_option)
         print("----")
@@ -262,6 +264,7 @@ class OpenAiAgent(GenericAgent):
             response = client.chat.completions.create(**params)
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
 
+        self.task_runtime_config = {}
         history_slot.set_raw_llm_json(response.model_dump_json())
 
         print("pk g que le début = ", response.model_dump_json())

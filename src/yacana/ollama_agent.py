@@ -62,7 +62,7 @@ class OllamaAgent(GenericAgent):
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None))
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
         max_tool_name_use_iter: int = 0
@@ -206,8 +206,9 @@ class OllamaAgent(GenericAgent):
             logging.info("Exiting tool calls loop\n")
             return False
 
-    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None) -> GenericMessage:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None) -> GenericMessage:
         tools: List[Tool] = [] if tools is None else tools
+        self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
         if len(tools) == 0:
             self._chat(self.history, task, medias=medias, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
@@ -390,7 +391,8 @@ class OllamaAgent(GenericAgent):
             "format": self._get_expected_output_format(json_output, structured_output),
             "stream": True if streaming_callback is not None else False,
             "options": self.model_settings.get_settings(),
-            **self.runtime_config
+            **self.runtime_config,
+            **self.task_runtime_config
         }
         response = client.chat(**params)
         if structured_output is not None:
@@ -399,5 +401,6 @@ class OllamaAgent(GenericAgent):
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
             history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=["yacana_builtin"]))
 
+        self.task_runtime_config = {}
         history_slot.set_raw_llm_json(self._response_to_json(response))
         return history_slot

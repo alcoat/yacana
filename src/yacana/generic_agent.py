@@ -46,7 +46,7 @@ class GenericAgent(ABC):
     _registry = {}
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, history: History | None = None) -> None:
+                 api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -70,6 +70,7 @@ class GenericAgent(ABC):
         self.endpoint: str | None = endpoint
         self.streaming_callback: Callable | None = streaming_callback
         self.runtime_config = runtime_config if runtime_config is not None else {}
+        self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
         self.history: History = history if history is not None else History()
         if self.system_prompt is not None and history is None:
@@ -119,6 +120,6 @@ class GenericAgent(ABC):
         return cls(**members)
 
     @abstractmethod
-    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None) -> GenericMessage:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None, task_runtime_config: Dict | None) -> GenericMessage:
         raise NotImplemented(f"This method must be subclassed by the child class. It starts the inference using given parameters.")
 
