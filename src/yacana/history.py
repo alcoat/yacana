@@ -169,10 +169,10 @@ class GenericMessage(ABC):
         Returns the structured output as a dictionary.
         :return: Any
         """
-        raise NotImplemented("This method should be implemented in the child Message class when 'structured_output' is not None")
+        raise NotImplemented(f"This method should be implemented in the child Message class when 'structured_output' is not None. Message type: {self.__class__.__name__}.")
 
     def dict_to_structured_output(self, data: Dict):
-        raise NotImplemented("This method should be implemented in the child Message class when 'structured_output' is not None")
+        raise NotImplemented(f"This method should be implemented in the child Message class when 'structured_output' is not None. Message type: {self.__class__.__name__}.")
 
     def __str__(self) -> str:
         """
@@ -193,10 +193,33 @@ class Message(GenericMessage):
     def get_message_as_dict(self):  # @todo A revoir car là c'est générique donc bah le user on ne sait pas contre quel server il va l'envoyer
         return {
             "role": self.role.value,
-            "content": self.content,
-            **({'images': self.medias} if self.medias is not None else {}),
+            "content": self.content
         }
 
+class OpenAIUserMessage(GenericMessage):
+
+    def __init__(self, role: MessageRole, content: str, tags: List[str] = None, medias: List[str] = None, structured_output: Type[T] = None, **kwargs):
+        super().__init__(role, content, medias=medias, structured_output=structured_output, tags=tags, id=kwargs.get('id', None))
+
+    def get_message_as_dict(self):
+        return {
+            "role": self.role.value,
+            "content": self.content
+        }
+
+    def structured_output_to_dict(self) -> Dict:
+        return {
+            "__class__": f"{self.structured_output.__module__}.{self.structured_output.__name__}"
+        }
+
+    def dict_to_structured_output(self, data: Dict):
+        full_class_path = data["__class__"]
+        module_name, class_name = full_class_path.rsplit(".", 1)
+
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+
+        return cls
 
 class OpenAITextMessage(GenericMessage):
     
@@ -290,6 +313,21 @@ class OpenAIStructuredOutputMessage(GenericMessage):
             "role": self.role.value,
             "content": self.content,
         }
+
+    def structured_output_to_dict(self) -> Dict:
+        return {
+            "__class__": f"{self.structured_output.__class__.__module__}.{self.structured_output.__class__.__name__}",
+            "data": self.structured_output.model_dump()
+        }
+
+    def dict_to_structured_output(self, data: Dict):
+        full_class_path = data["__class__"]
+        module_name, class_name = full_class_path.rsplit(".", 1)
+
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+
+        return cls(**data["data"])
 
 
 
@@ -600,6 +638,25 @@ class History:
         if len(self.slots) <= 0:
             raise IndexError("History is empty (no slots, so no messages)")
         return self.slots[index].get_message()
+
+    def get_messages_by_tags(self, tags: List[str], strict=True) -> List[GenericMessage]:
+        """
+        Returns all the messages that have the given tags.
+        @param tags: List[str] : The tags to filter the messages
+        @param strict: bool : If True, the message must have all the tags. If False, the message can have any of the tags.
+        @return: List[Message]
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        messages = []
+        for slot in self.slots:
+            if strict is True:
+                if set(tags).issubset(set(slot.get_message().tags)):
+                    messages.append(slot.get_message())
+            else:
+                if set(tags).intersection(set(slot.get_message().tags)):
+                    messages.append(slot.get_message())
+        return messages
 
     def get_last_message(self) -> GenericMessage:
         """

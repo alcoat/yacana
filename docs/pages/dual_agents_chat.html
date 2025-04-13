@@ -237,30 +237,30 @@ These are just a few ideas to get you started! What do you think? Would you like
                     </thead>
                     <tbody>
                     <tr>
-                        <td>MAX<em>ITERATIONS</em>ONLY</td>
+                        <td>MAX_ITERATIONS_ONLY</td>
                         <td>False</td>
                         <td>Chat ends when we reach the maximum number of rounds. <em>Defaults to 5.</em></td>
                     </tr>
                     <tr>
-                        <td>END<em>CHAT</em>AFTER<em>FIRST</em>COMPLETION</td>
+                        <td>END_CHAT_AFTER_FIRST_COMPLETION</td>
                         <td>True</td>
                         <td>When a Task is marked as complete the chat ends immediately.</td>
                     </tr>
                     <tr>
-                        <td>ONE<em>LAST</em>CHAT<em>AFTER</em>FIRST_COMPLETION</td>
+                        <td>ONE_LAST_CHAT_AFTER_FIRST_COMPLETION</td>
                         <td>True</td>
                         <td>When a Task is marked as complete, one last agent can speak and then the chat ends.
                         </td>
                     </tr>
                     <tr>
-                        <td>ONE<em>LAST</em>GROUP<em>CHAT</em>AFTER<em>FIRST</em>COMPLETION</td>
+                        <td>ONE_LAST_GROUP_CHAT_AFTER_FIRST_COMPLETION</td>
                         <td>True</td>
                         <td>When a Task is marked as complete, one whole table turn will be allowed before the
                             chat ends.
                         </td>
                     </tr>
                     <tr>
-                        <td>ALL<em>TASK</em>MUST_COMPLETE</td>
+                        <td>ALL_TASK_MUST_COMPLETE</td>
                         <td>True</td>
                         <td>All tasks must be marked as complete before the chat is ended.</td>
                     </tr>
@@ -283,13 +283,15 @@ These are just a few ideas to get you started! What do you think? Would you like
                     Yacana uses the following wording: </p>
                 <blockquote>
                     "In your opinion, what objectives from your initial task have you 'NOT completed?" <br/>
+                </blockquote>
+                <p>
                     Therefore you should use the same prompt style in your Task prompt. For instance <em>"The
                     task is fulfilled when the objective
                     <insert here> is completed."
-                </em>.<br/>
+                    </em>.<br/>
                     You should try different versions of this "objective completed" prompt to find one that
                     matches your task and LLM best.
-                </blockquote>
+                </p>
                 <h4>Testing all available chat ending modes</h4>
                 <p>We'll test the different modes with simple games between two Agents. </p>
                 <p><strong>END_CHAT_AFTER_FIRST_COMPLETION</strong></p>

@@ -14,7 +14,7 @@ from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
-from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage
+from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -215,10 +215,11 @@ class OpenAiAgent(GenericAgent):
     def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, tools: List[Tool] | None = None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            if medias is not None:
-                history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, tags=["yacana_builtin"]))
-            else:
-                history.add_message(OpenAITextMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
+            #if medias is not None:
+            #    history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, tags=["yacana_builtin"]))
+            #else:
+            #    history.add_message(OpenAITextMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
+            history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=["yacana_builtin"], medias=medias, structured_output=structured_output))
         print(f"inference : model_name: {self.model_name}, history: {history}, endpoint: {self.endpoint}, api_token: {self.api_token}, model_settings: {self.model_settings.get_settings()}, stream: {str(streaming_callback)}, json_output: {json_output}, structured_output: {structured_output}, headers: {self.headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
@@ -239,7 +240,6 @@ class OpenAiAgent(GenericAgent):
         params = {
             "model": self.model_name,
             "messages": history.get_messages_as_dict(),
-            "max_completion_tokens": 5,
             **({"stream": True} if streaming_callback is not None else {}),
             **({"response_format": response_format} if response_format is not None else {}),
             **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
@@ -250,17 +250,21 @@ class OpenAiAgent(GenericAgent):
         print("tool choice = ", tool_choice_option)
         print("----")
         #print("current params = ", json.dumps(params, indent=2))
-        #print(f"model_name: {model_name}, history: {history}, endpoint: {endpoint}, api_token: {api_token}, model_settings: {model_settings}, stream: {stream}, json_output: {json_output}, structured_output: {structured_output}, headers: {headers}")
+        print("params = ", params)
         print("----")
 
         history_slot = HistorySlot()
         if structured_output is not None:
+            print("before request")
             response = client.beta.chat.completions.parse(**params)
+            print("after request")
         else:
             response = client.chat.completions.create(**params)
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
 
         history_slot.set_raw_llm_json(response.model_dump_json())
+
+        print("pk g que le début = ", response.model_dump_json())
 
         print("Résultat de l'inférence quelle quelle soit = ")
         print(response.model_dump_json(indent=2))
