@@ -46,7 +46,7 @@ class GenericAgent(ABC):
     _registry = {}
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None) -> None:
+                 api_token: str = "", headers=None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -68,7 +68,7 @@ class GenericAgent(ABC):
         self.api_token: str = api_token
         self.headers = {} if headers is None else headers
         self.endpoint: str | None = endpoint
-        self.streaming_callback: Callable | None = streaming_callback
+        #self.streaming_callback: Callable | None = streaming_callback
         self.runtime_config = runtime_config if runtime_config is not None else {}
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
@@ -80,7 +80,7 @@ class GenericAgent(ABC):
         super().__init_subclass__(**kwargs)
         GenericAgent._registry[cls.__name__] = cls
 
-    def export_to_file(self, file_path: str, save_token=True) -> None:
+    def export_to_file(self, file_path: str, strip_api_token=False, strip_headers=False) -> None:
         """
         Exports the current agent configuration to a file. This contains all the agents data and history.
         This means that you can use the @get_agent_from_state method to load this agent back again and continue where
@@ -89,17 +89,24 @@ class GenericAgent(ABC):
         @param file_path: str: Path of the file in which you wish the data to be saved. Specify the path + filename. Be wary when using relative path.
         @return:
         """
-        if save_token is True:
-            logging.warning("Saving the agent state will leak API keys and other sensitive information to the destination file. Set 'save_token' to False to avoid this.")
+
         members_as_dict = self.__dict__.copy()
         members_as_dict["type"] = self.__class__.__name__
         members_as_dict["model_settings"] = self.model_settings._export() #self.model_settings.get_settings()
         members_as_dict["history"] = self.history._export()
 
+        if self.api_token is not None and self.api_token != "" and strip_api_token is False:
+            logging.warning("Saving the agent state will leak the API key to the destination file. Consider using @strip_api_token=True to remove it.")
+        print(self.headers)
+        if self.headers is not None and bool(self.headers) is not False and strip_headers is False:
+            logging.warning("Saving the agent state will leak headers content to the destination file. Consider using @strip_headers=True to remove it.")
+        if strip_api_token:
+            members_as_dict["api_token"] = None
+        if strip_headers:
+            members_as_dict["headers"] = {}
+
         with open(file_path, 'w') as file:
             json.dump(members_as_dict, file, indent=4)
-        if self.streaming_callback is not None:
-            logging.info("Streaming callbacks cannot be exported. Please reassign the streaming callback after loading the agent from state.")
         logging.info("Agent state successfully exported to %s", file_path)
 
     @classmethod

@@ -52,7 +52,7 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, **kwargs) -> None:
+                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -66,7 +66,7 @@ class OpenAiAgent(GenericAgent):
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
 
@@ -236,7 +236,8 @@ class OpenAiAgent(GenericAgent):
         )
 
 
-        # @todo tests multi turn
+        # @todo 2 messages de chatGPT ? Ca changera de [0]
+        # @todo save callback
         # @todo plus de tests multimodal
 
         params = {

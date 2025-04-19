@@ -3,7 +3,7 @@ import json
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Type, T, Any
+from typing import List, Dict, Type, T, Any, Sequence
 import importlib
 
 from pydantic import BaseModel
@@ -639,7 +639,7 @@ class History:
             raise IndexError("History is empty (no slots, so no messages)")
         return self.slots[index].get_message()
 
-    def get_messages_by_tags(self, tags: List[str], strict=True) -> List[GenericMessage]:
+    def get_messages_by_tags(self, tags: List[str], strict=True) -> Sequence[GenericMessage]:
         """
         Returns all the messages that have the given tags.
         @param tags: List[str] : The tags to filter the messages

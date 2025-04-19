@@ -48,7 +48,7 @@ class OllamaAgent(GenericAgent):
     get_agent_from_state(file_path: str) -> 'Agent'
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, **kwargs) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
         """
         Returns a new Agent
         :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
@@ -62,7 +62,7 @@ class OllamaAgent(GenericAgent):
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, streaming_callback=streaming_callback, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
         max_tool_name_use_iter: int = 0
