@@ -137,16 +137,17 @@ class OpenAiAgent(GenericAgent):
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         elif len(tools) > 0:
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, tools=tools)
-            for tool_call in self.history.get_last_message().tool_calls:
-                tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
-                if tool is None:
-                    raise ValueError(f"Tool {tool_call.name} not found in tools list")  # @todo Autre chose qu'un valueError, genre une classe custom ?
-                print("found ", tool.tool_name)
-                tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
-                self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=["yacana_builtin"]))
-                #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, tags=["yacana_builtin"]))  # @todo nb 5 & 6
-            logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
-            self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
+            if isinstance(self.history.get_last_message(), OpenAIFunctionCallingMessage):
+                for tool_call in self.history.get_last_message().tool_calls:
+                    tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
+                    if tool is None:
+                        raise ValueError(f"Tool {tool_call.name} not found in tools list")  # @todo Autre chose qu'un valueError, genre une classe custom ?
+                    print("found ", tool.tool_name)
+                    tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
+                    self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=["yacana_builtin"]))
+                    #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, tags=["yacana_builtin"]))  # @todo nb 5 & 6
+                logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
+                self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
             """
             else:
                 print("No tool calls even though tools were provided !!")
@@ -222,7 +223,7 @@ class OpenAiAgent(GenericAgent):
             #else:
             #    history.add_message(OpenAITextMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
             history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=["yacana_builtin"], medias=medias, structured_output=structured_output))
-        print(f"inference : model_name: {self.model_name}, history: {history}, endpoint: {self.endpoint}, api_token: {self.api_token}, model_settings: {self.model_settings.get_settings()}, stream: {str(streaming_callback)}, json_output: {json_output}, structured_output: {structured_output}, headers: {self.headers}, tools: {str(tools)}")
+        #print(f"inference : model_name: {self.model_name}, history: {history}, endpoint: {self.endpoint}, api_token: {self.api_token}, model_settings: {self.model_settings.get_settings()}, stream: {str(streaming_callback)}, json_output: {json_output}, structured_output: {structured_output}, headers: {self.headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
@@ -267,14 +268,11 @@ class OpenAiAgent(GenericAgent):
         self.task_runtime_config = {}
         history_slot.set_raw_llm_json(response.model_dump_json())
 
-        print("pk g que le début = ", response.model_dump_json())
-
         print("Résultat de l'inférence quelle quelle soit = ")
         print(response.model_dump_json(indent=2))
         logging.debug("Inference output: %s", response.model_dump_json(indent=2))
 
         for choice in response.choices:
-            print("boucle !")
 
             if self.is_structured_output(choice):
                 print("This is a structured_output answer.")
