@@ -156,35 +156,6 @@ class OpenAiAgent(GenericAgent):
             """
         return self.history.get_last_message()
 
-    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
-        """
-        if task is not None:
-            #message = GenericMessage(MessageRole.USER, task, medias=medias)
-            if save_to_history is True:
-                #history.add_message(message)
-                pass
-            else:
-                history_save = copy.deepcopy(history)
-                #history_save.add_message(message)
-        """
-        #if task is not None:
-        #    logging.info(f"[PROMPT][To: {self.name}]: {task}")
-        #inference: InferenceServer = InferenceFactory.get_inference(self.server_type)
-        history_slot: HistorySlot = self._go(task=task,
-                                             history=history if save_to_history is True else copy.deepcopy(history),
-                                             json_output=(True if json_output is True else False),
-                                             structured_output=structured_output,
-                                             tools=tools,
-                                             medias=medias,
-                                             streaming_callback=streaming_callback
-                                             )
-        #if stream is True:
-        #    return response.raw_llm_response  # Only for the simple_chat() method and is of no importance.
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
-        if save_to_history is True:
-            history.add_slot(history_slot)  #add_message(Message(MessageRole.ASSISTANT, response.raw_llm_response, structured_output=response.structured_output, tool_call_id=response.tool_call_id))
-        return history_slot.get_message().content  #response.raw_llm_response
-
     def is_structured_output(self, choice: Choice) -> bool:
         return hasattr(choice.message, "parsed") and choice.message.parsed is not None
 
@@ -215,15 +186,11 @@ class OpenAiAgent(GenericAgent):
             ]
         })
 
-    def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, tools: List[Tool] | None = None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
+    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
+                  streaming_callback: Callable | None = None) -> str | Iterator:
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            #if medias is not None:
-            #    history.add_message(OpenAIMediaMessage(MessageRole.USER, task, medias, tags=["yacana_builtin"]))
-            #else:
-            #    history.add_message(OpenAITextMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
             history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=["yacana_builtin"], medias=medias, structured_output=structured_output))
-        #print(f"inference : model_name: {self.model_name}, history: {history}, endpoint: {self.endpoint}, api_token: {self.api_token}, model_settings: {self.model_settings.get_settings()}, stream: {str(streaming_callback)}, json_output: {json_output}, structured_output: {structured_output}, headers: {self.headers}, tools: {str(tools)}")
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
@@ -237,7 +204,6 @@ class OpenAiAgent(GenericAgent):
 
 
         # @todo 2 messages de chatGPT ? Ca changera de [0]
-        # @todo save callback
         # @todo plus de tests multimodal
 
         params = {
@@ -298,7 +264,11 @@ class OpenAiAgent(GenericAgent):
             else:
                 raise ValueError("Unknown response from OpenAI API")  # @todo error custom
 
-        return history_slot
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
+        if save_to_history is True:
+            history.add_slot(history_slot)
+        return history_slot.get_message().content
+
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
         """

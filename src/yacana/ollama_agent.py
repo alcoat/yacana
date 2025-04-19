@@ -303,7 +303,7 @@ class OllamaAgent(GenericAgent):
     def _stream(self):
         pass
 
-    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
+    """    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
         history_slot: HistorySlot = self._go(task=task,
                                              history=history if save_to_history is True else copy.deepcopy(history),
                                              json_output=(True if json_output is True else False),
@@ -315,6 +315,7 @@ class OllamaAgent(GenericAgent):
         if save_to_history is True:
             history.add_slot(history_slot)
         return history_slot.get_message().content
+    """
 
     @staticmethod
     def _get_expected_output_format(json_output: bool, structured_output: Type[BaseModel] | None) -> dict[str, Any] | str:
@@ -372,16 +373,12 @@ class OllamaAgent(GenericAgent):
                 }
             )
 
-    def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
+    #def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
+    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output = False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
+
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
             history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=["yacana_builtin"], medias=medias, structured_output=structured_output))
-            """
-            if medias is not None:
-                history.add_message(OllamaMediasMessage(MessageRole.USER, task, medias, tags=["yacana_builtin"]))
-            else:
-                history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
-            """
 
         history_slot = HistorySlot()
         client = Client(host=self.endpoint, headers=self.headers)
@@ -403,4 +400,8 @@ class OllamaAgent(GenericAgent):
 
         self.task_runtime_config = {}
         history_slot.set_raw_llm_json(self._response_to_json(response))
-        return history_slot
+
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
+        if save_to_history is True:
+            history.add_slot(history_slot)
+        return history_slot.get_message().content
