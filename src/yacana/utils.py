@@ -25,3 +25,11 @@ class Dotdict(dict):
     def model_dump_json(self, **kwargs):
         """Mimics the pydantic model_dump_json() method"""
         return json.dumps(self, **kwargs)
+
+
+def to_base64(data):
+    """Convert data to base64 string"""
+    import base64
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    return base64.b64encode(data).decode('utf-8')

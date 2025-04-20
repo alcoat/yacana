@@ -5,10 +5,11 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Type, T, Any, Sequence
 import importlib
-
 from pydantic import BaseModel
 from typing_extensions import Self
 from abc import ABC, abstractmethod
+
+from .medias import Media
 
 
 class MessageRole(Enum):
@@ -202,10 +203,16 @@ class OpenAIUserMessage(GenericMessage):
         super().__init__(role, content, medias=medias, structured_output=structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
-        return {
+        message_as_dict = {
             "role": self.role.value,
             "content": self.content
         }
+        if self.medias is not None:
+            message_as_dict["content"] = [
+                {"type": "text", "text": self.content},
+                *[Media.get_as_openai_dict(media_path) for media_path in self.medias]
+            ]
+        return message_as_dict
 
     def structured_output_to_dict(self) -> Dict:
         return {
@@ -249,9 +256,10 @@ class OpenAIMediaMessage(GenericMessage):
             "role": self.role.value,
             "content": [
                 {"type": "text", "text": self.content}
-            ],
-            **({'images': self.medias} if self.medias is not None else {}),
+            ]
         }
+
+        # **({'images': self.medias} if self.medias is not None else {}),
         for media in self.medias:
             message["content"].append({"type": "image_url", "image_url": {
                 "url": media
@@ -370,23 +378,6 @@ class OllamaTextMessage(GenericMessage):
             **({'images': self.medias} if self.medias is not None else {}),
         }
 
-"""
-class OllamaMediasMessage(GenericMessage):
-
-    def __init__(self, role: MessageRole, content: str, medias: List[str], is_yacana_builtin: bool = False, **kwargs):
-        tool_calls = None
-        tool_call_id = None
-        structured_output = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, is_yacana_builtin)
-
-    def get_message_as_dict(self):
-        return {
-            "role": self.role.value,
-            "content": self.content,
-            **({'images': self.medias} if self.medias is not None else {}),
-        }
-"""
-
 
 class OllamaStructuredOutputMessage(GenericMessage):
 
@@ -427,21 +418,33 @@ class HistorySlot:
         self.raw_llm_json: str = raw_llm_json
         self.currently_selected_message_index: int = 0
 
+    def set_message_index(self, message_index: int) -> None:
+        """
+        Sets the index of the currently selected message in the slot.
+        :param message_index: int : The index of the message to select
+        :return: None
+        """
+        if message_index >= len(self.messages):
+            raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
+        self.currently_selected_message_index = message_index
+
+    def get_message_index(self) -> int:
+        """
+        Returns the index of the currently selected message in the slot.
+        :return: int : The index of the currently selected message
+        """
+        return self.currently_selected_message_index
+
     def add_message(self, message: GenericMessage):
         self.messages.append(message)
 
     def get_message(self, message_index: int | None = None) -> GenericMessage:
-        if message_index is not None and message_index >= len(self.messages):  # @todo a revoir car je suis fatigué
+        if message_index is not None and message_index >= len(self.messages):
             raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
         if message_index is None:
             return self.messages[self.currently_selected_message_index]
         else:
             return self.messages[message_index]
-
-    def get_message(self) -> GenericMessage:
-        if len(self.messages) <= 0:
-            raise IndexError("Index error: Slot is empty (no messages)")
-        return self.messages[self.currently_selected_message_index]
 
     def get_all_messages(self) -> List[GenericMessage]:
         return self.messages

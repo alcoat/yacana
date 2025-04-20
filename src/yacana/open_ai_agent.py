@@ -204,7 +204,6 @@ class OpenAiAgent(GenericAgent):
 
 
         # @todo 2 messages de chatGPT ? Ca changera de [0]
-        # @todo plus de tests multimodal
 
         params = {
             "model": self.model_name,
