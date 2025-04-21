@@ -13,10 +13,12 @@ from .medias import Media
 
 
 class MessageRole(Enum):
-    """The available types of message creators.
-    It can either be a message from the user or an answer from the LLM to the user's message.
-    Developers can also set a system prompt that guides the LLM into a specific way of answering.
-
+    """
+    The available types of message creators.
+    User messages are the ones that are sent by the user to the LLM.
+    Assistant messages are the ones that are sent by the LLM to the user.
+    System messages are the ones that defines the behavior of the LLM.
+    Tool messages are the ones containing the result of a tool call and then sent to the LLM.
     """
     USER = "user"
     ASSISTANT = "assistant"
@@ -27,13 +29,15 @@ class MessageRole(Enum):
 class SlotPosition(Enum):
     """
     The position of a slot in the history. This is only a syntactic sugar to make the code more readable.
-
     """
     BOTTOM = -1
     TOP = -2
 
 
-class ToolCall:
+class ToolCallFromLLM:
+    """
+    A simple object container for the tool call that is sent by the LLM to the user.
+    """
 
     def __init__(self, call_id, name, arguments):
         self.call_id: str = call_id
@@ -62,38 +66,54 @@ class ToolCall:
 
 
 class GenericMessage(ABC):
-    """The smallest entity representing an interaction with the LLM. Can either be a user message or an LLM message.
-    Use the MessageRole() enum to specify who's message it is.
+    """The smallest entity representing an interaction with the LLM.
+    Use child class type to determine what type of message this is and the role member to know from whom the message is from.
 
     Attributes
     ----------
+    id: str
+        The unique identifier of the message. If None, a new UUID will be generated.
     role : MessageRole
         From whom is the message from. See the MessageRole Enum
     content : str
         The actual message
+    tool_calls : List[ToolCallFromLLM] | None
+        An optional list of tool calls that are sent by the LLM to the user. See ToolCallFromLLM.
     medias : List[str] | None
-        An optional list of path pointing to images on the filesystem.
-    Methods
-    ----------
-    get_as_dict(self) -> Dict
-
+        An optional list of path pointing to images or audio on the filesystem.
+    structured_output : Type[T] | None
+        An optional pydantic model that can be used to store the result of a JSON response by the LLM
     """
 
     _registry = {}
 
-    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCall] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, tags: List[str] | None = None, id: uuid.UUID | None = None) -> None:
+    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCallFromLLM] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, tags: List[str] | None = None, id: uuid.UUID | None = None) -> None:
         """
-        Returns an instance of Message
-        :param role: MessageRole: From whom is the message from. See the MessageRole Enum
-        :param content: str : The actual message
-        :param medias: List[str] | None : An optional list of path pointing to images or else on the filesystem.
-        :param structured_output: Type[T] | None : An optional structured output that can be used to store the result of a tool call
-        :param tool_calls: str | None : An optional unique identifier for the tool call (used by openAI to match the tool call with the response)
+        Initializes an instance of the GenericMessage class.
+
+        Parameters
+        ----------
+        role : MessageRole
+            Specifies the sender of the message. See the MessageRole Enum for possible values.
+        content : str | None, optional
+            The actual message content. Can be None if tool_calls is provided.
+        tool_calls : List[ToolCallFromLLM] | None, optional
+            A list of tool calls sent by the LLM to the user. Can be None if content is provided.
+        medias : List[str] | None, optional
+            A list of paths pointing to images or audio files on the filesystem.
+        structured_output : Type[T] | None, optional
+            A pydantic model used to store the result of a JSON response by the LLM.
+        tool_call_id : str | None, optional
+            A unique identifier for the tool call, used to match the tool call with the response.
+        tags : List[str] | None, optional
+            A list of tags associated with the message for filtering or categorization.
+        id : uuid.UUID | None, optional
+            A unique identifier for the message. If None, a new UUID will be generated.
         """
         self.id = str(uuid.uuid4()) if id is None else str(id)
         self.role: MessageRole = role
         self.content: str | None = content
-        self.tool_calls: List[ToolCall] | None = tool_calls
+        self.tool_calls: List[ToolCallFromLLM] | None = tool_calls
         self.medias: List[str] = medias if medias is not None else []
         self.structured_output: Type[T] | None = structured_output
         self.tool_call_id: str | None = tool_call_id
@@ -120,21 +140,20 @@ class GenericMessage(ABC):
         members["type"] = self.__class__.__name__
         members["role"] = self.role.value
         if members["structured_output"] is not None:
-            members["structured_output"] = self.structured_output_to_dict()
+            members["structured_output"] = self._structured_output_to_dict()
         return members
 
     @staticmethod
     def create_instance(members: Dict):
         #  Converting the role string to its matching enum
         members["role"]: MessageRole = next((role for role in MessageRole if role.value == members["role"]), None)
-        #if members["structured_output"] is not None:
-        #    members["structured_output"] = GenericMessage.dict_to_structured_output(members["structured_output"], globals())
+
         cls_name = members.pop("type")
         cls = GenericMessage._registry.get(cls_name)
-        #print("normalement ca ca devrait être les id du json = ", members["id"])
+
         message = cls(**members)
         if message.structured_output is not None:
-            message.structured_output = message.dict_to_structured_output(members["structured_output"])
+            message.structured_output = message._dict_to_structured_output(members["structured_output"])
         return message
 
     @abstractmethod
@@ -165,14 +184,14 @@ class GenericMessage(ABC):
         if tag in self.tags:
             self.tags.remove(tag)
 
-    def structured_output_to_dict(self) -> Dict:
+    def _structured_output_to_dict(self) -> Dict:
         """
         Returns the structured output as a dictionary.
         :return: Any
         """
         raise NotImplemented(f"This method should be implemented in the child Message class when 'structured_output' is not None. Message type: {self.__class__.__name__}.")
 
-    def dict_to_structured_output(self, data: Dict):
+    def _dict_to_structured_output(self, data: Dict):
         raise NotImplemented(f"This method should be implemented in the child Message class when 'structured_output' is not None. Message type: {self.__class__.__name__}.")
 
     def __str__(self) -> str:
@@ -203,6 +222,10 @@ class OpenAIUserMessage(GenericMessage):
         super().__init__(role, content, medias=medias, structured_output=structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
+        """
+        Returns the message as a dictionary.
+        Mainly use to send the message to the inference server as JSON.
+        """
         message_as_dict = {
             "role": self.role.value,
             "content": self.content
@@ -214,12 +237,20 @@ class OpenAIUserMessage(GenericMessage):
             ]
         return message_as_dict
 
-    def structured_output_to_dict(self) -> Dict:
+    def _structured_output_to_dict(self) -> Dict:
+        """
+        Returns the structured output as a dictionary.
+        Mainly used to export the pydantic model to a file.
+        """
         return {
             "__class__": f"{self.structured_output.__module__}.{self.structured_output.__name__}"
         }
 
-    def dict_to_structured_output(self, data: Dict):
+    def _dict_to_structured_output(self, data: Dict):
+        """
+        Converts the dictionary to a structured output.
+        Mainly used to import the pydantic model from a file.
+        """
         full_class_path = data["__class__"]
         module_name, class_name = full_class_path.rsplit(".", 1)
 
@@ -229,6 +260,9 @@ class OpenAIUserMessage(GenericMessage):
         return cls
 
 class OpenAITextMessage(GenericMessage):
+    """
+    Common message for OpenAI API. Mostly used for simple text messages. No special features like tool_calls, structured_outmput or media, etc.
+    """
     
     def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs):
         tool_calls = None
@@ -243,7 +277,7 @@ class OpenAITextMessage(GenericMessage):
         }
 
 
-class OpenAIMediaMessage(GenericMessage):
+"""class OpenAIMediaMessage(GenericMessage):
 
     def __init__(self, role: MessageRole, content: str, medias: List[str], tags: List[str] = None, **kwargs):
         tool_calls = None
@@ -264,12 +298,15 @@ class OpenAIMediaMessage(GenericMessage):
             message["content"].append({"type": "image_url", "image_url": {
                 "url": media
             }})
-        return message
+        return message"""
 
 
 class OpenAIFunctionCallingMessage(GenericMessage):
+    """
+    Response from OpenAI including tool calls to be parsed.
+    """
 
-    def __init__(self, tool_calls: List[ToolCall], tags: List[str] = None, **kwargs):
+    def __init__(self, tool_calls: List[ToolCallFromLLM], tags: List[str] = None, **kwargs):
         role = MessageRole.ASSISTANT
         content = None
         medias = None
@@ -309,6 +346,9 @@ class OpenAIToolCallingMessage(GenericMessage):
 
 
 class OpenAIStructuredOutputMessage(GenericMessage):
+    """
+    Response from OpenAI including structured output to be parsed.
+    """
 
     def __init__(self, role: MessageRole, content: str, structured_output: Type[T], tags: List[str] = None, **kwargs):
         tool_calls = None
@@ -322,13 +362,13 @@ class OpenAIStructuredOutputMessage(GenericMessage):
             "content": self.content,
         }
 
-    def structured_output_to_dict(self) -> Dict:
+    def _structured_output_to_dict(self) -> Dict:
         return {
             "__class__": f"{self.structured_output.__class__.__module__}.{self.structured_output.__class__.__name__}",
             "data": self.structured_output.model_dump()
         }
 
-    def dict_to_structured_output(self, data: Dict):
+    def _dict_to_structured_output(self, data: Dict):
         full_class_path = data["__class__"]
         module_name, class_name = full_class_path.rsplit(".", 1)
 
@@ -340,6 +380,9 @@ class OpenAIStructuredOutputMessage(GenericMessage):
 
 
 class OllamaUserMessage(GenericMessage):
+    """
+    A message from the user to the LLM containing all features requested by the user like tools, medias, etc.
+    """
 
     def __init__(self, role: MessageRole, content: str, tags: List[str] = None, medias: List[str] = None, structured_output: Type[T] = None, **kwargs):
         super().__init__(role, content, medias=medias, structured_output=structured_output, tags=tags, id=kwargs.get('id', None))
@@ -351,12 +394,12 @@ class OllamaUserMessage(GenericMessage):
             **({'images': self.medias} if self.medias is not None else {}),
         }
 
-    def structured_output_to_dict(self) -> Dict:
+    def _structured_output_to_dict(self) -> Dict:
         return {
             "__class__": f"{self.structured_output.__module__}.{self.structured_output.__name__}"
         }
 
-    def dict_to_structured_output(self, data: Dict):
+    def _dict_to_structured_output(self, data: Dict):
         full_class_path = data["__class__"]
         module_name, class_name = full_class_path.rsplit(".", 1)
 
@@ -367,6 +410,9 @@ class OllamaUserMessage(GenericMessage):
 
 
 class OllamaTextMessage(GenericMessage):
+    """
+    Common message for Ollama. Mostly used for simple text messages. No special features like tool_calls, structured_outmput or media, etc.
+    """
 
     def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs):
         super().__init__(role, content, tags=tags, id=kwargs.get('id', None))
@@ -380,6 +426,9 @@ class OllamaTextMessage(GenericMessage):
 
 
 class OllamaStructuredOutputMessage(GenericMessage):
+    """
+    Response from Ollama including structured output to be parsed.
+    """
 
     def __init__(self, role: MessageRole, content: str, structured_output: Type[T], tags: List[str] = None, **kwargs):
         tool_calls = None
@@ -393,13 +442,13 @@ class OllamaStructuredOutputMessage(GenericMessage):
             "content": self.content,
         }
 
-    def structured_output_to_dict(self) -> Dict:
+    def _structured_output_to_dict(self) -> Dict:
         return {
             "__class__": f"{self.structured_output.__class__.__module__}.{self.structured_output.__class__.__name__}",
             "data": self.structured_output.model_dump()
         }
 
-    def dict_to_structured_output(self, data: Dict):
+    def _dict_to_structured_output(self, data: Dict):
         full_class_path = data["__class__"]
         module_name, class_name = full_class_path.rsplit(".", 1)
 
@@ -410,8 +459,15 @@ class OllamaStructuredOutputMessage(GenericMessage):
 
 
 class HistorySlot:
-
+    """
+    A slot is a container for messages. It can contain one or more messages. Most of the time it will only contain one message but when using `n=2` or`n=x` in the OpenAI API, it will contain multiple variations hence multiple messages.
+    """
     def __init__(self, messages: List[GenericMessage] = None, raw_llm_json: str = None, **kwargs):
+        """
+        Parameters
+        ----------
+        messages: List[GenericMessage]
+        """
         self.id = str(kwargs.get('id', uuid.uuid4()))
         self.creation_time: int = int(kwargs.get('creation_time', datetime.now().timestamp()))
         self.messages: List[GenericMessage] = [] if messages is None else messages
@@ -431,14 +487,23 @@ class HistorySlot:
     def get_message_index(self) -> int:
         """
         Returns the index of the currently selected message in the slot.
-        :return: int : The index of the currently selected message
+        Returns
+        -------
+        int
+            The index of the currently selected message
         """
         return self.currently_selected_message_index
 
     def add_message(self, message: GenericMessage):
+        """
+        Adds a new message to the slot.
+        """
         self.messages.append(message)
 
     def get_message(self, message_index: int | None = None) -> GenericMessage:
+        """
+        Returns the main message of the slot or the one at the given index if index is provided.
+        """
         if message_index is not None and message_index >= len(self.messages):
             raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
         if message_index is None:
@@ -447,30 +512,51 @@ class HistorySlot:
             return self.messages[message_index]
 
     def get_all_messages(self) -> List[GenericMessage]:
+        """
+        Returns all the messages in the slot.
+        """
         return self.messages
 
     def set_raw_llm_json(self, raw_llm_json: str) -> None:
+        """
+        Sets the raw LLM JSON response for the slot. This is the raw JSON from the inference server. When using OpenAI this may contain more than one message hence the slot system acts as a container for the messages.
+        """
         self.raw_llm_json = raw_llm_json
 
     def delete_message_by_index(self, message_index: int) -> None:
+        """
+        Deletes a message from the slot by index.
+        """
         self.messages.pop(message_index)
 
     def delete_message_by_id(self, message_id: str) -> None:
+        """
+        Deletes a message from the slot by id.
+        """
         for i, message in enumerate(self.messages):
             if message.id == message_id:
                 self.messages.pop(i)
 
     def keep_only_selected_message(self):
+        """
+        Keeps only the currently selected message in the slot and deletes all the others.
+        """
         for i in range(len(self.messages)):
             if i != self.currently_selected_message_index:
                 self.messages.pop(i)
 
     @staticmethod
     def create_instance(members: Dict):
+        """
+        Creates an instance of the HistorySlot class from a dictionary. Mainly used to import the object from a file.
+        """
         members["messages"] = [GenericMessage.create_instance(message) for message in members["messages"] if message is not None]
         return HistorySlot(**members)
 
     def _export(self) -> Dict:
+        """
+        Returns the slot as a dictionary. Mainly used to export the object to a file.
+        """
         members = self.__dict__.copy()
         members["type"] = self.__class__.__name__
         members["messages"] = [message._export() for message in self.messages if message is not None]
@@ -480,20 +566,7 @@ class HistorySlot:
 class History:
     """
     Container for an alternation of Messages representing a conversation between the user and an LLM
-
-    Attributes
-    ----------
-
-    Methods
-    ----------
-    add(message: Message) -> None
-    get_as_dict() -> List[Dict]
-    pretty_print() -> None
-    create_check_point() -> str
-    load_check_point(uid: str) -> None
-    get_last() -> Message
-    clean() -> None
-    __str__() -> str
+    To be precise, the history is a list of slots and not actual message. Each slot contains one or more messages. The main message of the slot is the one that will be sent to the LLM.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -505,14 +578,18 @@ class History:
 
     def add_slot(self, history_slot: HistorySlot, position: int | SlotPosition = SlotPosition.BOTTOM) -> None:
         """
-        Adds a new slot to the history.
-        The history is not a list of Message() as one would expect but is instead a list of HistorySlot(). Each slot has one or more Message()
-        with one Message being the main message of the conversation. In short the History is a list of slots that each contains messages.
+        Adds a new slot to the history at the specified position.
 
-        @param history_slot: HistorySlot : A new slot to add to the history.
-        @param position: int | SlotPosition : The position where to add the new slot.
-                         You can use the SlotPosition Enum to specify the position or set the index directly.
-        @return: None
+        Parameters
+        ----------
+        history_slot: HistorySlot
+            Specifies the sender of the message. See the MessageRole Enum for possible values.
+        position: int | SlotPosition = SlotPosition.BOTTOM
+            The position of the slot in the history. Can be an integer or a SlotPosition enum value.
+            If not specified, the slot will be added at the bottom of the history.
+        Returns
+        -------
+        None
         """
         if isinstance(position, SlotPosition):
             if position == SlotPosition.BOTTOM:
@@ -525,8 +602,13 @@ class History:
     def delete_slot(self, index: int) -> None:
         """
         Deletes a slot from the history. This will remove all the messages within the slot.
-        @param index: int : The index of the slot to delete
-        @return: None
+
+        Parameters
+        ----------
+        index: The index of the slot to delete
+        Returns
+        -------
+        None
         """
         self.slots.pop(index)
 
@@ -534,11 +616,74 @@ class History:
         """
         Returns the last slot of the history. Not very useful but a good syntactic sugar to get the last item from
         the conversation
-        @return: HistorySlot
+
+        Parameters
+        ----------
+        Returns
+        -------
+        HistorySlot
+            The last slot added to the list inside the History
         """
         if len(self.slots) <= 0:
             raise IndexError("History is empty (no slots, so no messages)")
         return self.slots[-1]
+
+    def get_slot_by_index(self, index: int) -> HistorySlot:
+        """
+        Returns the slot at the given index
+
+        Parameters
+        ----------
+        index: int
+            The index of the slot to return
+        Returns
+        -------
+        HistorySlot
+            The slot at the given index
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        return self.slots[index]
+
+    def get_slot_by_id(self, id: str) -> HistorySlot:
+        """
+        Returns the slot at the given id
+
+        Parameters
+        ----------
+        id: str
+            The id of the slot to return
+        Returns
+        -------
+        HistorySlot
+            The slot at the given id
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        for slot in self.slots:
+            if slot.id == id:
+                return slot
+        raise ValueError(f"Slot with id {id} not found in history.")
+
+    def get_slot_by_message(self, message: GenericMessage) -> HistorySlot:
+        """
+        Returns the slot containing the given message
+
+        Parameters
+        ----------
+        message: GenericMessage
+            The message to search for
+        Returns
+        -------
+        HistorySlot
+            The slot containing the matching message
+        """
+        if len(self.slots) <= 0:
+            raise IndexError("History is empty (no slots, so no messages)")
+        for slot in self.slots:
+            if any(message.id == msg.id for msg in slot.get_all_messages()):
+                return slot
+        raise ValueError(f"Message with id {message.id} not found in history.")
 
     def add_message(self, message: GenericMessage) -> None:
         """

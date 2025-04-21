@@ -14,7 +14,7 @@ from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
-from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCall, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIMediaMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
+from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -202,9 +202,6 @@ class OpenAiAgent(GenericAgent):
             base_url=self.endpoint
         )
 
-
-        # @todo 2 messages de chatGPT ? Ca changera de [0]
-
         params = {
             "model": self.model_name,
             "messages": history.get_messages_as_dict(),
@@ -250,9 +247,9 @@ class OpenAiAgent(GenericAgent):
             elif self.is_tool_calling(choice):
                 print("This is a tool_calling answer.")
                 logging.debug("Response assessment is tool calling")
-                tool_calls: List[ToolCall] = []  # @todo on pourait peut etre renomer ToolCall en InferencedToolCall pour montrer que c'est le résultat d'une inférence et pas un truc qu'on donne au départ. A voir pour le nom.
+                tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
-                    tool_calls.append(ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
+                    tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
                 history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=["yacana_builtin"]))
 
