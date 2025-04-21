@@ -53,7 +53,7 @@ class Media:
                     "format": file_mime
             }}
         else:
-            raise ValueError(f"Unsupported media type: {file_type}")
+            raise ValueError(f"Unsupported media type: {main_type}")
 
     @staticmethod
     def _get_file_type(file_path: str) -> tuple[str, str]:

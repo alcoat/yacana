@@ -220,7 +220,7 @@ class GenericMessage(ABC):
             A new instance of the appropriate GenericMessage subclass.
         """
         #  Converting the role string to its matching enum
-        members["role"]: MessageRole = next((role for role in MessageRole if role.value == members["role"]), None)
+        members["role"] = next((role for role in MessageRole if role.value == members["role"]), None)
 
         cls_name = members.pop("type")
         cls = GenericMessage._registry.get(cls_name)

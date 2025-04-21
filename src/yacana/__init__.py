@@ -2,7 +2,6 @@ from .task import Task
 from .generic_agent import GenericAgent
 from .open_ai_agent import OpenAiAgent
 from .ollama_agent import OllamaAgent
-from .vllm_agent import VllmAgent
 from .agent import Agent
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, ReachedTaskCompletion
 from .group_solve import EndChatMode, EndChat, GroupSolve

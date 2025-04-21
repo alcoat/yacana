@@ -3,7 +3,7 @@ import json
 import logging
 from json import JSONDecodeError
 from openai import OpenAI, Stream
-from typing import List, Type, Any, Literal, T, Dict, Callable
+from typing import List, Mapping, Type, Any, Literal, T, Dict, Callable
 from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice, ChatCompletion
 from pydantic import BaseModel
