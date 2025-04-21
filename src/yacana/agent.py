@@ -4,6 +4,10 @@ from .generic_agent import GenericAgent
 
 
 class Agent(GenericAgent):
+    """
+    Deprecated ! Do not use !
+    Use OllamaAgent() or OpenAiAgent() instead depending of the backend you want to use.
+    """
 
     def __init__(self, *args, **kwargs) -> None:
         deprecated_message = """

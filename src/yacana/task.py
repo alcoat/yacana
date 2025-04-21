@@ -13,55 +13,59 @@ LoggerManager.set_library_log_level("httpx", "WARNING")
 
 
 class Task:
-    """The best approach to use an LLM is to define a task with a clear objective.
-    Then assign a LLM to this task so that it can try to solve it. You can also add Tools so that when the LLM starts
-    solving it gets some tools relevant to the current task. This means that tools are not specific to an agent but to
-    the task at hand. This allows more flexibility by producing less confusion to the LLM as it gets access to the tools
+    """
+    A class representing a task to be solved by an LLM agent.
+
+    The best approach to use an LLM is to define a task with a clear objective.
+    Then assign an LLM to this task so that it can try to solve it. You can also add Tools
+    so that when the LLM starts solving it gets some tools relevant to the current task.
+    This means that tools are not specific to an agent but to the task at hand. This allows
+    more flexibility by producing less confusion to the LLM as it gets access to the tools
     it needs only when faced with a task that is related.
 
-    Attributes
+    Parameters
     ----------
     prompt : str
-        The task to solve. It is the prompt given to the assigned LLM
+        The task to solve. It is the prompt given to the assigned LLM.
     agent : GenericAgent
-        The agent assigned to this task
-    json_output : bool
-        If True, will force the LLM to answer as JSON. Its using Ollama json mode for now. We shall see how to implement that on other inference backends. Either way you should ask for a JSON output in the task prompt.
-    tools : List[Tool]
-        A list of tools that the LLM will get access to when trying to solve this task. This means that tools are not bound to the LLM itself but to the task. This provides more flexibility and less confusion to the LLM as it gets access to the tools it needs in relation to the task at hand.
-    raise_when_max_tool_error_iter : bool
-        You should try/catch MaxToolErrorIter() on each call to .solve(). But if you don't want to, you can set this to False and in case there is a MaxToolErrorIter then the .solve() method will return None and won't throw. This might be cleaner to catch if you don't want to try/catch every call to .solve().  But be wary, this has not been tested extensively, yet, and is a behavior that might change in the near future.
-    llm_stops_by_itself : bool
-        Only useful when the task is part of a GroupSolve(). This signal the assigned LLM that it will have to stop talking by its onw means and is not only bound to a simple max iteration stop.
-    use_self_reflection : bool
-        Only useful when the task is part of a GroupSolve(). Allows to keep the self reflection process done by the LLM in the next GS iteration. May be useful if the LLM has problems with reasoning.
-    forget : bool
-        When this task has finished resolving and this is set to False, the Agent won't remember it happened. Useful when doing yes/no questions for routing purposes and no need to keep the answer in the history.
-    medias : List[str] | None
-        An optional list of path pointing to images on the filesystem.
+        The agent assigned to this task.
+    json_output : bool, optional
+        If True, will force the LLM to answer as JSON. Defaults to False.
+    structured_output : Type[BaseModel] | None, optional
+        The expected structured output type for the task. If provided, the LLM's response
+        will be validated against this type. Defaults to None.
+    tools : List[Tool], optional
+        A list of tools that the LLM will get access to when trying to solve this task.
+        Defaults to an empty list.
+    medias : List[str] | None, optional
+        An optional list of paths pointing to images on the filesystem. Defaults to None.
+    raise_when_max_tool_error_iter : bool, optional
+        If True, raises MaxToolErrorIter when tool errors exceed the limit. If False,
+        returns None instead. Defaults to True.
+    llm_stops_by_itself : bool, optional
+        Only useful when the task is part of a GroupSolve(). Signals the assigned LLM
+        that it will have to stop talking by its own means. Defaults to False.
+    use_self_reflection : bool, optional
+        Only useful when the task is part of a GroupSolve(). Allows keeping the self
+        reflection process done by the LLM in the next GS iteration. Defaults to False.
+    forget : bool, optional
+        When True, the Agent won't remember this task after completion. Useful for
+        routing purposes. Defaults to False.
+    streaming_callback : Callable | None, optional
+        Optional callback for streaming responses. Defaults to None.
+    runtime_config : Dict | None, optional
+        Optional runtime configuration for the task. Defaults to None.
 
-    Methods
-    ----------
-    add_tool(self, tool: Tool) -> None:
-    solve(self) -> Message | None:
+    Raises
+    ------
+    IllogicalConfiguration
+        If both tools and structured_output are provided, or if both streaming_callback
+        and structured_output are provided.
     """
 
     def __init__(self, prompt: str, agent: GenericAgent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
                  medias: List[str] | None = None, raise_when_max_tool_error_iter: bool = True,
                  llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
-        """
-        Returns a Task instance.
-        @param prompt: str: The task to solve. It is the prompt given to the assigned LLM
-        @param agent: str: The agent assigned to this task
-        @param json_output: bool: If True, will force the LLM to answer as JSON. Its using Ollama json mode for now. We shall see how to implement that on other inference backends. Either way you should ask for a JSON output in the task prompt.
-        @param structured_output : Type[BaseModel] | None : The expected structured output type for the task. If provided, the LLM's response will be validated against this type.
-        @param tools:  List[Tool]: A list of tools that the LLM will get access to when trying to solve this task. This means that tools are not bound to the LLM itself but to the task. This provides more flexibility and less confusion to the LLM as it gets access to the tools it needs in relation to the task at hand.
-        @param images: List[str] | None: An optional list of paths pointing to images on the filesystem.
-        @param raise_when_max_tool_error_iter: bool: You should try/catch MaxToolErrorIter() on each call to .solve(). But if you don't want to, you can set this to False and in case there is a MaxToolErrorIter then the .solve() method will return None and won't throw. This might be cleaner to catch if you don't want to try/catch every call to .solve().  But be wary, this has not been tested extensively, yet, and is a behavior that might change in the near future.
-        @param llm_stops_by_itself: bool: Only useful when the task is part of a GroupSolve(). This signal the assigned LLM that it will have to stop talking by its onw means and is not only bound to a simple max iteration stop.
-        @param use_self_reflection: bool: Only useful when the task is part of a GroupSolve(). Allows to keep the self reflection process done by the LLM in the next GS iteration. May be useful if the LLM has problems with reasoning.
-        @param forget: bool: When this task has finished resolving and this is set to True, the Agent won't remember it happened. Useful when doing yes/no questions for routing purposes and no need to keep the answer in the history.
-        """
         self.prompt: str = prompt
         self.agent: GenericAgent = agent
         self.json_output: bool = json_output
@@ -90,25 +94,44 @@ class Task:
     @property
     def uuid(self) -> str:
         """
-        Read only property that references the current task with a unique id
-        @return: str : A unique task id
+        Get the unique identifier for this task.
+
+        Returns
+        -------
+        str
+            A unique task identifier.
         """
         return self._uuid
 
     def add_tool(self, tool: Tool) -> None:
         """
-        Adds a Tool() to the list of tools to be used in this task. Note that is mostly syntactic sugar as you can append a tool to the member variable yourself.
-        @param tool: Tool : A tool that will be given to the LLM when it tries to solve the task
-        @return: None
+        Add a tool to the list of tools available for this task.
+
+        Parameters
+        ----------
+        tool : Tool
+            The tool to add to the task's tool list.
         """
         self.tools.append(tool)
 
     def solve(self) -> GenericMessage | None:
         """
-        This will call the assigned LLM to perform the inference on the prompt define in the task. The LLM will try to solve the task. If it has tools it will use them and multiple calls will
-        probably be made to the inference server. Yacana uses percussive maintenance to force the LLM to obey.
-        This method may raise 'MaxToolErrorIter()' if either the tool is not used correctly or if Yacana fails at calling it correctly.
-        @return: Message : The last message from the LLM
+        Execute the task using the assigned LLM agent.
+
+        This method will call the assigned LLM to perform inference on the task's prompt.
+        If tools are available, the LLM may use them, potentially making multiple calls
+        to the inference server.
+
+        Returns
+        -------
+        GenericMessage | None
+            The last message from the LLM, or None if the task failed and
+            raise_when_max_tool_error_iter is False.
+
+        Raises
+        ------
+        MaxToolErrorIter
+            If tool errors exceed the limit and raise_when_max_tool_error_iter is True.
         """
         if self.forget is True:
             self.save_history: History = copy.deepcopy(self.agent.history)
@@ -126,18 +149,9 @@ class Task:
         self._reset_agent_history()
         return answer
 
-    def _reset_agent_history(self):
+    def _reset_agent_history(self) -> None:
+        """
+        Reset the agent's history if the task is marked to be forgotten.
+        """
         if self.forget is True:
             self.agent.history = self.save_history
-
-    #def _update_tool_schema_if_openai(self):
-    #    """
-    #    Update the tool schema if the task is using an OpenAI agent as the inference server.
-    #    We do not need this schema for Ollama as it is not useful. Therefor it's the Task role to trigger the
-    #    tool's schema update only if the agent is an OpenAI agent. It's some kind of "lazy loading".
-    #    """
-    #    if isinstance(self.agent, OpenAiAgent) or isinstance(self.agent, str):  # "@todo VLLM"
-    #        for tool in self.tools:
-    #            if tool._openai_function_schema is None:
-    #                tool._function_to_json_with_pydantic()
-

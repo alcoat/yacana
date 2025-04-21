@@ -5,17 +5,47 @@ from abc import ABC, abstractmethod
 
 
 class ModelSettings(ABC):
+    """
+    Abstract base class for model settings.
+
+    This class provides a base implementation for model settings with functionality
+    for exporting settings, creating instances, and managing initial values.
+    """
 
     _registry = {}
 
     def __init__(self):
+        """
+        Initialize a new ModelSettings instance.
+
+        This constructor initializes the internal state for tracking initial values
+        of settings.
+        """
         self._initial_values = {}
 
     def __init_subclass__(cls, **kwargs):
+        """
+        Register a new subclass of ModelSettings.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments passed to the parent class.
+        """
         super().__init_subclass__(**kwargs)
         ModelSettings._registry[cls.__name__] = cls
 
     def _export(self) -> Dict:
+        """
+        Export the current settings to a dictionary.
+
+        Returns
+        -------
+        Dict
+            A dictionary containing all current settings, excluding internal
+            tracking values. The dictionary includes a 'type' field indicating
+            the class name.
+        """
         members = self.__dict__.copy()
         members["type"] = self.__class__.__name__
         members.pop("_initial_values", None)
@@ -23,35 +53,99 @@ class ModelSettings(ABC):
 
     @staticmethod
     def create_instance(members: Dict):
+        """
+        Create a new instance of a ModelSettings subclass from a dictionary.
+
+        Parameters
+        ----------
+        members : Dict
+            Dictionary containing the settings and the 'type' field indicating
+            which subclass to instantiate.
+
+        Returns
+        -------
+        ModelSettings
+            A new instance of the appropriate ModelSettings subclass.
+
+        Raises
+        ------
+        KeyError
+            If the 'type' field is missing or the class is not registered.
+        """
         cls_name = members.pop("type")
         cls = ModelSettings._registry.get(cls_name)
         return cls(**members)
 
     def get_settings(self) -> dict:
         """
-        Returns a dictionary of all the settings and their current values, excluding None values.
+        Get all current settings as a dictionary.
 
         Returns
         -------
         dict
-            A dictionary containing the machine settings that have been set.
+            A dictionary containing all non-None settings that don't start with '_'.
         """
-
         return {key: value for key, value in self.__dict__.items() if value is not None and not key.startswith("_")}
 
     def reset(self) -> None:
         """
-        Reset all properties to their initial values
-        @return: None
+        Reset all settings to their initial values.
+
+        This method restores all settings to the values they had when the instance
+        was first created.
+
+        Notes
+        -----
+        This method iterates through all initial values stored during initialization
+        and restores them to their original state.
         """
         for key, value in self._initial_values.items():
             setattr(self, f"{key}", value)
 
 
 class OllamaModelSettings(ModelSettings):
-    """Class to encapsulate the settings available into the inference server.
-    Note that these are all recognised by Ollama but may have no effect when using other inference servers.
-    
+    """
+    Settings for Ollama model configuration.
+
+    This class encapsulates all settings recognized by the Ollama inference server.
+    Note that some settings may have no effect when using other inference servers.
+
+    Parameters
+    ----------
+    mirostat : int, optional
+        Controls the model's creativity level (0: off, 1: on, 2: extra on).
+    mirostat_eta : float, optional
+        Adjusts how quickly the model learns from context (e.g., 0.1).
+    mirostat_tau : float, optional
+        Controls topic adherence (e.g., 5.0).
+    num_ctx : int, optional
+        Determines context window size (e.g., 4096).
+    num_gqa : int, optional
+        Controls parallel task handling (e.g., 8).
+    num_gpu : int, optional
+        Sets GPU utilization (e.g., 50).
+    num_thread : int, optional
+        Controls parallel processing (e.g., 8).
+    repeat_last_n : int, optional
+        Controls repetition prevention window (e.g., 64).
+    repeat_penalty : float, optional
+        Penalty for repeated content (e.g., 1.1).
+    temperature : float, optional
+        Controls response randomness (e.g., 0.7).
+    seed : int, optional
+        Random seed for reproducibility (e.g., 42).
+    stop : List[str], optional
+        Stop sequences for generation.
+    tfs_z : float, optional
+        Controls response randomness reduction (e.g., 2.0).
+    num_predict : int, optional
+        Maximum tokens to generate (e.g., 128).
+    top_k : int, optional
+        Limits token selection (e.g., 40).
+    top_p : float, optional
+        Controls token selection probability (e.g., 0.9).
+    **kwargs
+        Additional settings passed to the parent class.
     """
 
     def __init__(self,
@@ -72,24 +166,6 @@ class OllamaModelSettings(ModelSettings):
                  top_k: int = None,
                  top_p: float = None,
                  **kwargs) -> None:
-        """
-        @param mirostat: Like a volume control for the machine’s “creativity.” (Example: 0 is off, 1 is on, 2 is extra on)
-        @param mirostat_eta: Adjusts how quickly the machine learns from what it’s currently talking about. (Example: 0.1)
-        @param mirostat_tau: Helps decide if the machine should stick closely to the topic. (Example: 5.0)
-        @param num_ctx: Determines how much of the previous conversation the machine can remember at once. (Example: 4096)
-        @param num_gqa: Like tuning how many different tasks the machine can juggle at once. (Example: 8)
-        @param num_gpu: Sets how many “brains” (or parts of the computer’s graphics card) the machine uses. (Example: 50)
-        @param num_thread: Determines how many separate conversations or tasks the machine can handle at the same time. (Example: 8)
-        @param repeat_last_n: How much of the last part of the conversation to try not to repeat. (Example: 64)
-        @param repeat_penalty: A nudge to encourage the machine to come up with something new if it starts repeating itself. (Example: 1.1)
-        @param temperature: Controls how “wild” or “safe” the machine’s responses are. (Example: 0.7)
-        @param seed: Sets up a starting point for generating responses. (Example: 42)
-        @param stop: Tells the machine when to stop talking, based on certain cues or keywords. (Example: "AI assistant:")
-        @param tfs_z: Aims to reduce randomness in the machine’s responses. (Example: 2.0)
-        @param num_predict: Limits how much the machine can say in one go. (Example: 128)
-        @param top_k: Limits the machine’s word choices to the top contenders. (Example: 40)
-        @param top_p: Works with top_k to fine-tune the variety of the machine’s responses. (Example: 0.9)
-        """
         super().__init__()
         # Initialize all properties
         self.mirostat = mirostat
@@ -116,9 +192,58 @@ class OllamaModelSettings(ModelSettings):
 
 
 class OpenAiModelSettings(ModelSettings):
-    """Class to encapsulate the settings available into the inference server.
-    Note that these are all recognised by Ollama but may have no effect when using other inference servers.
+    """
+    Settings for OpenAI model configuration.
 
+    This class encapsulates all settings recognized by the OpenAI API.
+    Note that some settings may have no effect when using other inference servers.
+
+    Parameters
+    ----------
+    audio : Any, optional
+        Parameters for audio output when using audio modality.
+    frequency_penalty : float, optional
+        Penalty for token frequency (-2.0 to 2.0).
+    logit_bias : Dict, optional
+        Token bias adjustments (-100 to 100).
+    logprobs : bool, optional
+        Whether to return token log probabilities.
+    max_completion_tokens : int, optional
+        Maximum tokens to generate.
+    metadata : Dict, optional
+        Additional metadata (max 16 key-value pairs).
+    modalities : List[str], optional
+        Output types to generate (e.g., ["text", "audio"]).
+    n : int, optional
+        Number of completion choices to generate.
+    prediction : Any, optional
+        Configuration for predicted output.
+    presence_penalty : float, optional
+        Penalty for token presence (-2.0 to 2.0).
+    reasoning_effort : str, optional
+        Reasoning effort level ("low", "medium", "high").
+    seed : int, optional
+        Random seed for reproducibility.
+    service_tier : str, optional
+        Latency tier for processing ("auto" or "default").
+    stop : str | List, optional
+        Stop sequences for generation.
+    store : bool, optional
+        Whether to store completion output.
+    stream_options : Any, optional
+        Options for streaming response.
+    temperature : float, optional
+        Sampling temperature (0 to 2).
+    top_logprobs : int, optional
+        Number of top tokens to return (0 to 20).
+    top_p : float, optional
+        Nucleus sampling parameter.
+    user : str, optional
+        End-user identifier.
+    web_search_options : Any, optional
+        Web search configuration.
+    **kwargs
+        Additional settings passed to the parent class.
     """
 
     def __init__(self,
@@ -144,29 +269,6 @@ class OpenAiModelSettings(ModelSettings):
                  user: str = None,
                  web_search_options: Any = None,
                  **kwargs) -> None:
-        """
-        @param audio: Parameters for audio output. Required when audio output is requested with modalities: ["audio"]
-        @param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-        @param logit_bias: Modify the likelihood of specified tokens appearing in the completion. Accepts a JSON object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100. Mathematically, the bias is added to the logits generated by the model prior to sampling. The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection; values like -100 or 100 should result in a ban or exclusive selection of the relevant token.
-        @param logprobs: Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
-        @param max_completion_tokens: An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
-        @param metadata: Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard. Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters.
-        @param modalities: Output types that you would like the model to generate. Most models are capable of generating text, which is the default: ["text"]. The gpt-4o-audio-preview model can also be used to generate audio. To request that this model generate both text and audio responses, you can use: ["text", "audio"]
-        @param n: How many chat completion choices to generate for each input message. Note that you will be charged based on the number of generated tokens across all of the choices. Keep n as 1 to minimize costs.
-        @param prediction: Configuration for a Predicted Output, which can greatly improve response times when large parts of the model response are known ahead of time. This is most common when you are regenerating a file with only minor changes to most of the content.
-        @param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
-        @param reasoning_effort: o-series models only. Constrains effort on reasoning for reasoning models. Currently supported values are low, medium, and high. Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.
-        @param seed: This feature is in Beta. If specified, our system will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.
-        @param service_tier: Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service: 1) If set to 'auto', and the Project is Scale tier enabled, the system will utilize scale tier credits until they are exhausted. 2) If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee. 3) If set to 'default', the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee. 4) When not set, the default behavior is 'auto'. When this parameter is set, the response body will include the service_tier utilized.
-        @parama stop: Up to 4 sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.
-        @param store: Whether or not to store the output of this chat completion request for use in our model distillation or evals products.
-        @param stream_options: Options for streaming response.
-        @param temperature: What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. We generally recommend altering this or top_p but not both.
-        @param top_logprobs: An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability. logprobs must be set to true if this parameter is used.
-        @param top_p: An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered. We generally recommend altering this or temperature but not both.
-        @param user: A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
-        @param web_search_options: This tool searches the web for relevant results to use in a response.
-        """
         super().__init__()
         # Initialize all properties
         self.audio = audio
@@ -197,8 +299,16 @@ class OpenAiModelSettings(ModelSettings):
 
     def reset(self) -> None:
         """
-        Reset all properties to their initial values
-        @return: None
+        Reset all settings to their initial values.
+
+        This method restores all OpenAI model settings to the values they had when
+        the instance was first created.
+
+        Notes
+        -----
+        This method iterates through all initial values stored during initialization
+        and restores them to their original state. This includes all OpenAI-specific
+        parameters like temperature, top_p, and other generation settings.
         """
         for key, value in self._initial_values.items():
             setattr(self, f"{key}", value)

@@ -74,19 +74,3 @@ def function_to_json_with_pydantic(tool_name: str, description: str, func: Calla
     }
 
     return func_json
-
-
-# Example function
-#def get_weather(latitude: int, longitude: int, someArrayParam: list[int]):
-#    """
-#    Get current temperature for provided coordinates in Celsius.
-#    """
-#    pass  # Placeholder for demonstration
-
-
-# Convert function to JSON
-#description = "Get current temperature for provided coordinates in Celsius."
-#json_description = function_to_json_with_pydantic(get_weather, description)
-
-# Print JSON
-#print(json.dumps(json_description, indent=4))

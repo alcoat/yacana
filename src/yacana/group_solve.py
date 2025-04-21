@@ -13,24 +13,27 @@ logger = logging.getLogger(__name__)
 
 
 class EndChatMode(Enum):
-    """ All types of group chat completion.
+    """
+    All types of group chat completion.
+
     The difficulty in making agents talk to each other is not to have them talk but to have them stop talking.
     Note that only tasks that have the @llm_stops_by_itself=True are actually impacted by the mode set here.
-    Use in conjunction with EndChat()
+    Use in conjunction with EndChat().
 
     Attributes
     ----------
     ALL_TASK_MUST_COMPLETE : str
-        chat will continue going until all LLMs with @llm_stops_by_itself=True says they are finished (Set precise completion goals in the task prompt if you want this to actualy work).
+        Chat will continue going until all LLMs with @llm_stops_by_itself=True says they are finished.
+        Set precise completion goals in the task prompt if you want this to actually work.
     ONE_LAST_CHAT_AFTER_FIRST_COMPLETION : str
         One agent will have the opportunity to respond after the completion of one agent allowing it to answer one last time.
     ONE_LAST_GROUP_CHAT_AFTER_FIRST_COMPLETION : str
-        All agents will have one last table turn to speak before exiting the chat after the first completion arrives
+        All agents will have one last table turn to speak before exiting the chat after the first completion arrives.
     END_CHAT_AFTER_FIRST_COMPLETION : str
-        Immediately stops group chat after an agent has reached completion
+        Immediately stops group chat after an agent has reached completion.
     MAX_ITERATIONS_ONLY : str
-        Agents won't be asked if they have fulfilled their objectives but instead will loop until achieving max iteration. Max iteration can be set in the EndChat() class below.
-
+        Agents won't be asked if they have fulfilled their objectives but instead will loop until achieving max iteration.
+        Max iteration can be set in the EndChat() class.
     """
     ALL_TASK_MUST_COMPLETE = "ALL_TASK_MUST_COMPLETE"
     ONE_LAST_CHAT_AFTER_FIRST_COMPLETION = "ONE_LAST_CHAT_AFTER_FIRST_COMPLETION"
@@ -40,17 +43,26 @@ class EndChatMode(Enum):
 
 
 class EndChat:
-    """Defines the modality of how and when LLMs stop chatting.
+    """
+    Defines the modality of how and when LLMs stop chatting.
+
     By default, when reaching the @max_iterations limit the chat will end.
     However, if a task has set @llm_stops_by_itself=True then you can use one of the EndChatMode values to specify how
     and when the chat stops after reaching the first completion.
 
-    Attributes
+    Parameters
     ----------
     mode : EndChatMode
-        The modality to end a chat with multiple agents
-    max_iterations : int
-        The max number of iterations in a conversation. An iteration is complete when we get back to the first speaker
+        The modality to end a chat with multiple agents.
+    max_iterations : int, optional
+        The max number of iterations in a conversation. An iteration is complete when we get back to the first speaker.
+        Defaults to 5.
+
+    Raises
+    ------
+    ValueError
+        If mode is not an instance of EndChatMode.
+        If max_iterations is less than or equal to 0.
     """
     def __init__(self, mode: EndChatMode, max_iterations: int = 5):
         """
@@ -68,29 +80,42 @@ class EndChat:
 
 
 class GroupSolve:
-    """This class allows multiple agents to enter a conversation with each other. This is made different from other
-    frameworks as it is not directly the agents that enter the group chat but the tasks. Note that each task has an LLM
-    Agent bound to it though. However, this changes the approach you should have when creating the conversation prompts.
-    If you are letting LLMs decide when to stop chatting then be sure to specify precise goals. For instance 'Your task
-    is done when XXXX'. This way the LLM will reflect on that and make a decision if it has achieved its original Task.
+    """
+    This class allows multiple agents to enter a conversation with each other.
+
+    This is made different from other frameworks as it is not directly the agents that enter the group chat but the tasks.
+    Note that each task has an LLM Agent bound to it though. However, this changes the approach you should have when
+    creating the conversation prompts.
+
+    If you are letting LLMs decide when to stop chatting then be sure to specify precise goals. For instance
+    'Your task is done when XXXX'. This way the LLM will reflect on that and make a decision if it has achieved
+    its original Task.
+
     Note that dual chat is more efficient as each agent thinks it is talking to a human and this is how instruct models
     have been trained. When having a conversation with more than two agents (aka more than 2 tasks) then Yacana will
     force them into roleplay. This might degrade performance a bit but has the advantage of showing a clearer logs.
     Logging output for dual chat will be reworked shortly.
 
-    Attributes
+    Parameters
     ----------
-    tasks : list[task]
-        All tasks that must be solved during group chat
-    mode : EndChatMode
-        Defines the way to stop the conversation besides than topping max iteration
-    max_iter : int
-        Sets a max iteration counter to prevent infinite loops
+    tasks : List[Task]
+        All tasks that must be solved during group chat.
+    end_chat : EndChat
+        Defines the modality of how and when LLMs stop chatting.
+    reconcile_first_message : bool, optional
+        Should the first message from both LLMs be available to one another. Only useful in dual chat.
+        Defaults to False.
+    shift_message_owner : Task, optional
+        The Task to which the shift message should be assigned to. In the end it's rather the corresponding Agent
+        than the Task that is involved here. Defaults to None.
+    shift_message_content : str, optional
+        A custom message instead of using the opposite agent response as shift message content. Defaults to None.
 
-    Methods
-    ----------
-    solve(self) -> None
-
+    Raises
+    ------
+    ValueError
+        If tasks is None.
+        If end_chat is not an instance of EndChat.
     """
 
     def __init__(self, tasks: List[Task], end_chat: EndChat, reconcile_first_message: bool = False, shift_message_owner: Task = None, shift_message_content: str | None = None) -> None:
@@ -119,9 +144,18 @@ class GroupSolve:
 
     def solve(self) -> None:
         """
-        Starts the group chat and allows all LLMs to solve their assigned tasks. Note that 'dual chat' and '3 and more'
-        chat have a different way of starting. Refer to the official documentation.
-        @return: None
+        Starts the group chat and allows all LLMs to solve their assigned tasks.
+
+        Note that 'dual chat' and '3 and more' chat have a different way of starting.
+        Refer to the official documentation for more details.
+
+        Raises
+        ------
+        IllogicalConfiguration
+            If trying to use the same GroupSolve instance twice.
+            If using an endChatMode that requires llm_stops_by_itself=True but no tasks have it set.
+        IndexError
+            If less than 2 tasks are provided.
         """
         if self._once is True:
             raise IllogicalConfiguration("You cannot use the same GroupSolve twice. You must instantiate a new one.")
@@ -210,8 +244,20 @@ class GroupSolve:
 
     def _set_shift_message(self) -> tuple:
         """
-        Assigning shift message to either Agents and sets a custom message if user gave one. If not, the opposite agent's ANSWER will be used as PROMPT (shift message).
-        :return: (str, (Task, Task))
+        Assigns shift message to either Agents and sets a custom message if user provided one.
+        If no custom message is provided, the opposite agent's ANSWER will be used as PROMPT (shift message).
+
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - str: The last generated answer
+            - tuple[Task, Task]: The tasks run order
+
+        Raises
+        ------
+        IllogicalConfiguration
+            If shift_message_owner is not a Task present in the tasks array.
         """
         my_task1 = self.tasks[0]
         my_task2 = self.tasks[1]
@@ -239,10 +285,20 @@ class GroupSolve:
 
     def _duplicate_task(self, task_to_duplicate: Task, last_generated_answer: str) -> Task:
         """
-        Creates a new instance of an existing task. It will have the exact same configuration. However, we change the task prompt so it can solve something new.
-        @param task_to_duplicate: Task : The Task to duplicate
-        @param last_generated_answer: str : The prompt to change in the new Task
-        @return: Task : The copy of the Task with the new prompt
+        Creates a new instance of an existing task.
+        It will have the exact same configuration. However, we change the task prompt so it can solve something new.
+
+        Parameters
+        ----------
+        task_to_duplicate : Task
+            The Task to duplicate.
+        last_generated_answer : str
+            The prompt to change in the new Task.
+
+        Returns
+        -------
+        Task
+            The copy of the Task with the new prompt.
         """
         copy_task2: Task = copy.deepcopy(task_to_duplicate)
         copy_task2.prompt = last_generated_answer
@@ -250,10 +306,45 @@ class GroupSolve:
         return copy_task2
 
     def _solve_copy(self, copy_task: Task) -> str:
+        """
+        Solves a copy of a task and returns its content.
+
+        Parameters
+        ----------
+        copy_task : Task
+            The task copy to solve.
+
+        Returns
+        -------
+        str
+            The content of the solved task's response.
+        """
         last_generated_answer = copy_task.solve().content
         return last_generated_answer
 
     def _check_if_must_exit(self, exit_after_next_chat: bool, exit_after_next_group_chat: int | None, copy_task: Task) -> tuple[bool, int | None]:
+        """
+        Checks if the conversation should end based on various conditions.
+
+        Parameters
+        ----------
+        exit_after_next_chat : bool
+            Whether to exit after the next chat.
+        exit_after_next_group_chat : int | None
+            Number of group chats remaining before exit, or None if not applicable.
+        copy_task : Task
+            The current task being processed.
+
+        Returns
+        -------
+        tuple[bool, int | None]
+            Updated exit conditions after checking current state.
+
+        Raises
+        ------
+        ReachedTaskCompletion
+            If the task completion conditions are met.
+        """
         if exit_after_next_chat is True:
             raise ReachedTaskCompletion()
 
@@ -293,7 +384,19 @@ class GroupSolve:
                 logging.error("While checking if the task was completed Yacana couldn't determine if the LLM said Yes or No. As a decision must be made Yacana will assume it is a Yes. If you encounter this frequently please open an issue on the github. Thx !")
         return exit_after_next_chat, exit_after_next_group_chat
 
-    def _reconcile_history(self, cur_task: Task, user_message: GenericMessage, last_generated_answer: str):
+    def _reconcile_history(self, cur_task: Task, user_message: GenericMessage, last_generated_answer: str) -> None:
+        """
+        Adds task and answer to all agents except the one who just spoke to reconcile histories.
+
+        Parameters
+        ----------
+        cur_task : Task
+            The current task that just spoke.
+        user_message : GenericMessage
+            The user message to add to other agents' histories.
+        last_generated_answer : str
+            The last generated answer to add to other agents' histories.
+        """
         # Adding task + answer to everyone except the one who just spoke in order to reconcile histories with all other agents
         for cur_task2 in self.tasks:
             if cur_task2.uuid != cur_task.uuid:
@@ -301,6 +404,12 @@ class GroupSolve:
                 cur_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, last_generated_answer, tags=["yacana_builtin"]))
 
     def _add_roleplay_prompts(self) -> None:
+        """
+        Adds roleplay prompts to all tasks in the group.
+
+        This method sets up the roleplay context for each agent, including their speaker name
+        and the names of other participants in the conversation.
+        """
         for cur_task in self.tasks:
             other_speaker_names = ",".join(list(filter(None, [
                 f"[{cur_task2.agent.name}]" if cur_task2.uuid != cur_task.uuid else "" for cur_task2 in self.tasks])))

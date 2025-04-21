@@ -18,53 +18,67 @@ logger = logging.getLogger(__name__)
 
 
 class OllamaAgent(GenericAgent):
-    """ Representation of an LLM. This class gives ways to interact with the LLM that is being assign to it.
-    However, an agent should not be controlled directly but assigned to a Task(). When the task is marked as solved
-    then the agent will interact with the prompt inside the task and output an answer. This class is more about
+    """
+    Representation of an LLM agent that interacts with the Ollama inference server.
+
+    This class provides ways to interact with the LLM, but it should not be controlled directly.
+    Instead, it should be assigned to a Task(). When a task is required to be solved, the agent will
+    interact with the prompt inside the task and output an answer. This class is more about
     configuring the agent than interacting with it.
 
-    Attributes
+    Parameters
     ----------
     name : str
-        Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
+        Name of the agent. Use something short and meaningful that doesn't contradict the system prompt.
     model_name : str
-        Name of the LLM model that will be sent to the inference server. For instance 'llama:3.1" or 'mistral:latest' etc
-    system_prompt : str
-        Defines the way the LLM will behave. For instance set the SP to "You are a pirate" to have it talk like a pirate.
-    model_settings: ModelSettings
-        All settings that Ollama currently supports as model configuration. This needs to be tested with other inference servers. This allows modifying deep behavioral patterns of the LLM.
-    endpoint: str
-        By default will look for Ollama endpoint on your localhost. If you are using a VM with GPU then update this to the remote URL + port.
-    history: History
-        The whole conversation that is sent to the inference server. It contains the alternation of message between the prompts in the task that are given to the LLM and its answers.
+        Name of the LLM model that will be sent to the inference server (e.g., 'llama:3.1' or 'mistral:latest').
+    system_prompt : str | None, optional
+        Defines the way the LLM will behave (e.g., "You are a pirate" to have it talk like a pirate).
+        Defaults to None.
+    endpoint : str, optional
+        The Ollama endpoint URL. Defaults to "http://127.0.0.1:11434".
+    headers : dict, optional
+        Custom headers to be sent with the inference request. Defaults to None.
+    model_settings : OllamaModelSettings, optional
+        All settings that Ollama currently supports as model configuration. Defaults to None.
+    runtime_config : Dict | None, optional
+        Runtime configuration for the agent. Defaults to None.
+    **kwargs
+        Additional keyword arguments passed to the parent class.
 
-    Methods
-    ----------
-    simple_chat(custom_prompt: str = "> ", stream: bool = True) -> None
-    export_to_file(self, file_path: str) -> None
-
-    ClassMethods
-    ----------
-    get_agent_from_state(file_path: str) -> 'Agent'
+    Raises
+    ------
+    IllogicalConfiguration
+        If model_settings is not an instance of OllamaModelSettings.
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
-        """
-        Returns a new Agent
-        :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
-        :param model_name: str : Name of the LLM model that will be sent to the inference server. For instance 'llama:3.1" or 'mistral:latest' etc
-        :param system_prompt: str : Defines the way the LLM will behave. For instance set the SP to "You are a pirate" to have it talk like a pirate.
-        :param endpoint: str : By default will look for Ollama endpoint on your localhost. If you are using a VM with GPU then update this to the remote URL + port.
-        :param server_type: ServerType : The type of server to use for inference. Options are ServerType.OLLAMA, ServerType.VLLM, and ServerType.OPENAI.
-        :param headers: dict : Custom headers to be sent with the inference request. If None, an empty dictionary will be used.
-        :param model_settings: ModelSettings : All settings that Ollama currently supports as model configuration. This needs to be tested with other inference servers. This allows modifying deep behavioral patterns of the LLM.
-        """
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
+        """
+        Selects a tool from the available tools based on the LLM's choice.
+
+        Parameters
+        ----------
+        local_history : History
+            The conversation history to use for tool selection.
+        tools : List[Tool]
+            List of available tools to choose from.
+
+        Returns
+        -------
+        Tool
+            The selected tool.
+
+        Raises
+        ------
+        MaxToolErrorIter
+            If the LLM fails to choose a tool after multiple attempts.
+        """
         max_tool_name_use_iter: int = 0
         while max_tool_name_use_iter < 5:
 
@@ -112,6 +126,26 @@ class OllamaAgent(GenericAgent):
         raise MaxToolErrorIter("[ERROR] LLM did not choose a tool from the list despite multiple attempts.")
 
     def _tool_call(self, tool_training_history: History, tool: Tool) -> str:
+        """
+        Executes a tool call and handles any errors that occur.
+
+        Parameters
+        ----------
+        tool_training_history : History
+            The conversation history containing the tool call parameters.
+        tool : Tool
+            The tool to execute.
+
+        Returns
+        -------
+        str
+            The output from the tool execution.
+
+        Raises
+        ------
+        MaxToolErrorIter
+            If too many errors occur during tool execution.
+        """
         max_call_error: int = tool.max_call_error
         max_custom_error: int = tool.max_custom_error
         tool_output: str = ""
@@ -150,7 +184,21 @@ class OllamaAgent(GenericAgent):
                 self._chat(tool_training_history, fix_your_shit_prompt, json_output=True)  # @todo ici je ne comprend plus comment ca boucle
         return tool_output
 
-    def _reconcile_history_multi_tools(self, tool_training_history: History, local_history: History, tool: Tool, tool_output: str):
+    def _reconcile_history_multi_tools(self, tool_training_history: History, local_history: History, tool: Tool, tool_output: str) -> None:
+        """
+        Reconciles the history for multiple tool calls.
+
+        Parameters
+        ----------
+        tool_training_history : History
+            The history containing the tool training.
+        local_history : History
+            The local conversation history.
+        tool : Tool
+            The tool that was called.
+        tool_output : str
+            The output from the tool execution.
+        """
         # Master history + local history get fake USER prompt to ask for tool output
         self.history.add_message(OllamaUserMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", tags=["yacana_builtin"]))
         local_history.add_message(OllamaUserMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", tags=["yacana_builtin"]))
@@ -165,7 +213,21 @@ class OllamaAgent(GenericAgent):
         self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=["yacana_builtin"]))
         local_history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=["yacana_builtin"]))
 
-    def _reconcile_history_solo_tool(self, last_tool_call: str, tool_output: str, task: str, tool: Tool):
+    def _reconcile_history_solo_tool(self, last_tool_call: str, tool_output: str, task: str, tool: Tool) -> None:
+        """
+        Reconciles the history for a single tool call.
+
+        Parameters
+        ----------
+        last_tool_call : str
+            The last tool call made.
+        tool_output : str
+            The output from the tool execution.
+        task : str
+            The original task.
+        tool : Tool
+            The tool that was called.
+        """
         self.history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=["yacana_builtin"]))
         self.history.add_message(
             OllamaTextMessage(MessageRole.ASSISTANT,
@@ -176,18 +238,44 @@ class OllamaAgent(GenericAgent):
 
     def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
         """
-        When @tool.post_tool_prompt is None we only return the tool_output and nothing else. If it's not None and a prompt is given. It must clarify what to do with this tool_output. Maybe include it in a sentence or do some kind of
-        formatting with it. Whatever the prompt is, the result of this reflection WILL BE the output and not just the raw tool output. Note that this method is only called when we are wrapping things up. No more tools to call after this function !
-        @param tool: Tool : The tool containing the prompt to use for post tool calling reflection
-        @param tool_output: str : The final raw output of the tool that should have ended up the only answer
-        @param history: History : The history to write to
-        @return: str : The reflection that coming from the LLM when given the tool output and the @post_tool_prompt
+        Reflects on the tool output and potentially formats it based on a post-tool prompt.
+
+        Parameters
+        ----------
+        tool : Tool
+            The tool containing the post-tool prompt.
+        tool_output : str
+            The raw output from the tool.
+        history : History
+            The conversation history.
+
+        Returns
+        -------
+        str
+            The formatted tool output or the raw output if no post-tool prompt is provided.
+
+        Notes
+        -----
+        This method is only called when wrapping up tool calls, and no more tools will be called after it.
         """
         raise NotImplemented
         if tool.post_tool_prompt is not None:
             return self._chat(history, f"I give you the tool output between the tags <tool_output></tool_output>: <tool_output>{tool_output}</tool_output>.\nUsing this new knowledge you have this task to solve: '{tool.post_tool_prompt}'")
 
     def _use_other_tool(self, local_history: History) -> bool:
+        """
+        Determines if another tool call is needed.
+
+        Parameters
+        ----------
+        local_history : History
+            The conversation history.
+
+        Returns
+        -------
+        bool
+            True if another tool call is needed, False otherwise.
+        """
         tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
@@ -207,6 +295,36 @@ class OllamaAgent(GenericAgent):
             return False
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None) -> GenericMessage:
+        """
+        Main interaction method that handles task execution with optional tool usage.
+
+        Parameters
+        ----------
+        task : str
+            The task to execute.
+        tools : List[Tool]
+            List of available tools.
+        json_output : bool
+            Whether to output JSON.
+        structured_output : Type[BaseModel] | None
+            Optional structured output type.
+        medias : List[str] | None
+            Optional list of media files.
+        streaming_callback : Callable | None, optional
+            Optional callback for streaming responses. Defaults to None.
+        task_runtime_config : Dict | None, optional
+            Optional runtime configuration for the task. Defaults to None.
+
+        Returns
+        -------
+        GenericMessage
+            The response message from the agent.
+
+        Raises
+        ------
+        IllogicalConfiguration
+            If streaming is requested with tool usage.
+        """
         tools: List[Tool] = [] if tools is None else tools
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
@@ -300,25 +418,32 @@ class OllamaAgent(GenericAgent):
 
         return self.history.get_last_message()
 
-    def _stream(self):
+    def _stream(self) -> None:
+        """
+        Placeholder for streaming functionality.
+
+        This method is currently not implemented.
+        """
         pass
 
-    """    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
-        history_slot: HistorySlot = self._go(task=task,
-                                             history=history if save_to_history is True else copy.deepcopy(history),
-                                             json_output=(True if json_output is True else False),
-                                             structured_output=structured_output,
-                                             medias=medias,
-                                             streaming_callback=streaming_callback
-                                             )
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
-        if save_to_history is True:
-            history.add_slot(history_slot)
-        return history_slot.get_message().content
-    """
 
     @staticmethod
     def _get_expected_output_format(json_output: bool, structured_output: Type[BaseModel] | None) -> dict[str, Any] | str:
+        """
+        Determines the expected output format based on the configuration.
+
+        Parameters
+        ----------
+        json_output : bool
+            Whether to output JSON.
+        structured_output : Type[BaseModel] | None
+            Optional structured output type.
+
+        Returns
+        -------
+        dict[str, Any] | str
+            The expected output format.
+        """
         if structured_output:
             return structured_output.model_json_schema()
         elif json_output:
@@ -327,6 +452,24 @@ class OllamaAgent(GenericAgent):
             return ''
 
     def _response_to_json(self, response: Any) -> str:
+        """
+        Converts a response object to JSON format.
+
+        Parameters
+        ----------
+        response : Any
+            The response object to convert.
+
+        Returns
+        -------
+        str
+            The JSON string representation of the response.
+
+        Raises
+        ------
+        TypeError
+            If the conversion to JSON fails.
+        """
         try:
             result: Dict[str, Any] = {
                 'model': getattr(response, 'model', None),
@@ -357,6 +500,26 @@ class OllamaAgent(GenericAgent):
             raise TypeError(f"Failed to convert response to JSON: {e}")
 
     def _dispatch_chunk_if_streaming(self, completion: Mapping[str, Any] | Iterator[Mapping[str, Any]], streaming_callback: Callable | None) -> Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]:
+        """
+        Handles streaming responses by dispatching chunks to the callback.
+
+        Parameters
+        ----------
+        completion : Mapping[str, Any] | Iterator[Mapping[str, Any]]
+            The completion response or iterator.
+        streaming_callback : Callable | None
+            Optional callback for streaming responses.
+
+        Returns
+        -------
+        Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]
+            The processed response.
+
+        Raises
+        ------
+        TaskCompletionRefusal
+            If the streaming response contains no data.
+        """
         if streaming_callback is None:
             return completion
         all_chunks = ""
@@ -373,8 +536,34 @@ class OllamaAgent(GenericAgent):
                 }
             )
 
-    #def _go(self, task: str | None, history: History, json_output: bool, structured_output: Type[T] | None, medias: List[str] | None = None, streaming_callback: Callable | None = None) -> HistorySlot:
-    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output = False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str | Iterator:
+    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output = False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str:
+        """
+        Main chat method that handles communication with the Ollama server.
+
+        Parameters
+        ----------
+        history : History
+            The conversation history.
+        task : str | None
+            The task to execute.
+        medias : List[str] | None, optional
+            Optional list of media files. Defaults to None.
+        json_output : bool, optional
+            Whether to output JSON. Defaults to False.
+        structured_output : Type[T] | None, optional
+            Optional structured output type. Defaults to None.
+        save_to_history : bool, optional
+            Whether to save the response to history. Defaults to True.
+        tools : List[Tool] | None, optional
+            Optional list of tools. Defaults to None.
+        streaming_callback : Callable | None, optional
+            Optional callback for streaming responses. Defaults to None.
+
+        Returns
+        -------
+        str
+            The response content.
+        """
 
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")

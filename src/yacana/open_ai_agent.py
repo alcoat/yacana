@@ -21,48 +21,44 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAiAgent(GenericAgent):
-    """ Representation of an LLM. This class gives ways to interact with the LLM that is being assign to it.
-    However, an agent should not be controlled directly but assigned to a Task(). When the task is marked as solved
-    then the agent will interact with the prompt inside the task and output an answer. This class is more about
+    """
+    Representation of an LLM agent that interacts with the OpenAI API.
+
+    This class provides ways to interact with the LLM, but it should not be controlled directly.
+    Instead, it should be assigned to a Task(). When a task is required to be solved, the agent will
+    interact with the prompt inside the task and output an answer. This class is more about
     configuring the agent than interacting with it.
 
-    Attributes
+    Parameters
     ----------
     name : str
-        Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
+        Name of the agent. Use something short and meaningful that doesn't contradict the system prompt.
     model_name : str
-        Name of the LLM model that will be sent to the inference server. For instance 'llama:3.1" or 'mistral:latest' etc
-    system_prompt : str
-        Defines the way the LLM will behave. For instance set the SP to "You are a pirate" to have it talk like a pirate.
-    model_settings: ModelSettings
-        All settings that Ollama currently supports as model configuration. This needs to be tested with other inference servers. This allows modifying deep behavioral patterns of the LLM.
-    endpoint: str
-        By default will look for Ollama endpoint on your localhost. If you are using a VM with GPU then update this to the remote URL + port.
-    history: History
-        The whole conversation that is sent to the inference server. It contains the alternation of message between the prompts in the task that are given to the LLM and its answers.
+        Name of the LLM model that will be sent to the inference server (e.g., 'gpt-4' or 'gpt-3.5-turbo').
+    system_prompt : str | None, optional
+        Defines the way the LLM will behave (e.g., "You are a pirate" to have it talk like a pirate).
+        Defaults to None.
+    endpoint : str | None, optional
+        The OpenAI endpoint URL. Defaults to None (uses OpenAI's default endpoint).
+    api_token : str, optional
+        The API token for authentication. Defaults to an empty string.
+    headers : dict, optional
+        Custom headers to be sent with the inference request. Defaults to None.
+    model_settings : OpenAiModelSettings, optional
+        All settings that OpenAI currently supports as model configuration. Defaults to None.
+    runtime_config : Dict | None, optional
+        Runtime configuration for the agent. Defaults to None.
+    **kwargs
+        Additional keyword arguments passed to the parent class.
 
-    Methods
-    ----------
-    simple_chat(custom_prompt: str = "> ", stream: bool = True) -> None
-    export_to_file(self, file_path: str) -> None
-
-    ClassMethods
-    ----------
-    get_agent_from_state(file_path: str) -> 'Agent'
+    Raises
+    ------
+    IllogicalConfiguration
+        If model_settings is not an instance of OpenAiModelSettings.
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
                  api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
-        """
-        Returns a new Agent
-        :param name: str : Name of the agent. Can be used during conversations. Use something short and meaningful that doesn't contradict the system prompt
-        :param model_name: str : Name of the LLM model that will be sent to the inference server. For instance 'llama:3.1" or 'mistral:latest' etc
-        :param system_prompt: str : Defines the way the LLM will behave. For instance set the SP to "You are a pirate" to have it talk like a pirate.
-        :param endpoint: str : By default will look for Ollama endpoint on your localhost. If you are using a VM with GPU then update this to the remote URL + port.
-        :param api_token: str : The API token used for authentication with the inference server.
-        :param headers: dict : Custom headers to be sent with the inference request. If None, an empty dictionary will be used.
-        :param model_settings: ModelSettings : All settings that Ollama currently supports as model configuration. This needs to be tested with other inference servers. This allows modifying deep behavioral patterns of the LLM.
-        """
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
@@ -72,6 +68,19 @@ class OpenAiAgent(GenericAgent):
 
 
     def _use_other_tool(self, local_history: History) -> bool:
+        """
+        Determines if another tool call is needed.
+
+        Parameters
+        ----------
+        local_history : History
+            The conversation history.
+
+        Returns
+        -------
+        bool
+            True if another tool call is needed, False otherwise.
+        """
         tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
@@ -91,6 +100,26 @@ class OpenAiAgent(GenericAgent):
             return False
 
     def _call_openai_tool(self, tool: Tool, function_args: Dict) -> str:
+        """
+        Executes a tool call and handles any errors that occur.
+
+        Parameters
+        ----------
+        tool : Tool
+            The tool to execute.
+        function_args : Dict
+            The arguments to pass to the tool function.
+
+        Returns
+        -------
+        str
+            The output from the tool execution.
+
+        Raises
+        ------
+        MaxToolErrorIter
+            If too many errors occur during tool execution.
+        """
         max_call_error: int = tool.max_call_error
         max_custom_error: int = tool.max_custom_error
         tool_output: str = ""
@@ -124,12 +153,50 @@ class OpenAiAgent(GenericAgent):
         return tool_output
 
     def _update_tool_definition(self, tools: List[Tool]) -> None:
+        """
+        Updates the OpenAI function schema for each tool.
+
+        Parameters
+        ----------
+        tools : List[Tool]
+            List of tools to update.
+        """
         tools: List[Tool] = [] if tools is None else tools
         for tool in tools:
             if tool._openai_function_schema is None:
                 tool._function_to_json_with_pydantic()
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None) -> GenericMessage:
+        """
+        Main interaction method that handles task execution with optional tool usage.
+
+        Parameters
+        ----------
+        task : str
+            The task to execute.
+        tools : List[Tool]
+            List of available tools.
+        json_output : bool
+            Whether to output JSON.
+        structured_output : Type[BaseModel] | None
+            Optional structured output type.
+        images : List[str] | None
+            Optional list of image files.
+        streaming_callback : Callable | None, optional
+            Optional callback for streaming responses. Defaults to None.
+        task_runtime_config : Dict | None, optional
+            Optional runtime configuration for the task. Defaults to None.
+
+        Returns
+        -------
+        GenericMessage
+            The response message from the agent.
+
+        Raises
+        ------
+        ValueError
+            If a requested tool is not found in the tools list.
+        """
         self._update_tool_definition(tools)
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
@@ -148,24 +215,77 @@ class OpenAiAgent(GenericAgent):
                     #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, tags=["yacana_builtin"]))  # @todo nb 5 & 6
                 logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
                 self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
-            """
-            else:
-                print("No tool calls even though tools were provided !!")
-                self.history.add_message(Message(MessageRole.ASSISTANT))
-                # @todo c'est ici le pb. Si chatGPT a choisit de ne pas utiliser de tool finalement alors c'est juste de l'inférence classique et faut choper choice[0].content
-            """
         return self.history.get_last_message()
 
     def is_structured_output(self, choice: Choice) -> bool:
+        """
+        Checks if the choice contains structured output.
+
+        Parameters
+        ----------
+        choice : Choice
+            The choice to check.
+
+        Returns
+        -------
+        bool
+            True if the choice contains structured output, False otherwise.
+        """
         return hasattr(choice.message, "parsed") and choice.message.parsed is not None
 
     def is_tool_calling(self, choice: Choice) -> bool:
+        """
+        Checks if the choice contains tool calls.
+
+        Parameters
+        ----------
+        choice : Choice
+            The choice to check.
+
+        Returns
+        -------
+        bool
+            True if the choice contains tool calls, False otherwise.
+        """
         return hasattr(choice.message, "tool_calls") and choice.message.tool_calls is not None and len(choice.message.tool_calls) > 0
 
     def is_common_chat(self, choice: Choice) -> bool:
+        """
+        Checks if the choice contains a common chat message.
+
+        Parameters
+        ----------
+        choice : Choice
+            The choice to check.
+
+        Returns
+        -------
+        bool
+            True if the choice contains a common chat message, False otherwise.
+        """
         return hasattr(choice.message, "content") and choice.message is not None
 
-    def _dispatch_chunk_if_streaming(self, completion: ChatCompletion | Stream[ChatCompletionChunk], streaming_callback: Callable | None):
+    def _dispatch_chunk_if_streaming(self, completion: ChatCompletion | Stream[ChatCompletionChunk], streaming_callback: Callable | None) -> Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]:
+        """
+        Handles streaming responses by dispatching chunks to the callback.
+
+        Parameters
+        ----------
+        completion : ChatCompletion | Stream[ChatCompletionChunk]
+            The completion response or stream.
+        streaming_callback : Callable | None
+            Optional callback for streaming responses.
+
+        Returns
+        -------
+        Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]
+            The processed response.
+
+        Raises
+        ------
+        TaskCompletionRefusal
+            If the streaming response contains a refusal.
+        """
         if streaming_callback is None:
             return completion
         all_chunks = ""
@@ -188,6 +308,40 @@ class OpenAiAgent(GenericAgent):
 
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
                   streaming_callback: Callable | None = None) -> str | Iterator:
+        """
+        Main chat method that handles communication with the OpenAI API.
+
+        Parameters
+        ----------
+        history : History
+            The conversation history.
+        task : str | None
+            The task to execute.
+        medias : List[str] | None, optional
+            Optional list of media files. Defaults to None.
+        json_output : bool, optional
+            Whether to output JSON. Defaults to False.
+        structured_output : Type[T] | None, optional
+            Optional structured output type. Defaults to None.
+        save_to_history : bool, optional
+            Whether to save the response to history. Defaults to True.
+        tools : List[Tool] | None, optional
+            Optional list of tools. Defaults to None.
+        streaming_callback : Callable | None, optional
+            Optional callback for streaming responses. Defaults to None.
+
+        Returns
+        -------
+        str | Iterator
+            The response content or an iterator for streaming responses.
+
+        Raises
+        ------
+        ValueError
+            If an unknown response type is received from the OpenAI API.
+        TaskCompletionRefusal
+            If the model refuses to complete the task.
+        """
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
             history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=["yacana_builtin"], medias=medias, structured_output=structured_output))
@@ -268,10 +422,25 @@ class OpenAiAgent(GenericAgent):
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
         """
-        iterate over all tools, then:
-        If they are all 'optional == False' then the final mode is "required"
-        If they are all 'optional == True' then the final mode is "auto"
-        If there is a mix of required and optional, then raise IllogicalConfiguration() with a message explaining that mixing required and optional tools is not allowed for OpenAI.
+        Determines the appropriate tool choice option based on tool configurations.
+
+        Parameters
+        ----------
+        tools : List[Tool] | None
+            List of tools to analyze.
+
+        Returns
+        -------
+        Literal["none", "auto", "required"]
+            The appropriate tool choice option:
+            - "none" if no tools are provided
+            - "auto" if all tools are optional
+            - "required" if all tools are required
+
+        Raises
+        ------
+        IllogicalConfiguration
+            If there is a mix of required and optional tools.
         """
         if tools is None:
             return "none"
@@ -287,6 +456,25 @@ class OpenAiAgent(GenericAgent):
             raise IllogicalConfiguration("OpenAI does not allow mixing required and optional tools.")
 
     def _find_right_output_format(self, structured_output: Type[T] | None, json_output: bool) -> Any:
+        """
+        Determines the appropriate output format based on the configuration.
+        It determines if we want to get a structured output or a best effort JSON object.
+
+        Parameters
+        ----------
+        structured_output : Type[T] | None
+            Optional structured output type.
+        json_output : bool
+            Whether to output JSON.
+
+        Returns
+        -------
+        Any
+            The appropriate output format:
+            - structured_output if provided
+            - {"type": "json_object"} if json_output is True
+            - None otherwise
+        """
         if structured_output is not None:
             return structured_output
         elif json_output is True:

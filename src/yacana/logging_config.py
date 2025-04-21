@@ -2,6 +2,19 @@ import logging
 
 
 class ColoredFormatter(logging.Formatter):
+    """
+    A custom formatter that adds color to log messages based on their level and content.
+
+    This formatter uses ANSI escape codes to colorize log messages. Special formatting is applied
+    for different types of messages like prompts, AI responses, and tool responses.
+
+    Attributes
+    ----------
+    COLORS : dict
+        Dictionary mapping log levels to their corresponding ANSI color codes.
+    RESET : str
+        ANSI code to reset text color.
+    """
     # ANSI escape codes for colors
     COLORS = {
         'DEBUG': '\033[94m',  # Blue
@@ -14,7 +27,20 @@ class ColoredFormatter(logging.Formatter):
 
     # Magenta '\033[95m'
 
-    def format(self, record: logging.LogRecord):
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Format the log record with appropriate colors.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The log record to format.
+
+        Returns
+        -------
+        str
+            The formatted log message with appropriate color codes.
+        """
         if record.levelname == "INFO" and record.msg.startswith("[PROMPT]"):
             log_color: str = '\033[92m'  # Green
         elif record.levelname == "INFO" and record.msg.startswith("[AI_RESPONSE]"):
@@ -28,27 +54,43 @@ class ColoredFormatter(logging.Formatter):
 
 
 class LoggerManager:
-    """Allows the user to set a correct level of debug. Note that this will impact the whole program.
-    Defaults to INFO and will print most of the prompts and AI answers. Note that not all prompts are shown as some
-    multi shot prompts are sometime injected and not displayed as they are set a posteriori and showing them at this
-    exact moment would make the logs unlogical.
+    """
+    Manages logging configuration for the application.
 
-    Static methods
+    This class provides static methods to configure logging levels and handlers.
+    It allows setting different log levels for the main application and specific libraries.
+    Defaults to INFO level and includes colored output for different types of messages.
+
+    Attributes
     ----------
-    set_log_level(log_level: str | None)
-    set_library_log_level(library_name: str, log_level: str)
+    LOG_LEVEL : str
+        Default log level for the application.
+    AVAILABLE_LOG_LEVELS : list[str]
+        List of valid log levels that can be set.
     """
     LOG_LEVEL = "INFO"
     AVAILABLE_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", None]
 
     @staticmethod
-    def setup_logging(log_level: str | None = None):
+    def setup_logging(log_level: str | None = None) -> None:
         """
-        Initial setup logging level for the current program. You should not use this unless you know what you are doing. See set_log_level().
-        :param log_level: str: One of => "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL" | None
-        :return:
-        """
+        Initialize logging configuration for the application.
 
+        This method sets up the root logger with a colored formatter and configures
+        the logging level. It should not be called directly unless you know what you
+        are doing. Use set_log_level() instead for normal usage.
+
+        Parameters
+        ----------
+        log_level : str | None, optional
+            The desired log level. Must be one of: "DEBUG", "INFO", "WARNING",
+            "ERROR", "CRITICAL", or None. If None, uses the default LOG_LEVEL.
+            Defaults to None.
+
+        Notes
+        -----
+        This method is automatically called when the module is imported.
+        """
         if log_level is None:
             log_level = LoggerManager.LOG_LEVEL
         else:
@@ -69,15 +111,24 @@ class LoggerManager:
         root_logger.handlers = [handler]  # Replace default handlers with our colored handler
 
     @staticmethod
-    def set_log_level(log_level: str | None):
+    def set_log_level(log_level: str | None) -> None:
         """
-        Defines a log level to print messages to std. All levels have their specific colors. For information logs the
-        color depends on if it is a user prompt or an AI answer. Setting @log_level to None will disable logging.
+        Set the logging level for the application.
 
-        @param log_level: str | None : Level of debug shown on std. One of => "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL" | None
-        @return:
+        This method allows changing the logging level at runtime. All log levels have
+        specific colors, and for INFO level, the color depends on whether it's a user
+        prompt or an AI answer. Setting log_level to None will disable logging.
+
+        Parameters
+        ----------
+        log_level : str | None
+            The desired log level. Must be one of: "DEBUG", "INFO", "WARNING",
+            "ERROR", "CRITICAL", or None. If None, logging will be disabled.
+
+        Notes
+        -----
+        If an invalid log level is provided, the current level will be maintained.
         """
-
         if log_level is None:
             # Disable logging if the log level is None
             logging.disable(logging.CRITICAL)
@@ -89,12 +140,25 @@ class LoggerManager:
                 f"WARNING:root:Invalid value given to LOG_LEVEL. Keeping current level: {logging.getLevelName(logging.getLogger().level)}")
 
     @staticmethod
-    def set_library_log_level(library_name: str, log_level: str):
+    def set_library_log_level(library_name: str, log_level: str) -> None:
         """
-        Use to specify the log level of a specific python library as this setting is global to the whole program and can spam the output if all libraries start to log debug info.
-        :param library_name: Name of the target libray
-        :param log_level: Level of log
-        :return:
+        Set the logging level for a specific Python library.
+
+        This is useful to control logging from external libraries independently
+        from the main application logging level.
+
+        Parameters
+        ----------
+        library_name : str
+            The name of the target library.
+        log_level : str
+            The desired log level. Must be one of: "DEBUG", "INFO", "WARNING",
+            "ERROR", "CRITICAL", or None.
+
+        Notes
+        -----
+        If an invalid log level is provided, a warning will be printed but no changes
+        will be made to the library's logging configuration.
         """
         if log_level in LoggerManager.AVAILABLE_LOG_LEVELS:
             library_logger = logging.getLogger(library_name)
