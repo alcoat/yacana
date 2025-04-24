@@ -78,7 +78,7 @@ class TestStatePersistence(BaseAgentTest):
             self.assertEqual(len(messages), 1)
             
             # Test if we can continue the conversation
-            message2 = Task("What was in the image I showed you?", new_agent).solve()
+            message2 = Task("Previously I showed you an image which you described. Repeat what you said about the image.", new_agent).solve()
             self.assertTrue(
                 any(keyword in message2.content.lower() for keyword in ['food', 'burger', 'meal', 'dish', 'eating']),
                 "Response should mention food-related content"

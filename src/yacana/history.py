@@ -8,6 +8,7 @@ import importlib
 from pydantic import BaseModel
 from typing_extensions import Self
 from abc import ABC, abstractmethod
+import logging
 
 from .medias import Media
 
@@ -880,8 +881,8 @@ class HistorySlot:
         List of messages in the slot.
     raw_llm_json : str | None
         The raw LLM JSON response for the slot.
-    currently_selected_message_index : int
-        The index of the currently selected message in the slot.
+    main_message_index : int
+        The index of the main message in the slot.
     """
 
     def __init__(self, messages: List[GenericMessage] = None, raw_llm_json: str = None, **kwargs):
@@ -889,16 +890,17 @@ class HistorySlot:
         self.creation_time: int = int(kwargs.get('creation_time', datetime.now().timestamp()))
         self.messages: List[GenericMessage] = [] if messages is None else messages
         self.raw_llm_json: str = raw_llm_json
-        self.currently_selected_message_index: int = 0
+        self.main_message_index: int = 0
 
-    def set_message_index(self, message_index: int) -> None:
+    def set_main_message_index(self, message_index: int) -> None:
         """
-        Sets the index of the currently selected message in the slot.
+        A slot can contain any number of concurent message. But only one can be the main slot message and actually be part of the Hystory.
+        This method sets the index of the main message within the list of available messages in the slot.
 
         Parameters
         ----------
         message_index : int
-            The index of the message to select.
+            The index of the message to select as the main message.
 
         Raises
         ------
@@ -907,18 +909,18 @@ class HistorySlot:
         """
         if message_index >= len(self.messages):
             raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
-        self.currently_selected_message_index = message_index
+        self.main_message_index = message_index
 
-    def get_message_index(self) -> int:
+    def get_main_message_index(self) -> int:
         """
-        Returns the index of the currently selected message in the slot.
+        Returns the index of the main message in the slot.
 
         Returns
         -------
         int
             The index of the currently selected message.
         """
-        return self.currently_selected_message_index
+        return self.main_message_index
 
     def add_message(self, message: GenericMessage):
         """
@@ -950,10 +952,10 @@ class HistorySlot:
         IndexError
             If the message index is greater than the number of messages in the slot.
         """
-        if message_index is not None and message_index >= len(self.messages):
-            raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
         if message_index is None:
-            return self.messages[self.currently_selected_message_index]
+            return self.messages[self.main_message_index]
+        if message_index >= len(self.messages):
+            raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
         else:
             return self.messages[message_index]
 
@@ -988,8 +990,24 @@ class HistorySlot:
         ----------
         message_index : int
             The index of the message to delete.
+
+        Raises
+        ------
+        IndexError
+            If the message index is greater than the number of messages in the slot,
+            or if trying to delete the last message in the slot.
         """
+        if message_index >= len(self.messages):
+            raise IndexError("Index out of range: The message index is greater than the number of messages in the slot.")
+        
+        if len(self.messages) <= 1:
+            raise IndexError("Cannot delete the last message in a slot. Delete the slot from the history instead.")
+        
         self.messages.pop(message_index)
+        
+        # Always reset to the first message for simplicity
+        self.main_message_index = 0
+        logging.debug("Main message index reset to 0 after message deletion")
 
     def delete_message_by_id(self, message_id: str) -> None:
         """
@@ -999,18 +1017,44 @@ class HistorySlot:
         ----------
         message_id : str
             The ID of the message to delete.
+
+        Raises
+        ------
+        IndexError
+            If trying to delete the last message in the slot.
         """
         for i, message in enumerate(self.messages):
             if message.id == message_id:
-                self.messages.pop(i)
+                self.delete_message_by_index(i)
+                break
 
     def keep_only_selected_message(self):
         """
         Keeps only the currently selected message in the slot and deletes all the others.
+        If there's only one message, this method does nothing.
+
+        Raises
+        ------
+        IndexError
+            If there are no messages in the slot.
         """
-        for i in range(len(self.messages)):
-            if i != self.currently_selected_message_index:
-                self.messages.pop(i)
+        if len(self.messages) == 0:
+            raise IndexError("Cannot operate on an empty slot")
+            
+        if len(self.messages) == 1:
+            logging.debug("Only one message in slot, no need to keep only selected message")
+            return
+            
+        # Store the main message
+        main_message = self.messages[self.main_message_index]
+        
+        # Clear all messages
+        self.messages.clear()
+        
+        # Add back only the main message
+        self.messages.append(main_message)
+        self.main_message_index = 0
+        logging.debug("Main message index reset to 0 after keeping only selected message")
 
     @staticmethod
     def create_instance(members: Dict):
