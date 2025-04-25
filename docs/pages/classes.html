@@ -1264,14 +1264,14 @@
                         <tr>
                             <td><code>mirostat</code></td>
                             <td style="text-align:center"><span>int</span> | <span>None</span></td>
-                            <td style="text-align:center">Like a volume control for the machine’s “creativity.”
+                            <td style="text-align:center">Like a volume control for the machine's "creativity."
                                 (Example: 0 is off, 1 is on, 2 is extra on)
                             </td>
                         </tr>
                         <tr>
                             <td><code>mirostat_eta</code></td>
                             <td style="text-align:center"><span>float</span> | <span>None</span></td>
-                            <td style="text-align:center">Adjusts how quickly the machine learns from what it’s
+                            <td style="text-align:center">Adjusts how quickly the machine learns from what it's
                                 currently talking about. (Example: 0.1)
                             </td>
                         </tr>
@@ -1299,7 +1299,7 @@
                         <tr>
                             <td><code>num_gpu</code></td>
                             <td style="text-align:center"><span>int</span> | <span>None</span></td>
-                            <td style="text-align:center">Sets how many “brains” (or parts of the computer’s graphics
+                            <td style="text-align:center">Sets how many "brains" (or parts of the computer's graphics
                                 card) the machine uses. (Example: 50)
                             </td>
                         </tr>
@@ -1327,7 +1327,7 @@
                         <tr>
                             <td><code>temperature</code></td>
                             <td style="text-align:center"><span>float</span> | <span>None</span></td>
-                            <td style="text-align:center">Controls how “wild” or “safe” the machine’s responses are.
+                            <td style="text-align:center">Controls how "wild" or "safe" the machine's responses are.
                                 (Example: 0.7)
                             </td>
                         </tr>
@@ -1348,7 +1348,7 @@
                         <tr>
                             <td><code>tfs_z</code></td>
                             <td style="text-align:center"><span>float</span> | <span>None</span></td>
-                            <td style="text-align:center">Aims to reduce randomness in the machine’s responses.
+                            <td style="text-align:center">Aims to reduce randomness in the machine's responses.
                                 (Example: 2.0)
                             </td>
                         </tr>
@@ -1362,14 +1362,14 @@
                         <tr>
                             <td><code>top_k</code></td>
                             <td style="text-align:center"><span>int</span> | <span>None</span></td>
-                            <td style="text-align:center">Limits the machine’s word choices to the top contenders.
+                            <td style="text-align:center">Limits the machine's word choices to the top contenders.
                                 (Example: 40)
                             </td>
                         </tr>
                         <tr>
                             <td><code>top_p</code></td>
                             <td style="text-align:center"><span>float</span> | <span>None</span></td>
-                            <td style="text-align:center">Works with top_k to fine-tune the variety of the machine’s
+                            <td style="text-align:center">Works with top_k to fine-tune the variety of the machine's
                                 responses. (Example: 0.9)
                             </td>
                         </tr>
@@ -1403,139 +1403,41 @@
                 </form>
             </section>
 
-            <!-- Menu -->
-            <nav class="menu">
-                <header class="major">
-                    <h2>Menu</h2>
-                </header>
-                <ul>
-                    <li><a href="../index.html">Homepage</a></li>
-                    <li>
-                        <span class="opener">I. Installation</span>
-                        <ul>
-                            <li><a href="installation.html#installing-ollama">Installing Ollama</a></li>
-                            <li><a href="installation.html#choosing-an-llm-model">Choosing an LLM model</a>
-                            </li>
-                            <li><a href="installation.html#running-the-model">Running the model</a></li>
-                            <li><a href="installation.html#installing-yacana">Installing Yacana</a></li>
-                            <li><a href="installation.html#imports">Imports</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">II. Agents & Tasks</span>
-                        <ul>
-                            <li><a href="agents_and_tasks.html#creating-an-agent">Creating an Agent</a></li>
-                            <li><a href="agents_and_tasks.html#basic-roleplay">Basic roleplay</a></li>
-                            <li><a href="agents_and_tasks.html#creating-tasks">Creating Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#getting-the-result-of-a-task">Getting the
-                                result of a Task</a></li>
-                            <li><a href="agents_and_tasks.html#chaining-tasks">Chaining Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#logging-levels">Logging levels</a></li>
-                            <li><a href="agents_and_tasks.html#configuring-llms-settings">Configuring LLM's
-                                settings</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">III. Routing</span>
-                        <ul>
-                            <li><a href="routing.html#concepts-of-routing">Concepts of routing</a></li>
-                            <li><a href="routing.html#self-reflection-routing">Self-reflection routing</a>
-                            </li>
-                            <li><a href="routing.html#cleaning-history">Cleaning history</a></li>
-                            <li><a href="routing.html#routing-demonstration">Routing demonstration</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">IV. Managing Agents history</span>
-                        <ul>
-                            <li><a href="managing_agent_history.html#printing-history">Printing history</a>
-                            </li>
-                            <li><a href="managing_agent_history.html#creating-and-loading-checkpoints">Creating
-                                and loading checkpoints</a></li>
-                            <li><a href="managing_agent_history.html#Zero-prompt-shot-vs-multi-prompt-shot">Zero-prompt
-                                shot vs multi-prompt shot</a></li>
-                            <li><a href="managing_agent_history.html#saving-agent-state">Saving Agent
-                                state</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">V. Tool calling</span>
-                        <ul>
-                            <li><a href="tool_calling.html#concept-of-calling-tools">Concepts of calling
-                                tools</a></li>
-                            <li><a href="tool_calling.html#writing-good-tool-prompts">Writing good tool
-                                prompts</a></li>
-                            <li><a href="tool_calling.html#calling-a-tool">Calling a tool</a></li>
-                            <li><a href="tool_calling.html#improving-tool-calling-results">Improving
-                                tool-calling results</a></li>
-                            <li><a href="tool_calling.html#optional-tools">Optional tools</a></li>
-                            <li><a href="tool_calling.html#assigning-multiple-tools">Assigning multiple
-                                Tools</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">VI. Dual-agents chat</span>
-                        <ul>
-                            <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping
-                                chat using 'maximum iterations'</a></li>
-                            <li><a href="dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end
-                                the chat</a></li>
-                            <li><a href="dual_agents_chat.html#controlling-the-shift-message">Controlling the
-                                Shift Message</a></li>
-                            <li><a href="dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li><a href="multi_agents_chat.html#multi-agents-chat">VII. Multi-agents chat</a></li>
-                </ul>
-            </nav>
+            <!-- Menu Container -->
+            <div id="menu-container"></div>
 
+            <!-- Section -->
             <section>
                 <header class="major">
-                    <h2>Additional resources</h2>
+                    <h2>Related Youtube video</h2>
                 </header>
-                <nav class="menu">
-                    <ul>
-                        <li>
-                            <a href="classes.html">
-                                <span style="display: inline" class="icon solid fa-cog">
-                                    <span class="label">
-                                        Technical Documentation
-                                    </span>
-                                    Technical Documentation
-                                </span>
-                            </a>
-                        </li>
-
-
-                    </ul>
-                </nav>
+                <div class="mini-posts">
+                    <article>
+                        <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
+                        <p>Youtube video for this section is still under creation. Please be patient ^^</p>
+                    </article>
+                </div>
             </section>
 
-                        <!-- Section -->
+            <!-- Section -->
             <section>
                 <nav class="menu">
                     <header class="major">
                         <h2>Page menu</h2>
                     </header>
                     <ul>
-                        <li><a href="#tech-doc-agent">Agent</a></li>
-                        <li><a href="#tech-doc-groupsolve">GroupSolve</a></li>
-                        <li><a href="#tech-doc-message">Message</a></li>
-                        <li><a href="#tech-doc-history">History</a></li>
-                        <li><a href="#tech-doc-task">Tasks</a></li>
-                        <li><a href="#tech-doc-tool">Tool</a></li>
-                        <li><a href="#tech-doc-toolerror">ToolError</a></li>
-                        <li><a href="#tech-doc-maxtoolerroriter">MaxToolErrorIter</a></li>
-                        <li><a href="#tech-doc-endchatmode">EndChatMode</a></li>
-                        <li><a href="#tech-doc-endchat">EndChat</a></li>
-                        <li><a href="#tech-doc-messagerole">MessageRole</a></li>
-                        <li><a href="#tech-doc-loggermanager">LoggerManager</a></li>
-                        <li><a href="#tech-doc-modelsettings">ModelSettings</a></li>
+                        <li><a href="classes.html#agent">Agent</a></li>
+                        <li><a href="classes.html#task">Task</a></li>
+                        <li><a href="classes.html#tool">Tool</a></li>
+                        <li><a href="classes.html#message">Message</a></li>
+                        <li><a href="classes.html#history">History</a></li>
+                        <li><a href="classes.html#historyslot">HistorySlot</a></li>
+                        <li><a href="classes.html#modelsettings">ModelSettings</a></li>
+                        <li><a href="classes.html#endchat">EndChat</a></li>
+                        <li><a href="classes.html#groupsolve">GroupSolve</a></li>
                     </ul>
                 </nav>
             </section>
-
 
             <!-- Footer -->
             <footer id="footer">
@@ -1554,6 +1456,13 @@
 <script src="../assets/js/breakpoints.min.js"></script>
 <script src="../assets/js/util.js"></script>
 <script src="../assets/js/main.js"></script>
+<script src="../assets/js/menu.js"></script>
+<script>
+    // Initialize the menu when the document is ready
+    $(document).ready(function() {
+        initializeMenu();
+    });
+</script>
 
 </body>
 

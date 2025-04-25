@@ -63,13 +63,11 @@
                 <p style="text-align: center;"><img
                         src="https://github.com/user-attachments/assets/f3c45d0e-efca-4853-8237-3e56d90e1747"
                         alt="image"></p>
-                <p>The current release of Yacana was made to work with <strong>Ollama</strong>. We will extend
-                    support to all other
-                    major inference servers in the next update.<br>
-                    The first step is to install Ollama. It will be used to serve AI models with an HTTP API. <br>
-                    If your computer is performant enough you can use it to run LLMs directly on your machine.
-                    Ollama is a great inference server and the most simple to
-                    install.
+                <p>Yacana was initially designed to work with <strong>Ollama</strong>, but now supports any OpenAI-compatible endpoints like <strong>ChatGPT</strong> or <strong>VLLM</strong>.<br>
+                    This documentation serves as a comprehensive tutorial, guiding you through Yacana's features step by step.
+                    Since the programming API is identical across all inference servers, we'll primarily demonstrate examples using the Ollama agent.
+                    You can easily adapt any code snippet to work with your preferred inference server by simply <a href="other_inference_servers.html">swapping the agent type</a>.
+                    Let's start by installing Ollama on your computer, it's one of the simplest inference servers to set up.
                 </p>
                 <p>
                     Click <a href="https://ollama.com/download">here</a> to get the latest release.<br>
@@ -105,6 +103,7 @@
                         </thead>
                         <tbody>
                         <tr>
+                            @todo update with LMstudio and 4090
                             <td><strong>Out of this world</strong> <em>(RTX 4090 / 64 GB RAM)</em></td>
                             <td style="text-align:center">'llama3.1:70b' or 'mixtral:8x22b'</td>
                             <td style="text-align:center">Excellent reasoning and instruction following.</td>
@@ -178,7 +177,7 @@ pip install yacana
                     your files and clean them later. This way the IDE will have auto-completion available and will
                     help you develop 10 times faster.</p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, Tool, Message, MessageRole, GroupSolve, EndChat, EndChatMode, ModelSettings, LoggerManager, ToolError, MaxToolErrorIter
+from yacana import OllamaAgent, Task, Tool, Message, MessageRole, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, LoggerManager, ToolError, MaxToolErrorIter
 					</code></pre>
 
 
@@ -206,105 +205,8 @@ from yacana import Agent, Task, Tool, Message, MessageRole, GroupSolve, EndChat,
                 </form>
             </section>
 
-            <!-- Menu -->
-            <nav class="menu">
-                <header class="major">
-                    <h2>Menu</h2>
-                </header>
-                <ul>
-                    <li><a href="../index.html">Homepage</a></li>
-                    <li>
-                        <span class="opener">I. Installation</span>
-                        <ul>
-                            <li><a href="installation.html#installing-ollama">Installing Ollama</a></li>
-                            <li><a href="installation.html#choosing-an-llm-model">Choosing an LLM model</a>
-                            </li>
-                            <li><a href="installation.html#running-the-model">Running the model</a></li>
-                            <li><a href="installation.html#installing-yacana">Installing Yacana</a></li>
-                            <li><a href="installation.html#imports">Imports</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">II. Agents & Tasks</span>
-                        <ul>
-                            <li><a href="agents_and_tasks.html#creating-an-agent">Creating an Agent</a></li>
-                            <li><a href="agents_and_tasks.html#basic-roleplay">Basic roleplay</a></li>
-                            <li><a href="agents_and_tasks.html#creating-tasks">Creating Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#getting-the-result-of-a-task">Getting the
-                                result of a Task</a></li>
-                            <li><a href="agents_and_tasks.html#chaining-tasks">Chaining Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#logging-levels">Logging levels</a></li>
-                            <li><a href="agents_and_tasks.html#configuring-llms-settings">Configuring LLM's
-                                settings</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">III. Routing</span>
-                        <ul>
-                            <li><a href="routing.html#concepts-of-routing">Concepts of routing</a></li>
-                            <li><a href="routing.html#self-reflection-routing">Self-reflection routing</a>
-                            </li>
-                            <li><a href="routing.html#cleaning-history">Cleaning history</a></li>
-                            <li><a href="routing.html#routing-demonstration">Routing demonstration</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">IV. Managing Agents history</span>
-                        <ul>
-                            <li><a href="managing_agent_history.html#printing-history">Printing history</a>
-                            </li>
-                            <li><a href="managing_agent_history.html#creating-and-loading-checkpoints">Creating
-                                and loading checkpoints</a></li>
-                            <li><a href="managing_agent_history.html#Zero-prompt-shot-vs-multi-prompt-shot">Zero-prompt
-                                shot vs multi-prompt shot</a></li>
-                            <li><a href="managing_agent_history.html#saving-agent-state">Saving Agent
-                                state</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">V. Tool calling</span>
-                        <ul>
-                            <li><a href="tool_calling.html#concept-of-calling-tools">Concepts of calling
-                                tools</a></li>
-                            <li><a href="tool_calling.html#writing-good-tool-prompts">Writing good tool
-                                prompts</a></li>
-                            <li><a href="tool_calling.html#calling-a-tool">Calling a tool</a></li>
-                            <li><a href="tool_calling.html#improving-tool-calling-results">Improving
-                                tool-calling results</a></li>
-                            <li><a href="tool_calling.html#optional-tools">Optional tools</a></li>
-                            <li><a href="tool_calling.html#assigning-multiple-tools">Assigning multiple
-                                Tools</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">VI. Dual-agents chat</span>
-                        <ul>
-                            <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping
-                                chat using 'maximum iterations'</a></li>
-                            <li><a href="dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end
-                                the chat</a></li>
-                            <li><a href="dual_agents_chat.html#controlling-the-shift-message">Controlling the
-                                Shift Message</a></li>
-                            <li><a href="dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li><a href="multi_agents_chat.html#multi-agents-chat">VII. Multi-agents chat</a></li>
-                </ul>
-                <br>
-                <ul>
-                    <li>
-                        <a href="classes.html">
-                            <span style="display: inline" class="icon solid fa-cog">
-                                <span class="label">
-                                    Technical Documentation
-                                </span>
-                                Technical Documentation
-                            </span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+            <!-- Menu Container -->
+            <div id="menu-container"></div>
 
             <!-- Section -->
             <section>
@@ -353,6 +255,13 @@ from yacana import Agent, Task, Tool, Message, MessageRole, GroupSolve, EndChat,
 <script src="../assets/js/breakpoints.min.js"></script>
 <script src="../assets/js/util.js"></script>
 <script src="../assets/js/main.js"></script>
+<script src="../assets/js/menu.js"></script>
+<script>
+    // Initialize the menu when the document is ready
+    $(document).ready(function() {
+        initializeMenu();
+    });
+</script>
 
 </body>
 
