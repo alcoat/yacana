@@ -31,7 +31,7 @@ class BaseAgentTest(unittest.TestCase):
         # Initialize agents based on which ones are enabled
         if cls.run_ollama:
             cls.ollama_agent = OllamaAgent(
-                name="AI assistant",
+                name="Ollama AI Assistant",
                 model_name="llama3.1:8b",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
@@ -39,7 +39,7 @@ class BaseAgentTest(unittest.TestCase):
             )
             
             cls.ollama_vision_agent = OllamaAgent(
-                name="AI assistant",
+                name="Ollama Vision AI Assistant",
                 model_name="llama3.2-vision:11b",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
@@ -53,7 +53,7 @@ class BaseAgentTest(unittest.TestCase):
             
             if cls.run_openai:
                 cls.openai_agent = OpenAiAgent(
-                    name="AI assistant",
+                    name="OpenAI AI Assistant",
                     model_name="gpt-4o-mini",
                     model_settings=cls.openai_settings,
                     system_prompt="You are a helpful AI assistant",
@@ -62,7 +62,7 @@ class BaseAgentTest(unittest.TestCase):
             
             if cls.run_vllm:
                 cls.vllm_agent = OpenAiAgent(
-                    name="AI assistant",
+                    name="VLLM AI Assistant",
                     model_name="meta-llama/Llama-3.2-1B-Instruct",
                     model_settings=cls.openai_settings,
                     system_prompt="You are a helpful AI assistant",

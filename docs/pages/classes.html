@@ -626,14 +626,6 @@
                             <td style="text-align:center">The list of tools the LLM will use for solving this task.</td>
                         </tr>
                         <tr>
-                            <td><code>raise_when_max_tool_error_iter</code></td>
-                            <td style="text-align:center"><span>bool</span></td>
-                            <td style="text-align:center">If True, raises <a href="#tech-doc-maxtoolerroriter">
-                                MaxToolErrorIter()</a> after
-                                exceeding tool usage limits.
-                            </td>
-                        </tr>
-                        <tr>
                             <td><code>llm_stops_by_itself</code></td>
                             <td style="text-align:center"><span>bool</span></td>
                             <td style="text-align:center">Tells the assigned LLM to stop by itself (only for <a
@@ -712,13 +704,6 @@
                             <td><code>tools</code></td>
                             <td style="text-align:center">list[<a href="#tech-doc-tool">Tool</a>]</td>
                             <td style="text-align:center">The tools the LLM has access to for this task</td>
-                        </tr>
-                        <tr>
-                            <td><code>raise_when_max_tool_error_iter</code></td>
-                            <td style="text-align:center"><span>bool</span></td>
-                            <td style="text-align:center">Set to False if you don’t want to raise <a
-                                    href="#tech-doc-maxtoolerroriter">MaxToolErrorIter()</a>
-                            </td>
                         </tr>
                         <tr>
                             <td><code>llm_stops_by_itself</code></td>

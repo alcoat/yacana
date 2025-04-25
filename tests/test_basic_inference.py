@@ -2,6 +2,7 @@ import unittest
 import os
 from tests.test_base import BaseAgentTest
 from yacana import Task, Message, MessageRole, History, HistorySlot, OpenAiModelSettings
+from yacana.generic_agent import GenericAgent
 
 class TestBasicInference(BaseAgentTest):
     """Test basic inference capabilities of all agent types."""
@@ -139,24 +140,89 @@ class TestBasicInference(BaseAgentTest):
             settings = OpenAiModelSettings(temperature=0.1, n=2)
             self.openai_agent.model_settings = settings
             task = Task("Count from 1 to 3", self.openai_agent)
-            slot = task.solve()
-            self.assertGreater(len(slot.messages), 1)
-            for message in slot.messages:
-                self.assertIsInstance(message.content, str)
-                self.assertGreater(len(message.content), 0)
+            task.solve()  # We don't need the returned message since we'll check the slot
+            
+            # Check that we got the correct number of messages in the history slot
+            slot = self.openai_agent.history.get_last_slot()
+            self.assertEqual(len(slot.messages), 2, "Expected 2 messages in the slot")
+            
+            # Validate each message's content
+            for msg in slot.messages:
+                self.assertTrue(
+                    any(str(i) in msg.content for i in range(1, 4)),
+                    f"Expected numbers 1-3 in response, got: {msg.content}"
+                )
         
         # Test VLLM agent (which also supports multiple responses)
         if self.run_vllm:
             settings = OpenAiModelSettings(temperature=0.1, n=2)
             self.vllm_agent.model_settings = settings
             task = Task("Count from 1 to 3", self.vllm_agent)
-            slot = task.solve()
-            self.assertGreater(len(slot.messages), 1)
-            for message in slot.messages:
-                self.assertIsInstance(message.content, str)
-                self.assertGreater(len(message.content), 0)
+            task.solve()  # We don't need the returned message since we'll check the slot
+            
+            # Check that we got the correct number of messages in the history slot
+            slot = self.vllm_agent.history.get_last_slot()
+            self.assertEqual(len(slot.messages), 2, "Expected 2 messages in the slot")
+            
+            # Validate each message's content
+            for msg in slot.messages:
+                self.assertTrue(
+                    any(str(i) in msg.content for i in range(1, 4)),
+                    f"Expected numbers 1-3 in response, got: {msg.content}"
+                )
         
         # Note: Ollama doesn't support multiple responses (n parameter), so we skip it
+
+    def test_forget_history(self):
+        """Test that the forget=True option restores history to its initial state."""
+        def test_agent_forget(agent: GenericAgent):
+            # Add some initial messages to the history
+            initial_messages = [
+                Message(MessageRole.USER, "Hello"),
+                Message(MessageRole.ASSISTANT, "Hi there!")
+            ]
+            for msg in initial_messages:
+                agent.history.add_message(msg)
+            
+            # Store the initial history state
+            initial_history_length = len(agent.history.slots)
+            
+            # Create and solve a task with forget=True
+            task = Task("Count from 1 to 3", agent, forget=True)
+            task.solve()
+            
+            # Verify that the history was restored to its initial state
+            self.assertEqual(
+                len(agent.history.slots),
+                initial_history_length,
+                f"{agent.name} history length should be restored to initial state"
+            )
+            
+            # Verify the content of the history matches the initial state
+            # Skip the first slot (system prompt) and check the rest
+            for i, slot in enumerate(agent.history.slots[1:], start=1):
+                self.assertEqual(
+                    slot.get_message().content,
+                    initial_messages[i-1].content,
+                    f"{agent.name} message {i} content should match initial state"
+                )
+                self.assertEqual(
+                    slot.get_message().role,
+                    initial_messages[i-1].role,
+                    f"{agent.name} message {i} role should match initial state"
+                )
+        
+        # Test OpenAI agent
+        if self.run_openai:
+            test_agent_forget(self.openai_agent)
+        
+        # Test VLLM agent
+        if self.run_vllm:
+            test_agent_forget(self.vllm_agent)
+        
+        # Test Ollama agent
+        if self.run_ollama:
+            test_agent_forget(self.ollama_agent)
 
     @classmethod
     def setUpClass(cls):
