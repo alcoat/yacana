@@ -65,6 +65,8 @@ class GenericAgent(ABC):
         Runtime configuration for tasks.
     history : History
         The conversation history.
+    _tags : List[str]
+        Internal list of tags.
     """
 
     _registry = {}
@@ -120,9 +122,9 @@ class GenericAgent(ABC):
         self.api_token: str = api_token
         self.headers = {} if headers is None else headers
         self.endpoint: str | None = endpoint
-        #self.streaming_callback: Callable | None = streaming_callback
         self.runtime_config = runtime_config if runtime_config is not None else {}
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
+        self._tags: List[str] = []
 
         self.history: History = history if history is not None else History()
         if self.system_prompt is not None and history is None:
@@ -162,6 +164,7 @@ class GenericAgent(ABC):
             If True, removes headers from the exported data. Defaults to False.
         """
         members_as_dict = self.__dict__.copy()
+        members_as_dict = {k: v for k, v in members_as_dict.items() if not k.startswith('_')}
         members_as_dict["type"] = self.__class__.__name__
         members_as_dict["model_settings"] = self.model_settings._export()
         members_as_dict["history"] = self.history._export()
@@ -207,7 +210,7 @@ class GenericAgent(ABC):
         return cls(**members)
 
     @abstractmethod
-    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None, task_runtime_config: Dict | None) -> GenericMessage:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None, task_runtime_config: Dict | None, tags: List[str] | None) -> GenericMessage:
         """
         Abstract method to start the inference using given parameters.
 
@@ -227,7 +230,8 @@ class GenericAgent(ABC):
             Optional callback for streaming responses.
         task_runtime_config : Dict | None
             Optional runtime configuration for the task.
-
+        tags : List[str] | None
+            Optional list of tags.
         Returns
         -------
         GenericMessage

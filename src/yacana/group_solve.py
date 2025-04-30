@@ -8,6 +8,7 @@ from .generic_agent import GenericMessage, MessageRole
 from .history import Message
 from .task import Task
 from .exceptions import ReachedTaskCompletion, IllogicalConfiguration
+from .constants import BUILTIN_TAG
 
 logger = logging.getLogger(__name__)
 
@@ -183,14 +184,14 @@ class GroupSolve:
 
                 # Giving prompt and AI output of first speaker to the second speaker
                 if self.reconcile_first_message is True:
-                    my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.prompt, tags=["yacana_builtin"]))
-                    my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last_message().content, tags=["yacana_builtin"]))
+                    my_task2.agent.history.add_message(Message(MessageRole.USER, my_task1.prompt, tags=[BUILTIN_TAG]))
+                    my_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task1.agent.history.get_last_message().content, tags=[BUILTIN_TAG]))
                 # Second speaker (has the history of the first speaker)
                 my_task2.solve()
 
                 if self.reconcile_first_message is True:
-                    my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.prompt, tags=["yacana_builtin"]))
-                    my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last_message().content, tags=["yacana_builtin"]))
+                    my_task1.agent.history.add_message(Message(MessageRole.USER, my_task2.prompt, tags=[BUILTIN_TAG]))
+                    my_task1.agent.history.add_message(Message(MessageRole.ASSISTANT, my_task2.agent.history.get_last_message().content, tags=[BUILTIN_TAG]))
 
                 # (str, (TaskX, TaskY))
                 last_generated_answer, tasks_run_order = self._set_shift_message()
@@ -218,7 +219,7 @@ class GroupSolve:
             for cur_task in self.tasks:
                 # Changing the way the task is written to match the multi-agent format
                 user_message: GenericMessage = Message(MessageRole.USER,
-                                                f"[TaskManager]: {cur_task.agent.name}: this is your main task: `" + cur_task.prompt + "`", tags=["yacana_builtin"])
+                                                f"[TaskManager]: {cur_task.agent.name}: this is your main task: `" + cur_task.prompt + "`", tags=[BUILTIN_TAG])
                 copy_task: Task = self._duplicate_task(cur_task, user_message.content)
                 last_generated_answer: str = self._solve_copy(copy_task)
                 self._reconcile_history(cur_task, user_message, last_generated_answer)
@@ -230,7 +231,7 @@ class GroupSolve:
                 while self.max_iter > 0 and (exit_after_next_group_chat is None or exit_after_next_group_chat > 0):
                     for cur_task in self.tasks:
                         user_message: GenericMessage = Message(MessageRole.USER,
-                                                        f"[TaskManager]: {cur_task.agent.name} it's your turn to speak now.", tags=["yacana_builtin"])
+                                                        f"[TaskManager]: {cur_task.agent.name} it's your turn to speak now.", tags=[BUILTIN_TAG])
                         copy_task: Task = self._duplicate_task(cur_task, user_message.content)
                         last_generated_answer: str = self._solve_copy(copy_task)
                         self._reconcile_history(cur_task, user_message, last_generated_answer)
@@ -401,7 +402,7 @@ class GroupSolve:
         for cur_task2 in self.tasks:
             if cur_task2.uuid != cur_task.uuid:
                 cur_task2.agent.history.add_message(user_message)
-                cur_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, last_generated_answer, tags=["yacana_builtin"]))
+                cur_task2.agent.history.add_message(Message(MessageRole.ASSISTANT, last_generated_answer, tags=[BUILTIN_TAG]))
 
     def _add_roleplay_prompts(self) -> None:
         """
@@ -420,9 +421,9 @@ class GroupSolve:
                                                      f"message'.\n" + f"The other speakers are: "
                                                                       f"{other_speaker_names}.\nYour "
                                                                       f"speaker name is [{cur_task.agent.name}].\nI "
-                                                                      f"will give you your task in the next message.", tags=["yacana_builtin"]))
+                                                                      f"will give you your task in the next message.", tags=[BUILTIN_TAG]))
             cur_task.agent.history.add_message(Message(MessageRole.ASSISTANT,
                                                      f"[{cur_task.agent.name}]: Received and acknowledged. I'm ready "
                                                      f"to execute my tasks as {cur_task.agent.name}. Please proceed "
-                                                     f"with my assignment.", tags=["yacana_builtin"]))
+                                                     f"with my assignment.", tags=[BUILTIN_TAG]))
 

@@ -13,9 +13,10 @@ from openai.types.chat import ChatCompletionChunk
 from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict
-from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
+from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
 from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
+from .constants import BUILTIN_TAG, PROMPT_TAG, RESPONSE_TAG
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +86,8 @@ class OpenAiAgent(GenericAgent):
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
 
         # Syncing with global history
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=["yacana_builtin"]))
-        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, tags=["yacana_builtin"]))
+        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=self._tags))
+        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, tags=self._tags))
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
@@ -133,7 +134,7 @@ class OpenAiAgent(GenericAgent):
                     tool_output = str(tool_output)
                 logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")
                 break
-            except (ToolError, TypeError, JSONDecodeError) as e:  # @todo catcher plus large ?
+            except (ToolError, TypeError, JSONDecodeError) as e:
                 if type(e) is ToolError or type(e) is JSONDecodeError:
                     logging.warning(f"Tool '{tool.tool_name}' raised an error\n")
                     max_custom_error -= 1
@@ -166,7 +167,7 @@ class OpenAiAgent(GenericAgent):
             if tool._openai_function_schema is None:
                 tool._function_to_json_with_pydantic()
 
-    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None) -> GenericMessage:
+    def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
         Main interaction method that handles task execution with optional tool usage.
 
@@ -186,7 +187,8 @@ class OpenAiAgent(GenericAgent):
             Optional callback for streaming responses. Defaults to None.
         task_runtime_config : Dict | None, optional
             Optional runtime configuration for the task. Defaults to None.
-
+        tags : List[str] | None, optional
+            Optional list of tags. Defaults to None.
         Returns
         -------
         GenericMessage
@@ -197,10 +199,11 @@ class OpenAiAgent(GenericAgent):
         ValueError
             If a requested tool is not found in the tools list.
         """
+        self._tags = tags if tags is not None else []
         self._update_tool_definition(tools)
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
-        if len(tools) == 0:  # @todo implicitement si tu mets des tools du coup ca coupe l'herbe sous le pied à l'image car ca n'ira pas là. Pour le moment les 2 sont mutuellement exclusif.
+        if len(tools) == 0:
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         elif len(tools) > 0:
             self._chat(self.history, task, medias=images, json_output=json_output, structured_output=structured_output, tools=tools)
@@ -208,11 +211,10 @@ class OpenAiAgent(GenericAgent):
                 for tool_call in self.history.get_last_message().tool_calls:
                     tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
                     if tool is None:
-                        raise ValueError(f"Tool {tool_call.name} not found in tools list")  # @todo Autre chose qu'un valueError, genre une classe custom ?
+                        raise ValueError(f"Tool {tool_call.name} not found in tools list")
                     print("found ", tool.tool_name)
                     tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
-                    self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=["yacana_builtin"]))
-                    #self.history.add_message(GenericMessage(MessageRole.TOOL, tool_output, tool_call_id=tool_call.call_id, tags=["yacana_builtin"]))  # @todo nb 5 & 6
+                    self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=self._tags))
                 logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
                 self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         return self.history.get_last_message()
@@ -344,7 +346,7 @@ class OpenAiAgent(GenericAgent):
         """
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=["yacana_builtin"], medias=medias, structured_output=structured_output))
+            history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
@@ -369,7 +371,6 @@ class OpenAiAgent(GenericAgent):
         }
         print("tool choice = ", tool_choice_option)
         print("----")
-        #print("current params = ", json.dumps(params, indent=2))
         print("params = ", params)
         print("----")
 
@@ -392,27 +393,24 @@ class OpenAiAgent(GenericAgent):
         for choice in response.choices:
 
             if self.is_structured_output(choice):
-                print("This is a structured_output answer.")
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=["yacana_builtin"]))
+                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=[BUILTIN_TAG, RESPONSE_TAG]))
 
             elif self.is_tool_calling(choice):
-                print("This is a tool_calling answer.")
                 logging.debug("Response assessment is tool calling")
                 tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=["yacana_builtin"]))
+                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=[BUILTIN_TAG, RESPONSE_TAG]))
 
             elif self.is_common_chat(choice):
-                print("this is a classic chat answer.")
                 logging.debug("Response assessment is classic chat answer")
-                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=["yacana_builtin"]))
+                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=[BUILTIN_TAG, RESPONSE_TAG]))
             else:
-                raise ValueError("Unknown response from OpenAI API")  # @todo error custom
+                raise UnknownResponseFromLLM("Unknown response from OpenAI API")
 
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
         if save_to_history is True:

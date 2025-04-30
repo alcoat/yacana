@@ -7,6 +7,16 @@ from yacana.generic_agent import GenericAgent
 class TestBasicInference(BaseAgentTest):
     """Test basic inference capabilities of all agent types."""
 
+    def setUp(self):
+        """Clean up agent histories before each test."""
+        super().setUp()
+        if self.run_ollama:
+            self.ollama_agent.history.clean()
+        if self.run_openai:
+            self.openai_agent.history.clean()
+        if self.run_vllm:
+            self.vllm_agent.history.clean()
+
     def test_simple_completion(self):
         """Test basic text completion with all agent types."""
         prompt = "Count from 1 to 5 (no additionnal text, numbers only):"
@@ -132,6 +142,99 @@ class TestBasicInference(BaseAgentTest):
         # Test non-strict tag matching
         weather_messages = history.get_messages_by_tags(["weather", "nonexistent"], strict=False)
         self.assertEqual(len(weather_messages), expected_messages)
+
+    def test_tag_matching_modes(self):
+        """Test the different tag matching modes of get_messages_by_tags."""
+        history = History()
+        
+        # Create messages with different tag combinations
+        message1 = Message(MessageRole.USER, "Message 1", tags=["tag1"])
+        message2 = Message(MessageRole.USER, "Message 2", tags=["tag1", "tag2"])
+        message3 = Message(MessageRole.USER, "Message 3", tags=["tag2", "tag3"])
+        message4 = Message(MessageRole.USER, "Message 4", tags=["tag1", "tag2", "tag3"])
+        
+        # Add messages to history
+        history.add_message(message1)
+        history.add_message(message2)
+        history.add_message(message3)
+        history.add_message(message4)
+        
+        # Test non-strict mode (default) - should match ANY of the specified tags
+        # Test with single tag
+        messages = history.get_messages_by_tags(["tag1"])
+        self.assertEqual(len(messages), 3)  # Should match message1, message2, message4
+        self.assertIn(message1, messages)
+        self.assertIn(message2, messages)
+        self.assertIn(message4, messages)
+        self.assertNotIn(message3, messages)
+        
+        # Test with multiple tags in non-strict mode
+        messages = history.get_messages_by_tags(["tag1", "tag3"])
+        self.assertEqual(len(messages), 4)  # Should match all messages except those with no matching tags
+        self.assertIn(message1, messages)
+        self.assertIn(message2, messages)
+        self.assertIn(message3, messages)
+        self.assertIn(message4, messages)
+        
+        # Test strict mode - should match messages that have ALL specified tags
+        # Test with single tag (should behave same as non-strict)
+        messages = history.get_messages_by_tags(["tag1"], strict=True)
+        self.assertEqual(len(messages), 3)  # Should match message1, message2, message4
+        self.assertIn(message1, messages)
+        self.assertIn(message2, messages)
+        self.assertIn(message4, messages)
+        self.assertNotIn(message3, messages)
+        
+        # Test with multiple tags in strict mode
+        messages = history.get_messages_by_tags(["tag1", "tag2"], strict=True)
+        self.assertEqual(len(messages), 2)  # Should match only message2 and message4
+        self.assertIn(message2, messages)
+        self.assertIn(message4, messages)
+        self.assertNotIn(message1, messages)
+        self.assertNotIn(message3, messages)
+        
+        # Test with non-existent tag
+        messages = history.get_messages_by_tags(["nonexistent"], strict=True)
+        self.assertEqual(len(messages), 0)
+        
+        # Test with combination of existing and non-existent tags
+        messages = history.get_messages_by_tags(["tag1", "nonexistent"], strict=True)
+        self.assertEqual(len(messages), 0)
+        
+        # Test with empty tag list
+        messages = history.get_messages_by_tags([], strict=True)
+        self.assertEqual(len(messages), 4)  # Should match all messages when no tags specified
+
+    def test_builtin_tags(self):
+        """Test the builtin tag system (yacana_builtin, yacana_prompt, yacana_response)."""
+        # Create a task with a custom tag
+        Task("Count from 1 to 3", self.ollama_agent, tags=["custom_tag"]).solve()
+        
+        # Get the history
+        history = self.ollama_agent.history
+        
+        # Test getting prompt messages
+        prompt_messages = history.get_messages_by_tags(["yacana_prompt"])
+        self.assertEqual(len(prompt_messages), 1, "Should find exactly one prompt message")
+        self.assertEqual(prompt_messages[0].role, MessageRole.USER, "Prompt message should be from user")
+        
+        # Test getting response messages
+        response_messages = history.get_messages_by_tags(["yacana_response"])
+        self.assertEqual(len(response_messages), 1, "Should find exactly one response message")
+        self.assertEqual(response_messages[0].role, MessageRole.ASSISTANT, "Response message should be from assistant")
+        
+        # Test getting both messages using non-strict matching with both tags
+        all_messages = history.get_messages_by_tags(["yacana_prompt", "yacana_response"], strict=False)
+        self.assertEqual(len(all_messages), 2, "Should find both prompt and response messages")
+        
+        # Verify the custom tag is also present
+        custom_tag_messages = history.get_messages_by_tags(["custom_tag"])
+        self.assertEqual(len(custom_tag_messages), 1, "Should find the message with custom tag")
+        self.assertEqual(custom_tag_messages[0].role, MessageRole.USER, "Custom tag should be on user message")
+        
+        # Verify builtin tag is present on all messages
+        builtin_messages = history.get_messages_by_tags(["yacana_builtin"])
+        self.assertEqual(len(builtin_messages), 2, "Should find both messages with builtin tag")
 
     def test_multiple_responses(self):
         """Test getting multiple responses from the model."""

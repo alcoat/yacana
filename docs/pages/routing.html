@@ -66,7 +66,7 @@
                     local LLMs that don't have the power to solve all Tasks with only one prompt. You must create an
                     AI workflow in advance that will go forward step by step and converge to some expected result.
                     AI allows you to deal with some level of unknown but you can't expect having a master brain
-                    (like in crewAI) that distributes tasks to agents and achieves an expected result. It's
+                    (like in crewAI + chatGPT) that distributes tasks to agents and achieves an expected result. It's
                     IMPOSSIBLE with local LLMs. They are too dumb! Therefore they need you to help them along their
                     path. This is why LangGraph works well with local LLMs and Yacana does too. You should create
                     workflows and when conditions are met switch from one branch to another, treating more
@@ -74,9 +74,9 @@
                 <hr/>
                 <p>The most common routing mechanic is "yes" / "no". Depending on the result, your program can do
                     different things next. Let's see an example: </p>
-                <pre><code class="language-python">from yacana import Agent, Task
+                <pre><code class="language-python">from yacana import OllamaAgent, Task
 
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 # Let's invent a question about 'plants'
 question: str = "Why do leaves fall in autumn ?"
@@ -114,8 +114,8 @@ Question is about plants
                             idea, I say yes"</i>.
                         Substring match will match <i>"yes"</i> anywhere in the LLM answer.<br>
                         But what if you looked for <i>"no"</i>
-                        first and the LLM generated <i>"Not sure but I would say yes"</i>?.<br>
-                        Because we search for substrings
+                        instead and the LLM generated <i>"Not sure but I would say yes"</i> ? 🤔<br>
+                        => Because we search for substrings
                         the condition would match the <i>"no"</i> part of the word <i>"Not"</i> even though the LLM
                         said <i>yes</i>.<br>
                         We could use regexe to fix this but it's easier to just start the condition by looking for
@@ -139,7 +139,7 @@ Question is about plants
                 </ol>
                 <p class="icon solid fa-info-circle"> This is all basic prompt engineering. If you wish to build an
                     app with local models you will
-                    definitely have to learn those tricks. LLMs are unpredictable. It's why we built them. </p>
+                    definitely have to learn those tricks. LLMs are unpredictable.</p>
 
                 <hr class="major"/>
 
@@ -159,10 +159,10 @@ router_answer: str = Task(f"To summarize in one word, was the question about pla
                 <p>We added one more Task that executes BEFORE the router. </p>
                 <p>You should get this type of output:</p>
                 <pre><code class="text-output">
-INFO: [PROMPT]: Is the following question about plants ? <question>Why do leaves fall in autumn ?</question>
+INFO: [PROMPT][To: AI assistant]: Is the following question about plants ? <question>Why do leaves fall in autumn ?</question>
 Explain your reasoning
 
-INFO: [AI_RESPONSE]: A great question!
+INFO: [AI_RESPONSE][From: AI assistant]: A great question!
 
 Yes, I believe this question is indeed about plants. Specifically, it's related to the fascinating process of leaf senescence and abscission that occurs during autumn (or fall) in many plant species.
 
@@ -174,9 +174,9 @@ Here's why:
 
 Given these cues, I'm confident that the question is about plant biology, specifically the behavior of leaves during autumn.
 
-INFO: [PROMPT]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT][To: AI assistant]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
 
-INFO: [AI_RESPONSE]: Yes
+INFO: [AI_RESPONSE][From: AI assistant]: Yes
 Question is about plants
 </code></pre>
                 <br>
@@ -188,22 +188,21 @@ Question is about plants
                         generate a logical answer. Note that if the model is bad at reasoning or makes a mistake
                         during this step it may result in extremely bad situations. But fear not, failsafes can be
                         built to limit bad reasoning. For instance, having another LLM check the logic and interact
-                        with the original Agent (see GroupSolve later on) to show it its mistake. You could also
+                        with the original Agent (see <a href="dual_agents_chat.html">GroupSolve</a> later on) to show it its mistake. You could also
                         give tools to the Agent that will help it achieve the truth and not rely solely on his
                         reasoning abilities (see Tools later on).
                     </li>
                     <li><strong>Making it two shots</strong>: Now that we have 2 Tasks instead of one, the second
-                        one only focuses on one subtask: <i>"yes"</i> or <i>"no"</i> interpretation of the result of
-                        Task1. Cutting
+                        one can focus on its subtask, choosing between <i>"yes"</i> or <i>"no"</i>. Cutting
                         objectives in multiple sub-tasks gives better performance. This why using an agentic
-                        framework is great but it's also why it's consuming a lot of tokens and having "free to run"
+                        framework is great but it's also why it consumes a lot of tokens and having "free"
                         local LLMs is great!
                     </li>
                 </ol>
                 <p>Full code:</p>
-                <pre><code class="language-python">from yacana import Agent, Task
+                <pre><code class="language-python">from yacana import OllamaAgent, Task
 
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 # Let's invent a question about 'plants'
 question: str = "Why do leaves fall in autumn ?"
@@ -257,10 +256,10 @@ router_answer: str = Task(f"To summarize in one word, was the question about pla
                         alt="plant1B"/></p>
                 <p>Read from bottom ⬇️ to top ⬆️. (Though, the Agent and the question variables are defined globally
                     at the top)</p>
-                <pre><code class="language-python">from yacana import Agent, Task
+                <pre><code class="language-python">from yacana import OllamaAgent, Task
 
 # Declare agent
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 
 # Asking a question
@@ -351,10 +350,10 @@ question: str = "Why do leaves fall in autumn ?"
 						</code></pre>
                 <br>
                 <p>▶️ Outputs :</p>
-                <pre><code class="text-output">INFO: [PROMPT]: Is the following question about plants ? &#60;question&#62;Why do leaves fall in autumn ?&#60;/question&#62;
+                <pre><code class="text-output">INFO: [PROMPT][To: AI assistant]: Is the following question about plants ? &#60;question&#62;Why do leaves fall in autumn ?&#60;/question&#62;
 Explain your reasoning.
 
-INFO: [AI_RESPONSE]: A great question!
+INFO: [AI_RESPONSE][From: AI assistant]: A great question!
 
 Yes, I believe this question is indeed about plants! Here's why:
 
@@ -369,25 +368,25 @@ So, if I had to answer this question, I would explain that leaves fall in autumn
 
 These factors collectively contribute to the shedding of leaves in autumn, a natural process that allows plants to conserve energy and resources during periods of reduced growth.
 
-INFO: [PROMPT]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT][To: AI assistant]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
 
-INFO: [AI_RESPONSE]: Yes
+INFO: [AI_RESPONSE][From: AI assistant]: Yes
 Question is about plants !
 
-INFO: [PROMPT]: In your opinion, does the question mentions a specific plant name or one that you can identify ?
+INFO: [PROMPT][To: AI assistant]: In your opinion, does the question mentions a specific plant name or one that you can identify ?
 
-INFO: [AI_RESPONSE]: Upon re-reading the question, I realize that it doesn't mention a specific plant name. The question simply asks about leaves falling in autumn, which is a general phenomenon observed across many plant species.
+INFO: [AI_RESPONSE][From: AI assistant]: Upon re-reading the question, I realize that it doesn't mention a specific plant name. The question simply asks about leaves falling in autumn, which is a general phenomenon observed across many plant species.
 
 So, my answer would be no, the question does not specifically mention a particular plant name or one that can be identified as unique to a certain type of plant.
 
-INFO: [PROMPT]: To summarize in one word, can you identify a plant from the question ? Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT][To: AI assistant]: To summarize in one word, can you identify a plant from the question ? Answer ONLY by 'yes' or 'no'.
 
-INFO: [AI_RESPONSE]: no
+INFO: [AI_RESPONSE][From: AI assistant]: no
 No specific plant specification was given. I'll just answer your question then.
 
-INFO: [PROMPT]: It is now time to answer the question itself. The question was Why do leaves fall in autumn ?. Answer it.
+INFO: [PROMPT][To: AI assistant]: It is now time to answer the question itself. The question was Why do leaves fall in autumn ?. Answer it.
 
-INFO: [AI_RESPONSE]: I'd be delighted to!
+INFO: [AI_RESPONSE][From: AI assistant]: I'd be delighted to!
 
 Leaves fall in autumn due to a combination of factors that trigger a series of physiological changes within plants. Here's a breakdown of the main reasons:
 
@@ -428,10 +427,10 @@ So, there you have it! The falling of leaves in autumn is a complex process invo
 </code></pre>
                 <br>
                 <p>▶️ Outputs :</p>
-                <pre><code class="text-output">INFO: [PROMPT]: Is the following question about plants ? &#60;question&#62;Why do poppies fade so quickly ?&#60;/question&#62;
+                <pre><code class="text-output">INFO: [PROMPT][To: AI assistant]: Is the following question about plants ? &#60;question&#62;Why do poppies fade so quickly ?&#60;/question&#62;
 Explain your reasoning.
 
-INFO: [AI_RESPONSE]: A lovely question!
+INFO: [AI_RESPONSE][From: AI assistant]: A lovely question!
 
 Based on the language used, I would categorize this question as being about plants. Here's why:
 
@@ -440,34 +439,34 @@ Based on the language used, I would categorize this question as being about plan
 
 Overall, my analysis indicates that this question is indeed about plants, specifically poppies!
 
-INFO: [PROMPT]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT][To: AI assistant]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
 
-INFO: [AI_RESPONSE]: Yes
+INFO: [AI_RESPONSE][From: AI assistant]: Yes
 Question is about plants !
 
-INFO: [PROMPT]: In your opinion, does the question mentions a specific plant name or one that you can identify ?
+INFO: [PROMPT][To: AI assistant]: In your opinion, does the question mentions a specific plant name or one that you can identify ?
 
-INFO: [AI_RESPONSE]: I'd say that the question does mention a specific plant name: "poppies". Poppies are a well-known type of flowering plant, and the name is distinctive enough to be easily identified.
+INFO: [AI_RESPONSE][From: AI assistant]: I'd say that the question does mention a specific plant name: "poppies". Poppies are a well-known type of flowering plant, and the name is distinctive enough to be easily identified.
 
-INFO: [PROMPT]: To summarize in one word, can you identify a plant from the question ? Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT][To: AI assistant]: To summarize in one word, can you identify a plant from the question ? Answer ONLY by 'yes' or 'no'.
 
-INFO: [AI_RESPONSE]: Yes
+INFO: [AI_RESPONSE][From: AI assistant]: Yes
 
-INFO: [PROMPT]: Okay, then extract the plant name and ONLY output the name. Nothing else.
+INFO: [PROMPT][To: AI assistant]: Okay, then extract the plant name and ONLY output the name. Nothing else.
 
-INFO: [AI_RESPONSE]: Poppies
+INFO: [AI_RESPONSE][From: AI assistant]: Poppies
 
-INFO: [PROMPT]: What do you know about the plant Poppies ? Get me the scientific name but stay concise.
+INFO: [PROMPT][To: AI assistant]: What do you know about the plant Poppies ? Get me the scientific name but stay concise.
 
-INFO: [AI_RESPONSE]: Poppies belong to the family Papaveraceae. The most common species is Papaver rhoeas, also known as the Common Poppy or Shirley Poppy. It's an annual flowering plant native to Europe and Asia.
+INFO: [AI_RESPONSE][From: AI assistant]: Poppies belong to the family Papaveraceae. The most common species is Papaver rhoeas, also known as the Common Poppy or Shirley Poppy. It's an annual flowering plant native to Europe and Asia.
 ------ Plant info ------
 You are referring to the plant 'Poppies'. Let me give you specific information about it before answering your question:
 Poppies belong to the family Papaveraceae. The most common species is Papaver rhoeas, also known as the Common Poppy or Shirley Poppy. It's an annual flowering plant native to Europe and Asia.
 ------------------------
 
-INFO: [PROMPT]: It is now time to answer the question itself. The question was Why do poppies fade so quickly ?. Answer it.
+INFO: [PROMPT][To: AI assistant]: It is now time to answer the question itself. The question was Why do poppies fade so quickly ?. Answer it.
 
-INFO: [AI_RESPONSE]: Poppies are known for their ephemeral nature, and there are several reasons why they might appear to fade quickly:
+INFO: [AI_RESPONSE][From: AI assistant]: Poppies are known for their ephemeral nature, and there are several reasons why they might appear to fade quickly:
 
 1. **Natural lifespan**: Poppies are annuals, which means they complete their life cycle within a year. As a result, their flowers typically bloom for only a short period before wilting.
 [BLABLA]
@@ -488,14 +487,14 @@ These factors combined might contribute to the perception that poppies fade quic
 </code></pre>
                 <br>
                 <p>▶️ Outputs :</p>
-                <pre><code class="text-output">INFO: [PROMPT]: Is the following question about plants ? &#60;question&#62;Why is the sky blue ?&#60;/question&#62;
+                <pre><code class="text-output">INFO: [PROMPT][To: AI assistant]: Is the following question about plants ? &#60;question&#62;Why is the sky blue ?&#60;/question&#62;
 Explain your reasoning.
 
-INFO: [AI_RESPONSE]: No, the question "Why is the sky blue?" is not about plants. My reasoning is that the topic of the question is the color of the sky, which is a characteristic of the atmosphere and weather phenomena, rather than any aspect of plant biology or botany. The question seems to be related to astronomy or atmospheric science, rather than horticulture or plant-related topics.
+INFO: [AI_RESPONSE][From: AI assistant]: No, the question "Why is the sky blue?" is not about plants. My reasoning is that the topic of the question is the color of the sky, which is a characteristic of the atmosphere and weather phenomena, rather than any aspect of plant biology or botany. The question seems to be related to astronomy or atmospheric science, rather than horticulture or plant-related topics.
 
-INFO: [PROMPT]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT][To: AI assistant]: To summarize in one word, was the question about plants ? Answer ONLY by 'yes' or 'no'.
 
-INFO: [AI_RESPONSE]: No
+INFO: [AI_RESPONSE][From: AI assistant]: No
 Question is NOT about plants sorry.
 				</code></pre>
                 <br>

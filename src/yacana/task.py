@@ -8,6 +8,8 @@ from .exceptions import MaxToolErrorIter, IllogicalConfiguration
 from .history import History
 from .logging_config import LoggerManager
 from .tool import Tool
+from .history import Message
+from .constants import BUILTIN_TAG
 
 LoggerManager.set_library_log_level("httpx", "WARNING")
 
@@ -52,7 +54,8 @@ class Task:
         Optional callback for streaming responses. Defaults to None.
     runtime_config : Dict | None, optional
         Optional runtime configuration for the task. Defaults to None.
-
+    tags : List[str] | None, optional
+        Optional list of tags that will be added to the message(s) corresponding to the user's prompt. Defaults to None.
     Raises
     ------
     IllogicalConfiguration
@@ -61,7 +64,7 @@ class Task:
     """
 
     def __init__(self, prompt: str, agent: GenericAgent, json_output=False, structured_output: Type[BaseModel] | None = None, tools: List[Tool] = None,
-                 medias: List[str] | None = None, llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False, streaming_callback: Callable | None = None, runtime_config: Dict | None = None) -> None:
+                 medias: List[str] | None = None, llm_stops_by_itself: bool = False, use_self_reflection=False, forget=False, streaming_callback: Callable | None = None, runtime_config: Dict | None = None, tags: List[str] = None) -> None:
         self.prompt: str = prompt
         self.agent: GenericAgent = agent
         self.json_output: bool = json_output
@@ -74,6 +77,10 @@ class Task:
         self._uuid: str = str(uuid.uuid4())
         self.streaming_callback: Callable | None = streaming_callback
         self.runtime_config = runtime_config if runtime_config is not None else {}
+        self.tags: List[str] = tags if tags is not None else []
+
+        # Tags added by the user to its prompt
+        self.tags.append(BUILTIN_TAG)
 
         if len(self.tools) > 0 and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")
@@ -119,7 +126,7 @@ class Task:
         if self.forget and self._initial_history is not None:
             self.agent.history = self._initial_history
 
-    def solve(self) -> GenericMessage:
+    def solve(self) -> Message:
         """
         Execute the task using the assigned LLM agent.
 
@@ -138,7 +145,7 @@ class Task:
             If tool errors exceed the limit.
         """
         self._save_history_state()
-        answer: GenericMessage = self.agent._interact(self.prompt, self.tools, self.json_output, self.structured_output, self.medias, self.streaming_callback, self.runtime_config)
+        answer: GenericMessage = self.agent._interact(self.prompt, self.tools, self.json_output, self.structured_output, self.medias, self.streaming_callback, self.runtime_config, self.tags)
         self._restore_history_state()
         return answer
 

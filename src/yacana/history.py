@@ -354,7 +354,7 @@ class Message(GenericMessage):
     def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs) -> None:
         super().__init__(role, content, tags=tags, id=kwargs.get('id', None))
 
-    def get_message_as_dict(self): # @todo a retester en ajoutant des messages manuellement et en faisant un export
+    def get_message_as_dict(self):
         """
         Convert the message to a dictionary format.
 
@@ -1381,17 +1381,23 @@ class History:
             raise IndexError("History is empty (no slots, so no messages)")
         return self.slots[index].get_message()
 
-    def get_messages_by_tags(self, tags: List[str], strict=True) -> Sequence[GenericMessage]:
+    def get_messages_by_tags(self, tags: List[str], strict=False) -> Sequence[GenericMessage]:
         """
-        Returns all messages that have the given tags.
+        Returns messages that match the given tags based on the matching mode.
 
         Parameters
         ----------
         tags : List[str]
             The tags to filter messages by.
         strict : bool, optional
-            If True, the message must have all the tags. If False, the message can have any of the tags.
-            Defaults to True.
+            Controls the matching mode:
+            - If False (default), returns messages that have ANY of the specified tags.
+              For example, searching for ["tag1"] will match messages with ["tag1", "tag2"].
+              This is useful for broad filtering.
+            - If True, returns messages that have EXACTLY the specified tags (and possibly more).
+              For example, searching for ["tag1", "tag2"] will match messages with ["tag1", "tag2", "tag3"]
+              but not messages with just ["tag1"] or ["tag2"].
+              This is useful for precise filtering.
 
         Returns
         -------
@@ -1402,17 +1408,33 @@ class History:
         ------
         IndexError
             If the history is empty.
+
+        Examples
+        --------
+        >>> # Find all messages with tag1 (broad matching)
+        >>> history.get_messages_by_tags(["tag1"])
+        # Returns messages with ["tag1"], ["tag1", "tag2"], etc.
+
+        >>> # Find messages with exactly tag1 and tag2 (strict matching)
+        >>> history.get_messages_by_tags(["tag1", "tag2"], strict=True)
+        # Returns messages with ["tag1", "tag2"], ["tag1", "tag2", "tag3"], etc.
+        # But not messages with just ["tag1"] or ["tag2"]
         """
         if len(self.slots) <= 0:
             raise IndexError("History is empty (no slots, so no messages)")
         messages = []
         for slot in self.slots:
-            if strict is True:
-                if set(tags).issubset(set(slot.get_message().tags)):
+            message_tags = set(slot.get_message().tags)
+            if strict is False:
+                # Non-strict mode: message must have ANY of the specified tags
+                if set(tags).intersection(message_tags):
                     messages.append(slot.get_message())
             else:
-                if set(tags).intersection(set(slot.get_message().tags)):
+                # Strict mode: message must have ALL specified tags
+                if set(tags).issubset(message_tags):
                     messages.append(slot.get_message())
+
+
         return messages
 
     def get_last_message(self) -> GenericMessage:

@@ -98,3 +98,13 @@ class TaskCompletionRefusal(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+
+class UnknownResponseFromLLM(Exception):
+    """
+    Exception raised when the model returns an unknown response.
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)

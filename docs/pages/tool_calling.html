@@ -180,7 +180,7 @@ def get_weather(city: str) -> str:
                 <pre><code class="language-python">
 from yacana import Agent, Tool, Task
 
-agent1 = Agent("AI assistant", "llama3.1:8b")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
 
 def get_weather(city: str) -> str:
     # Faking the weather API response
@@ -198,7 +198,7 @@ agent1.history.pretty_print()
                 <pre><code class="language-python">
 from yacana import Agent, Tool, Task
 
-agent1 = Agent("AI assistant", "llama3.1:8b")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
 
 def get_weather(city: str) -> str:
     # Faking the weather API response
@@ -267,7 +267,7 @@ def adder(first_number: int, second_number: int) -> int:
     print(f"Tool adder was called with param {first_number} {type(first_number)} and {second_number} ({type(second_number)})")
     return first_number + second_number
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adder)
 result: str = Task(f"What's 2+2 ?", agent1, tools=[adder_tool]).solve().content
@@ -419,7 +419,7 @@ def adder(first_number: int, second_number: int) -> int:
                 <pre><code class="language-python">
 from yacana import Agent, Tool, Task, ToolError
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 def adder(first_number: int, second_number: int) -> int:
     print(f"Tool adder was called with param '{first_number}' ({type(first_number)}) and '{second_number}' ({type(second_number)})")
@@ -563,12 +563,12 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
                     <code>optionnal=True</code> so it will be forced to use the tool:
                 </p>
                 <pre><code class="language-python">
-from yacana import Task, Agent, Tool
+from yacana import Task, OllamaAgent, Tool
 
 def get_temperature(city: str) -> int:
     return 20
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 result: str = Task(f"What's the temperature in NY ?", agent1, tools=[Tool("get_temp", "Returns the celsius temperature of a given city", get_temperature)]).solve().content
 
@@ -782,7 +782,7 @@ def substractor(first_number, second_number) -> int:
 
 
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 # Defining 3 tools
 adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adder)

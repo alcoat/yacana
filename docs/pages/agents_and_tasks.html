@@ -63,12 +63,12 @@
                 <p>Now that you have an Ollama server running and Yacana installed let's create our first agent!</p>
                 <p>Create a Python file with this content:</p>
                 <pre><code class="language-python">
-from yacana import Agent
+from yacana import OllamaAgent
 
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant", endpoint="http://127.0.0.1:11434")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant", endpoint="http://127.0.0.1:11434")
 					</code></pre>
                 <br>
-                <p>The <code>Agent()</code> class takes...</p>
+                <p>The <code>OllamaAgent()</code> class takes...</p>
                 <span class="icon solid fa-chevron-right"> 2 <u>mandatory</u> parameters:</span>
                 <ol>
                     <li><strong>The agent name:</strong> Choose something short about the agent's global focus</li>
@@ -115,7 +115,7 @@ Hey! It's nice to meet you. Is there something I can help you with, or would you
                 <br>
                 <p>Let's change the <strong>system prompt</strong> and have some fun!</p>
                 <pre><code class="language-python">
-agent1 = Agent("Pirate", "llama3.1:8b", system_prompt="You are a pirate", endpoint="http://127.0.0.1:11434")
+agent1 = OllamaAgent("Pirate", "llama3.1:8b", system_prompt="You are a pirate", endpoint="http://127.0.0.1:11434")
 					</code></pre>
                 <br>
                 <span>▶️ Output:</span>
@@ -130,9 +130,9 @@ Red Beard's treasure, ye say? (puffs on pipe) Well, I be knowin' a thing or two 
                 <hr>
                 <p>Complete section code:</p>
                 <pre><code class="language-python">
-from yacana import Agent
+from yacana import OllamaAgent
 
-agent1 = Agent("Pirate", "llama3.1:8b", system_prompt="You are a pirate", endpoint="http://127.0.0.1:11434")
+agent1 = OllamaAgent("Pirate", "llama3.1:8b", system_prompt="You are a pirate", endpoint="http://127.0.0.1:11434")
 agent1.simple_chat()
 					</code></pre>
                 <br>
@@ -146,17 +146,17 @@ agent1.simple_chat()
                 <h2 id="creating-tasks">Creating Tasks</h2>
                 <p>The whole concept of the framework lies here. If you understand this following section then you
                     have mastered 80% of Yacana's building principle. Like in LangGraph, where you create nodes that
-                    you link together, Yacana has a Task() class which takes as arguments a task to solve. There are
+                    you link together, Yacana has a Task() class which takes as argument a task to solve. There are
                     no hardcoded links between the Tasks so it's easy to refactor and move things around. The
                     important concept to grasp here is that through these Tasks you will give instructions to the
                     LLM in a way that the result must be computable. Meaning instructions must be clear and the
                     prompt to use must reflect that. It's a Task, it's a job, it's something that needs solving but
                     written like it is given as an order! Let's see some examples :</p>
                 <pre><code class="language-python">
-from yacana import Agent, Task
+from yacana import OllamaAgent, Task
 
 # First, let's make a basic AI agent
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 # Now we create a task and assign the agent1 to the task
 task1 = Task(f"Solve the equation 2 + 2 and output the result", agent1)
@@ -177,29 +177,29 @@ task1.solve()
                     INFO. It will show what is going on in Yacana. Note that NOT ALL prompts are shown.</p>
                 <p>The output should look like this:</p>
                 <pre><code class="text-output">
-INFO: [PROMPT]: Solve the equation 2 + 2 and output the result
-							
-INFO: [AI_RESPONSE]: The answer to the equation 2 + 2 is... (drumroll please)... 4!
+INFO: [PROMPT][To: AI assistant]: Solve the equation 2 + 2 and output the result
+
+INFO: [AI_RESPONSE][From: AI assistant]: The answer to the equation 2 + 2 is... (drumroll please)... 4!
 							
 So, the result of solving the equation 2 + 2 is indeed 4.
 							</code></pre>
                 <br>
-                <p>If your terminal is working normally you should see the task's prompts in green and starting with
-                    the '[PROMPT]' string. The LLM's answer should appear purple and start with the [AI_RESPONSE]
-                    string.</p>
+                <p>If your terminal is working normally <span class="text-green">you should see the task's prompts in green and starting with
+                    the '[PROMPT]' string.</span> <span class="text-purple">The LLM's answer should appear purple and start with the [AI_RESPONSE]
+                    string.</span></p>
                 <h4 id="task-parameters">Task parameters</h4>
                 <p>The Task class takes 2 mandatory parameters:</p>
                 <ul>
                     <li>The prompt: It is the task to be solved. Use imperative language, be precise, and ask for
                         step-by-step thinking for complex Tasks and expected outputs if needed.
                     </li>
-                    <li>The Agent: The agent that will be assigned to this task. The agent will be in charge of
+                    <li>The agent that will be assigned to this task. The agent will be in charge of
                         solving the task.
                     </li>
                 </ul>
                 <p class="icon solid fa-info-circle"> Many other parameters can be given to a Task. We will see some
                     of them in the following sections of this tutorial. But you can already check out the Task class
-                    documentation.</p>
+                    documentation.</p> @todo link to documentation
                 <h4 id="in-what-way-is-this-disruptive-compared-to-other-frameworks">In what way is this disruptive
                     compared to other frameworks?</h4>
                 <p>In the above code snippet, we assigned the agent to the Task. So it's the Task that leads the
@@ -208,29 +208,28 @@ So, the result of solving the equation 2 + 2 is indeed 4.
                     as the LLM only follows breadcrumbs (the tasks). The pattern will become even more obvious as we
                     get to the Tool section of this tutorial. As you'll see the Tools are also assigned at the Task
                     level and not to the Agent directly.</p>
-                <p>Compared with LangGraph, we indeed cannot generate a call graph as an image because we don't
+                <p>Compared with LangGraph, we cannot generate a call graph as an image because we don't
                     bind the tasks together explicitly. However, Yacana's way gives more flexibility and allows a
                     hierarchical programming way of scheduling the tasks and keeping control of the flow. It also
-                    allows creating new Task dynamically if the need arises. You shall rely on your programming
-                    skills and good OOP to have a clean code and good Task ordering. There aren't and will never be
-                    any pre-hardcoded interactions and no flat config. This is a framework for developers.</p>
+                    allows creating new Tasks dynamically if the need arises. You shall rely on your programming
+                    skills and good OOP to have a clean code and good Task ordering. Yacana will never propose
+                    any hardlinked code or flat configurations.</p>
 
                 <hr class="major"/>
 
                 <h2 id="getting-the-result-of-a-task">Getting the result of a Task</h2>
-                <p>Even though we get logs on the standard output of the terminal, we still need to extract the
-                    answer of the LLM that solved that Task in order to do something with it.<br>
-                    Getting the string message out of it is quite easy as the .solve() method returns a Message() class.<br>
+                <p>Although the logs appear in the terminal's standard output, we still need to extract the LLM's response to the Task in order to use it.<br>
+                    Getting the string message out of it is quite easy as the <code>.solve()</code> method returns a <code></code>Message()</code> class.<br>
                     Maybe you are thinking &quot;Ho nooo, another class to deal with&quot;. Well, let me tell you
                     that it's always better to have an OOP class than some semi-random Python dictionary where
                     you'll forget what keys it contains in a matter of minutes. Also, the Message class is very
                     straightforward. It exposes a <code>content</code> attribute. Update the current code to look
                     like this:</p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, Message
+from yacana import OllamaAgent, Task, Message
 
 # First, let's make a basic AI agent
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 # Now we create a task and assign the agent1 to the task
 task1 = Task(f"Solve the equation 2 + 2 and output the result", agent1)
@@ -249,30 +248,23 @@ print(f"The AI response to our task is : {my_message.content}")
                     methods and arguments. We recommend that you do the same as it's the industry's best standards.
                 </p>
                 <hr>
-                <p>Don't like having 100 lines of code for something simple? Then chain them all in one line!</p>
+                <p>Don't like having 100 lines of code for something simple? Then chain them all!</p>
                 <pre><code class="language-python">
-from yacana import Agent, Task
+from yacana import OllamaAgent, Task
 
 # First, let's make a basic AI agent
-agent1 = Agent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
-# Creating the task, solving it, extracting the result and printing it all in one line
-print(f"The AI response to our task is: {Task(f'Solve the equation 2 + 2 and output the result', agent1).solve().content}")
-					</code></pre>
-                <br>
-                <p>🤔 However, splitting the output of the LLM and the print in two lines would probably look
-                    better. Let's not one-line things too much 😅.</p>
-                <p>For example:</p>
-                <pre><code class="language-python">
-result :str = Task(f'Solve the equation 2 + 2 and output the result', agent1).solve().content
+# Creating the task, solving it, extracting the result
+result: str = Task(f'Solve the equation 2 + 2 and output the result', agent1).solve().content
+# Print the result
 print(f"The AI response to our task is: {result}")
 					</code></pre>
 
                 <hr class="major"/>
 
                 <h2 id="chaining-tasks">Chaining Tasks</h2>
-                <p>Chaining Tasks is nothing more than just calling a second Task with the same Agent. Agents keep
-                    track of the History of what they did (aka, all the Tasks they solved). So just call a second
+                <p>Agents keep track of the History of what they did (aka, all the Tasks they solved). So just call a second
                     Task and assign the same Agent. For instance, let's multiply by 2 the result of the initial
                     Task. Append this to our current script:</p>
                 <pre><code class="language-python">
@@ -292,9 +284,7 @@ The AI response to our task is: If we multiply the previous result of 4 by 2, we
                 <hr>
                 <p>See? The assigned Agent remembered that it had solved Task1 previously and used this
                     information to solve the second task.<br>
-                    You can chain as many Tasks as you need. Also, you should create other Agents that don't have
-                    the knowledge of previous tasks and make them do things based on the output of your first agent.
-                    You can build anything now!</p>
+                    You can chain as many Tasks as you need. You can build anything now!</p>
 
                 <hr class="major"/>
 
@@ -302,19 +292,19 @@ The AI response to our task is: If we multiply the previous result of 4 by 2, we
                 <p>As entering the AI landscape can get a bit hairy we decided to leave the INFO log level by
                     default. This allows to log to the standard output all the requests made to the LLM.<br>
                     Note that NOT everything of Yacana's internal magic appears in these logs. We don't show
-                    everything because many time-traveling things are going around the history of an Agent and
+                    everything because many time-traveling things are going around inside the history of an Agent and
                     printing a log at the time it is generated wouldn't always make sense.<br>
                     However, we try to log a maximum of information to help you understand what is happening
                     internally and allow you to tweak your prompts accordingly.</p>
-                <p>Nonetheless, you are the master of what is logged and what isn't. You cannot let Yacana logs
-                    activated when working with an app in production.<br>
+                <p>Nonetheless, you are the master of what is logged and what isn't. You cannot let Yacana log
+                    anything while working with an app in production.<br>
                     There are 5 levels of logs:</p>
                 <ol>
                     <li><code>"DEBUG"</code></li>
-                    <li><code>INFO</code> <span class="icon solid fa-chevron-left"></span> Default</li>
-                    <li><code>WARNING</code></li>
-                    <li><code>ERROR</code></li>
-                    <li><code>CRITICAL</code></li>
+                    <li><code>"INFO"</code> <span class="icon solid fa-chevron-left"></span> Default</li>
+                    <li><code>"WARNING"</code></li>
+                    <li><code>"ERROR"</code></li>
+                    <li><code>"CRITICAL"</code></li>
                     <li><code>None</code> <span class="icon solid fa-chevron-left"></span> No logs</li>
                 </ol>
                 <p>To configure the log simply add this line at the start of your program:</p>
@@ -348,15 +338,17 @@ LoggerManager.set_library_log_level("httpx", "WARNING")
                     recommend the <a href="https://youtu.be/QfFRNF5AhME?si=lpSYUq2WoidYiqzP">excellent video</a>
                     Matt Williams did on this subject.</p>
                 <p class="icon solid fa-info-circle"> These settings are set at the Agent level so that you can have
-                    the same model used by two separate agents and have them behave differently.</p>
-                <p>We use the <a href="">ModelSettings</a> class to configure the settings we need.</p>
+                    the same underlying model used by two separate agents and have them behave differently.</p>
+                <p class="icon solid fa-info-circle"> The <a href="">OllamaModelSettings</a> class is tailored for the Ollama backend. 
+                    You can use <a href="">OpenAiModelSettings</a> to configure non-Ollama LLMs with their own set of available settings.</p>
+                <p>We use the <a href="">OllamaModelSettings</a> class to configure the settings we need.</p>
                 <p>For example, let's lower the temperature of an Agent to 0.4:</p>
                 <pre><code class="language-python">
-from yacana import ModelSettings, Agent
+from yacana import OllamaModelSettings, OllamaAgent
 
-ms = ModelSettings(temperature=0.4)
+ms = OllamaModelSettings(temperature=0.4)
 
-agent1 = Agent("Ai assistant", "llama3.1:8b", model_settings=ms)
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b", model_settings=ms)
 					</code></pre>
                 <br>
                 <p>If you're wondering what the default values of these are when not set. Well, Ollama sets the
@@ -368,20 +360,20 @@ agent1 = Agent("Ai assistant", "llama3.1:8b", model_settings=ms)
                     values:
                 </p>
                 <pre><code class="language-python">
-from yacana import ModelSettings, Agent, Task
+from yacana import OllamaModelSettings, OllamaAgent, Task
 
 # Setting temperature and max token to 100
-ms = ModelSettings(temperature=0.4, num_predict=100)
+ms = OllamaModelSettings(temperature=0.4, num_predict=100)
 
-agent1 = Agent("Ai assistant", "llama3.1:8b", model_settings=ms)
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b", model_settings=ms)
 Task("Why is the sky blue ?", agent1).solve()
 
 print("-------------------")
 
 # Settings max token to 15
-ms = ModelSettings(num_predict=15)
+ms = OllamaModelSettings(num_predict=15)
 
-agent2 = Agent("Ai assistant", "llama3.1:8b", model_settings=ms)
+agent2 = OllamaAgent("Ai assistant", "llama3.1:8b", model_settings=ms)
 Task("Why is the sky blue ?", agent2).solve()
 					</code></pre>
                 <br>
@@ -483,6 +475,18 @@ INFO: [AI_RESPONSE]: The sky appears blue because of a phenomenon called Rayleig
         initializeMenu();
     });
 </script>
+
+<style>
+.text-green {
+    color: #4CAF50;  /* A nice green color */
+    font-weight: 500;
+}
+
+.text-purple {
+    color: #9C27B0;  /* A nice purple color */
+    font-weight: 500;
+}
+</style>
 
 </body>
 

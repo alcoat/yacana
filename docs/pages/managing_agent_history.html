@@ -65,7 +65,7 @@
                 <span class="image main"><img
                         src="https://github.com/user-attachments/assets/631b634a-8699-4fff-9ac4-06b403c06ae1"
                         alt="history1A"/></span>
-                <p>There are 3 types of prompts: </p>
+                <p>There are 4 types of messages: </p>
                 <ul>
                     <li>1: The optional "System" prompt that, if present, always goes first.</li>
                 </ul>
@@ -73,8 +73,9 @@
                 <ul>
                     <li>2: The "User" prompts coming from the Task you set.</li>
                     <li>3: The "Assistant" message which is the answer from the LLM.</li>
+                    <li>4: The "Tool" message which is is used by the OpenAi standard to use tools. But this is abstract by Yacana so you don't have to deal with it with this fine mess.</li>
                 </ul>
-                <p>However, sending the whole history to the LLM for each Task to solve has some disadvantages that
+                <p>Unfortunately, sending the whole history to the LLM for each Task to solve has some disadvantages that
                     can not be overturned: </p>
                 <ul>
                     <li>The longer the history the longer the LLM takes to analyze it and return an answer.</li>
@@ -104,12 +105,12 @@
                 </p>
                 <p>Let's see a simple example:</p>
                 <pre><code class="language-python">
-from yacana import LoggerManager, Agent, Task
+from yacana import LoggerManager, OllamaAgent, Task
 
 # Let's deactivate automatic logging so that only OUR prints are shown
 LoggerManager.set_log_level(None)
 
-agent1 = Agent("Cook", "llama3.1:8b", system_prompt="You are a pastry chef")
+agent1 = OllamaAgent("Cook", "llama3.1:8b", system_prompt="You are a pastry chef")
 
 Task("Generate 5 pastry names followed by the associated estimated calorie.", agent1).solve()
 Task("Rank the pastries from the lowest calorie count to the largest.", agent1).solve()
@@ -209,12 +210,12 @@ agent1.history.load_check_point(checkpoint_id)
                         src="https://github.com/user-attachments/assets/3a4952aa-18f3-4b6d-93c1-85b909cf24f4"
                         alt="pastry1B"/></p>
                 <pre><code class="language-python">
-from yacana import LoggerManager, Agent, Task
+from yacana import LoggerManager, OllamaAgent, Task
 
 # Let's deactivate automatic logging so that only OUR prints are shown; Maybe reactivate (to "info") if you want to see what's happening behind the scenes.
 LoggerManager.set_log_level(None)
 
-agent1 = Agent("Cook", "llama3.1:8b", system_prompt="You are a pastry chef")
+agent1 = OllamaAgent("Cook", "llama3.1:8b", system_prompt="You are a pastry chef")
 
 # Getting a list of pastries
 pastries: str = Task("Generate 5 pastry names displayed as a list. ONLY output the names and nothing else.", agent1).solve().content
@@ -344,10 +345,10 @@ yes
                     [MessageRole]() enum and the string message itself. </p>
                 <p>For example: </p>
                 <pre><code class="language-python">
-from yacana import Agent, Message, MessageRole
+from yacana import OllamaAgent, Message, MessageRole
 
 # Creating a basic agent with an empty history
-agent1 = Agent("AI assistant", "llama3.1:8b")
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
 
 # We create a fake prompt identified as coming from the user (Thx to `MessageRole.USER`)
 user_message = Message(MessageRole.USER, "What's 2+2 ?")
@@ -382,9 +383,9 @@ The answer is 4
                 <hr/>
                 <p>Let's see a 0-shot example asking for a JSON output extracted from a given sentence: </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task
+from yacana import OllamaAgent, Task
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 Task(f"Print the following sentence as JSON, extracting the names and rephrasing the actions: 'Marie is walking her dog. Ryan is watching them through the window. The dark sky is pouring down heavy raindrops.'", agent1).solve()
 					</code></pre>
@@ -436,9 +437,9 @@ INFO: [AI_RESPONSE]: {"names": ["Marie", "Ryan"], "actions": {"Marie": "is walki
                 <p>To achieve this let's give the LLM an example of what we expect by making it believe it already
                     outputted it correctly once: </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, MessageRole, Message
+from yacana import OllamaAgent, Task, MessageRole, Message
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 # Making a fake valid interaction
 agent1.history.add(Message(MessageRole.USER, "Print the following sentence as json extracting the names and rephrasing the actions: 'John is reading a book on the porch while the cold wind blows through the trees.'"))
@@ -463,9 +464,9 @@ INFO: [AI_RESPONSE]: [{"name": "Marie", "action": "Walking her dog."}, {"name": 
                     decompose the task into multiple subtasks but can be beneficial in some scenarios. </p>
                 <p>For example: </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task
+from yacana import OllamaAgent, Task
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 Task('I will give you a sentence where you must extract as JSON all the names and rephrase all the actions. For example in the following sentence: "John is reading a book on the porch while the cold wind blows through the trees." would result in this JSON output: [{"name": "John", "action": "Reading a book."}, {"name": "Cold wind", "action": "Blowing through the trees."}] ', agent1).solve()
 
@@ -497,9 +498,9 @@ INFO: [AI_RESPONSE]: {"name": "Marie", "action": "Walking with her dog."}
                     runtime thing. We might include them in the save file one day if the need arises. </p>
                 <p>To save an Agent do the following: </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task
+from yacana import OllamaAgent, Task
 
-agent1 = Agent("Ai assistant", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 Task("What's 2+2 ?", agent1).solve()
 
