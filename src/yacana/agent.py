@@ -11,7 +11,7 @@ class Agent(GenericAgent):
 
     def __init__(self, *args, **kwargs) -> None:
         deprecated_message = """
-                Deprecation error: Use specialized Agents class instead. Sorry this has to be removed... But now that Yacana manages more than Ollama as backend, this class diddn't make much sense.
+                Deprecation error: Use specialized Agents class instead. Sorry this had to be removed... But now that Yacana manages more than Ollama as backend, this class diddn't make much sense.
                 * If you are using Ollama as backend then the new `Agent` class name you should use is `OllamaAgent()`.
                 * For OpenAi compatible backends (chatGPT, VLLM, etc), use `OpenAiAgent()`.
                 """

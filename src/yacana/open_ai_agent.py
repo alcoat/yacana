@@ -322,7 +322,7 @@ class OpenAiAgent(GenericAgent):
         medias : List[str] | None, optional
             Optional list of media files. Defaults to None.
         json_output : bool, optional
-            Whether to output JSON. Defaults to False.
+            Whether to output JSON (best effort). Defaults to False.
         structured_output : Type[T] | None, optional
             Optional structured output type. Defaults to None.
         save_to_history : bool, optional

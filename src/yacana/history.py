@@ -1268,6 +1268,7 @@ class History:
             A dictionary representation of the history.
         """
         members_as_dict = self.__dict__.copy()
+        members_as_dict["_checkpoints"] = {}
 
         # Exporting checkpoints
         for uid, slots in self._checkpoints.items():
@@ -1300,8 +1301,8 @@ class History:
         members["slots"] = [HistorySlot.create_instance(slot) for slot in members["slots"]]
 
         # Loading checkpoints
-        for uid, slot in members["_checkpoints"]:
-            members["_checkpoints"][uid] = [HistorySlot.create_instance(slot) for slot in slot]
+        for uid, slots in members["_checkpoints"].items():
+            members["_checkpoints"][uid] = [HistorySlot.create_instance(slot) for slot in slots]
         return History(**members)
 
     def get_messages_as_dict(self) -> List[Dict]:

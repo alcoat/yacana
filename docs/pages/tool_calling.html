@@ -57,9 +57,9 @@
 
                 <span class="image main"><img src="../images/toolcalling.jpg" alt="Tool calling"/></span>
 
-                <h2>Concept of calling tools</h2>
+                <h2>Introduction to the tool calling concept</h2>
                 <p>Allowing the LLM to call a tool is the most important thing an agent can do! But what is a
-                    "tool"? A "tool" simply refers to a Python function. This function can be the entry point to any
+                    "tool"? A tool simply refers to a Python function. This function can be the entry point to any
                     level of underlying complexity. But it doesn't matter. What matters is that the LLM can call the
                     tool with parameters that match the function. This way, LLMs can interact with <em>classic</em>
                     programming interfaces that produce deterministic results (aka normal programming).</p>
@@ -94,7 +94,7 @@
                     Unfortunately, the size and complexity of this JSON doesn't work very well with our dumb 8B
                     LLMs. This is a problem that ChatGPT, Claude, Grok and other smart LLMs don't have.<br>
                     To overcome this particular issue, Yacana comes with its own JSON structure to call Python
-                    functions! It's way lighter than the OpenAI standard and Yacana uses <a href>percussive
+                    functions! It's way lighter than the OpenAI standard and Yacana uses <a href="https://youtube.com/shorts/Sb1spHDHU_4?si=yZsSLGx-7LeyG-5B">percussive
                         maintenance</a> to force the LLM to output the JSON in a way that the tool
                     expects.</p>
 
@@ -120,19 +120,19 @@
                     <li>The tool returns a value ;</li>
                     <li><strong>The Task's final output is the tool's value</strong> ;</li>
                 </ol>
-                <p>As you can see, nothing was made with the tool result itself. This means the tool return value
-                    must carry all the necessary information so the next Task can work with it!<br>
-                    That said, not all tools must return something useful. Thus removing the need to create a second
-                    Task to act upon the result of the tool call. For instance, an LLM might be of paramount
-                    importance to call a function with complex arguments but as it may only make minor adjustments
-                    to some variable in your code, there might be no point in the tool returning any information to
-                    the LLM.</p>
+                <p>
+                    As you can see, nothing was made with the tool result itself. This means the tool return value
+                    must carry all the necessary information and a second Task is needed to act upon the result of the tool call.<br>
+                    That said, not all tools return something useful. If the tool's only purpose is to send some data handed by
+                    the LLM to the outside world, it might not need to return anything. However, we recommand that you return a "success" string
+                    so that the LLM isn't left hanging.</p>
                 <p>Example of a <strong>bad</strong> prompt with a Tool that gets the current weather of a city:</p>
                 <ul>
                     <li><code>Task(f"I give you the following city: '{city}'. Get the current weather there and output
                         'So much sun !' if there is some sun else say 'So much rain !'", some_agent,
                         tools=[get_weather_tool]).solve()</code>
-                        => You'll never get the output 'So much sun !' or 'So much rain !'. <strong>The result of
+                        <br>
+                        You'll never get the output <i>'So much sun !'</i> or <i>'So much rain !'</i>. <strong>The result of
                             this task will be the tool output.</strong><br>
                         The prompt is ONLY useful to the Agent to extract the city name that must be given to the
                         tool.
@@ -147,7 +147,7 @@
                     <li><code>Task(f"Output 'So much sun !' if there is some sun else say 'So much rain !'",
                         some_agent).solve()</code><br>
                         Splitting the tasks into two allows the second Task to work on the output of the first one
-                        (the tool output). FYI, it's also a type of self-reflection.
+                        (the tool output).
                     </li>
                 </ul>
                 <span>2. Make the tool do the work:</span>
