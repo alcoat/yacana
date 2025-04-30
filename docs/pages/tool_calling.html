@@ -97,6 +97,18 @@
                     functions! It's way lighter than the OpenAI standard and Yacana uses <a href="https://youtube.com/shorts/Sb1spHDHU_4?si=yZsSLGx-7LeyG-5B">percussive
                         maintenance</a> to force the LLM to output the JSON in a way that the tool
                     expects.</p>
+                <h4>Difference between the OllamaAgent and the OpenAIAgent</h4>
+                <p>
+                    Tools in Yacana share the same programming API across both Ollama and OpenAI-compatible backends. 
+                    However, they currently don't behave identically.<br>
+                    The OllamaAgent uses an enhanced tool calling mechanism tailored for local open-source models. 
+                    In contrast, the OpenAIAgent uses the standard OpenAI function calling approach, fully compatible with 
+                    ChatGPT and any backend that follows OpenAI’s API (like vLLM). At the moment, each agent is locked to 
+                    its respective mechanism: the OllamaAgent uses the enhanced version, and the OpenAIAgent uses the OpenAI 
+                    standard. In the near future, Yacana will support both mechanisms on both agents. The enhanced tool calling 
+                    system will be made available to OpenAI-compatible backends, and the OllamaAgent will gain support for the 
+                    OpenAI standard via Ollama’s OpenAI-compatible endpoint.
+                </p>
 
                 <hr class="major"/>
 
@@ -163,14 +175,9 @@ def get_weather(city: str) -> str:
     	return "So much rain !"
 					</code></pre>
                 <br>
-                <p>This tool would return either <i>"So much sun !"</i> or <i>"So much rain !"</i> based on the
-                    output of some
-                    fake weather API. This was the output we needed. <strong>However</strong>, the original prompt
-                    is still wrong! The section "<em>output 'So much sun !' if there is some sun else say 'So much
-                        rain !'</em>" of the initial <em>bad</em> prompt is still useless as it's the Tool itself
-                    that will output this string. Not the LLM!<br>
-                    You should rewrite the prompt like this: "I give you the following city: '{city}'. Get the
-                    current weather there.". The tool will return the correct string.</p>
+                <p>
+                    This tool would return either <i>"So much sun !"</i> or <i>"So much rain !"</i> based on the
+                    output of some fake weather API. This was the output we needed.<br>
                 <hr>
                 <p>⚠️⚠️The full example for those who wish to test IRL. However, we haven't even shown a real tool
                     example yet, so this section should be optional!⚠️⚠️</p>
@@ -178,7 +185,7 @@ def get_weather(city: str) -> str:
                     later.</p>
                 <p>Bad prompt:</p>
                 <pre><code class="language-python">
-from yacana import Agent, Tool, Task
+from yacana import OllamaAgent, Tool, Task
 
 agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
 
@@ -196,7 +203,7 @@ agent1.history.pretty_print()
                 <br>
                 <p>Good prompt:</p>
                 <pre><code class="language-python">
-from yacana import Agent, Tool, Task
+from yacana import OllamaAgent, Tool, Task
 
 agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
 
@@ -242,7 +249,7 @@ def adder(first_number: int, second_number: int) -> int:
                 <p>⚠️ Be aware that whatever the return of your function, Yacana will cast it to string using the
                     built-in <code>str(...)</code> function. LLMs can only understand text so make sure that
                     whatever you send back can be cast correctly (override the <strong>str</strong> if needed).</p>
-                <p>Let's create a <a href>Tool</a> instance using the Yacana Tool constructor. It takes a
+                <p>Let's create a <a href>Tool</a> (@todo doc) instance using the Yacana Tool constructor. It takes a
                     name, a description, and a reference to the actual function.<br>
                     <span class="icon solid fa-info-circle"> I can only emphasize once more on the importance of
 							providing an accurate description.</span>
@@ -261,7 +268,7 @@ Task(f"What's 2+2 ?", agent1, tools=[adder_tool]).solve()
                 <br>
                 <p>Full code:</p>
                 <pre><code class="language-python">
-from yacana import Agent, Tool, Task
+from yacana import OllamaAgent, Tool, Task
 
 def adder(first_number: int, second_number: int) -> int:
     print(f"Tool adder was called with param {first_number} {type(first_number)} and {second_number} ({type(second_number)})")
@@ -277,15 +284,15 @@ print("Equation result = ", result)
                 <br>
                 <p>▶️ Output:</p>
                 <pre><code class="text-output">
-INFO: [PROMPT]: I give you the following tool definition that you must use to fulfill a future task: adder(first_number: int, second_number: int) -&gt; int - Adds two numbers and returns the result. Please acknowledge the given tool.
+INFO: [PROMPT][To: Ai assistant]: I give you the following tool definition that you must use to fulfill a future task: adder(first_number: int, second_number: int) -&gt; int - Adds two numbers and returns the result. Please acknowledge the given tool.
 
-INFO: [AI_RESPONSE]: Thank you for providing me with the `adder` tool definition! I understand that this is a function that takes two integer arguments (`first_number` and `second_number`) and returns an integer result, which represents the sum of these two input numbers.
+INFO: [AI_RESPONSE][From: Ai assistant]: Thank you for providing me with the `adder` tool definition! I understand that this is a function that takes two integer arguments (`first_number` and `second_number`) and returns an integer result, which represents the sum of these two input numbers.
 
 I will keep this in mind as we progress through our tasks. Please go ahead and give me the next instruction or task to complete!
 
-INFO: [PROMPT]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {&quot;arg1&quot;: &quot;&lt;value1&gt;&quot;, &quot;arg2&quot;: &quot;&lt;value2&gt;&quot;}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {&quot;city&quot;: &quot;new-york&quot;, &quot;lat&quot;: 10, &quot;lon&quot;: 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {&quot;arg1&quot;: &quot;&lt;value1&gt;&quot;, &quot;arg2&quot;: &quot;&lt;value2&gt;&quot;}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {&quot;city&quot;: &quot;new-york&quot;, &quot;lat&quot;: 10, &quot;lon&quot;: 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
 
-INFO: [AI_RESPONSE]: Thank you for clarifying how to structure the tool calls.
+INFO: [AI_RESPONSE][From: Ai assistant]: Thank you for clarifying how to structure the tool calls.
 
 In that case, I will extract each parameter and use it as a JSON key. For the `adder` tool, I will structure the tool call as follows:
 
@@ -293,10 +300,10 @@ In that case, I will extract each parameter and use it as a JSON key. For the `a
 
 Please let me know what's next!
 
-INFO: [PROMPT]: You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:
+INFO: [PROMPT][To: Ai assistant]: You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:
 What's 2+2 ?
 
-INFO: [AI_RESPONSE]: {&quot;first_number&quot;: &quot;2&quot;, &quot;second_number&quot;: &quot;2&quot;}
+INFO: [AI_RESPONSE][From: Ai assistant]: {&quot;first_number&quot;: &quot;2&quot;, &quot;second_number&quot;: &quot;2&quot;}
 
 Tool adder was called with param '2' (&lt;class 'str'&gt;) and '2' (&lt;class 'str'&gt;)
 Equation result =  22
@@ -340,9 +347,9 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
                     and <code>second_number</code> different integer values. No strings. Actual integers!</p>
                 <p>Let's run our program again and see if we get the correct input types this time:</p>
                 <pre><code class="text-output">
-INFO: [PROMPT]: I give you the following tool definition that you must use to fulfill a future task: adder(first_number: int, second_number: int) -> int - Adds two numbers and returns the result. Please acknowledge the given tool.
+INFO: [PROMPT][To: Ai assistant]: I give you the following tool definition that you must use to fulfill a future task: adder(first_number: int, second_number: int) -> int - Adds two numbers and returns the result. Please acknowledge the given tool.
 
-INFO: [AI_RESPONSE]: Acknowledged!
+INFO: [AI_RESPONSE][From: Ai assistant]: Acknowledged!
 
 The tool definition provided is:
 
@@ -352,9 +359,9 @@ This tool takes two integer inputs `first_number` and `second_number`, and retur
 
 I'm ready to use this tool for any future tasks that require addition!
 
-INFO: [PROMPT]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
 
-INFO: [AI_RESPONSE]: I understand now!
+INFO: [AI_RESPONSE][From: Ai assistant]: I understand now!
 
 So, for the `adder` tool, I need to extract each parameter and structure it as a JSON key-value pair. Here's the result:
 
@@ -362,14 +369,14 @@ So, for the `adder` tool, I need to extract each parameter and structure it as a
 
 This means that when using this tool, I should specify two integer values for `first_number` and `second_number`, respectively.
 
-INFO: [PROMPT]: You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return, you will get an answer from the tool. The task is:
+INFO: [PROMPT][To: Ai assistant]: You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return, you will get an answer from the tool. The task is:
 What's 2+2 ?
 
-INFO: [AI_RESPONSE]: {"first_number": 2, "second_number": 2}
+INFO: [AI_RESPONSE][From: Ai assistant]: {"first_number": 2, "second_number": 2}
 
 Tool adder was called with param '2' (<class 'int'>) and '2' (<class 'int'>)
 Equation result =  4
-					</code></pre>
+				</code></pre>
                 <br>
                 <p>It worked!<br>
                     The LLM saw that the tool needed integers in input. As such, it called the tool with the correct
@@ -377,25 +384,21 @@ Equation result =  4
                 <p>⚠️ Do not abuse this technic as it tends to create some noise. Trying to manage too many
                     hypothetical use cases might, in the end, degrade the performance of the tool call.</p>
                 <p class="icon solid fa-info-circle"> Note that the multi-shot prompts (the JSON examples) are not
-                    shown in the INFO logs. This is
-                    because no actual request is made to the LLM. They are appended to the History()
-                    programmatically as shown in the multi-shot example. However, if you add an
-                    <code>agent1.history.pretty_print()</code> at the end of the script, you'll see both JSON
-                    examples given to the LLM as history context.
+                    shown in the INFO logs. This is because they are appended to the History()
+                    programmatically and no actual request is made to the LLM.
                 </p>
                 <h4>Adding validation inside the Tool</h4>
-                <p>The previous trick is good to nudge the LLM into the right direction. But it's not the best way to
-                    get accurate results. The technique presented here is by far the most effective and should be
-                    preferred over the previous one.</p>
+
                 <p>As LLM are not deterministic we can never assure what will be given to our tool. Therefore, you
-                    should look at a tool like you would a web server route. I'm talking here about server-side
-                    validation. Your tool must check that what is given to it is valid and raise an error if not.
+                    should look at a tool like you would a web server route. It's like server-side validation! 
+                    Your tool must check that what it is given is valid and raise an error if not.
                 </p>
-                <p>This means adding heavy checks on our tool. Thus, when the LLM sends an incorrect value an error
-                    will be raised. But not any error! Specifically a <code>ToolError(...)</code>. This exception
-                    will be caught by Yacana which will instruct the LLM that something bad happened while calling
-                    the tool. This also means that you must give precise error messages in the exception because the
-                    LLM will try to change his next tool call based on this message.</p>
+                <p>
+                    This means adding strict validation checks to our tool. So, when the LLM provides an incorrect value, 
+                    an error will be raised—not just any error, but specifically a <code>ToolError(...)</code>.
+                    Yacana will catch this exception and inform the LLM that something went wrong during the tool call. 
+                    That’s why it's important to include clear and precise error messages in the exception, because the LLM will 
+                    use that message to adjust its next tool call accordingly.</p>
                 <p>Let's upgrade our adder tool!</p>
                 <pre><code class="language-python">
 from yacana import Agent, Tool, Task, ToolError
