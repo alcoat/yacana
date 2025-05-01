@@ -725,6 +725,8 @@ Looks like we've completed the task successfully! Well done! Would you like to s
                 </ul>
                 <p>The "game" finishes when Agent1 has 15 numbers in its list. </p>
                 <pre><code class="language-python">
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
+
 agent1 = OllamaAgent("Ai assistant 1", "llama3.1:8b")
 agent2 = OllamaAgent("Ai assistant 2", "llama3.1:8b")
 
@@ -1074,7 +1076,7 @@ GroupSolve([task1, task2], EndChat(EndChatMode.END_CHAT_AFTER_FIRST_COMPLETION),
 							Outside a GroupSolve it has no effect.</span>
                 </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
 agent1 = OllamaAgent("Ai assistant 1", "llama3.1:8b")
 agent2 = OllamaAgent("Ai assistant 2", "llama3.1:8b")
@@ -1138,7 +1140,7 @@ So, in hindsight, I have not fully completed the objective of considering altern
                     </li>
                 </ul>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
 # Creating our two players
 agent1 = OllamaAgent("Player 1", "llama3.1:8b")
@@ -1345,7 +1347,7 @@ Let's do it again sometime soon!
                     </li>
                 </ul>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode, ToolError, Tool
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode, ToolError, Tool
 
 # Creating our tool with type checking and 3 conditional returns
 def high_low(secret_number: int, guessed_number: int) -> str:
@@ -1370,7 +1372,7 @@ def high_low(secret_number: int, guessed_number: int) -> str:
 player = OllamaAgent("Player", "llama3.1:8b")
 game_master = OllamaAgent("Game master", "llama3.1:8b")
 
-# Instanciating our tool
+# Instantiating our tool
 high_low_tool = Tool("high_low", "Compares 2 numbers and returns a description of the relation between the two. Higher, lower or equal.", high_low)
 
 # Solo Task to create the secret number before entering GroupSolve()
