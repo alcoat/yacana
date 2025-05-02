@@ -23,7 +23,7 @@ class TestStatePersistence(BaseAgentTest):
             message1 = Task("Tell me 1 fact about Canada.", agent).solve()
             message2 = Task("Tell me 2 facts about Canada.", agent, structured_output=Facts).solve()
             message_id = message2.id
-            message2.add_tag("export_import_version")
+            message2.add_tags(["export_import_version"])
             
             # Export state
             state_file = os.path.join(self.temp_dir, f"{agent.name}_state.json")
@@ -64,7 +64,7 @@ class TestStatePersistence(BaseAgentTest):
             # Create state with media interaction
             image_path = self.get_test_image_path("burger.jpg")
             message1 = Task("Describe this image:", agent, medias=[image_path]).solve()
-            message1.add_tag("media_version")
+            message1.add_tags(["media_version"])
             
             # Export state
             state_file = os.path.join(self.temp_dir, f"{agent.name}_media_state.json")
@@ -101,7 +101,7 @@ class TestStatePersistence(BaseAgentTest):
         def test_structured_state(agent):
             # Create state with structured output
             message1 = Task("Tell me 2 facts about Canada.", agent, structured_output=Facts).solve()
-            message1.add_tag("structured_output_version")
+            message1.add_tags(["structured_output_version"])
             
             # Export state
             state_file = os.path.join(self.temp_dir, f"{agent.name}_structured_state.json")

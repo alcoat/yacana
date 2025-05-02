@@ -16,7 +16,7 @@ from .utils import Dotdict
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
 from .history import OpenAIToolCallingMessage, HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
-from .constants import BUILTIN_TAG, PROMPT_TAG, RESPONSE_TAG
+from .constants import PROMPT_TAG, RESPONSE_TAG
 
 logger = logging.getLogger(__name__)
 
@@ -396,7 +396,7 @@ class OpenAiAgent(GenericAgent):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=[BUILTIN_TAG, RESPONSE_TAG]))
+                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
 
             elif self.is_tool_calling(choice):
                 logging.debug("Response assessment is tool calling")
@@ -404,11 +404,11 @@ class OpenAiAgent(GenericAgent):
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=[BUILTIN_TAG, RESPONSE_TAG]))
+                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags + [RESPONSE_TAG]))
 
             elif self.is_common_chat(choice):
                 logging.debug("Response assessment is classic chat answer")
-                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=[BUILTIN_TAG, RESPONSE_TAG]))
+                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
             else:
                 raise UnknownResponseFromLLM("Unknown response from OpenAI API")
 

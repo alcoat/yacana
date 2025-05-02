@@ -13,7 +13,7 @@ from .utils import Dotdict
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
 from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage
 from .tool import Tool
-from .constants import BUILTIN_TAG, PROMPT_TAG, RESPONSE_TAG
+from .constants import PROMPT_TAG, RESPONSE_TAG
 
 logger = logging.getLogger(__name__)
 
@@ -346,7 +346,7 @@ class OllamaAgent(GenericAgent):
                 {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
             self._chat(local_history, tool_examples_prompt)
 
-            local_history._concat_history(tool._get_examples_as_history())
+            local_history._concat_history(tool._get_examples_as_history(self._tags))
 
             # This section checks whether we need a tool or not. If not we call the LLM like if tools == 0 and exit the function.
             if tool.optional is True:
@@ -398,7 +398,7 @@ class OllamaAgent(GenericAgent):
                         {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
                     self._chat(tool_training_history, tool_examples_prompt)
 
-                    tool_training_history._concat_history(tool._get_examples_as_history())
+                    tool_training_history._concat_history(tool._get_examples_as_history(self._tags))
 
                     tool_use: str = "Now that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
                     self._chat(tool_training_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
@@ -583,10 +583,10 @@ class OllamaAgent(GenericAgent):
         }
         response = client.chat(**params)
         if structured_output is not None:
-            history_slot.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=[BUILTIN_TAG, RESPONSE_TAG]))
+            history_slot.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
         else:
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
-            history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=[BUILTIN_TAG, RESPONSE_TAG]))
+            history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
 
         self.task_runtime_config = {}
         history_slot.set_raw_llm_json(self._response_to_json(response))

@@ -9,7 +9,6 @@ from .history import History
 from .logging_config import LoggerManager
 from .tool import Tool
 from .history import Message
-from .constants import BUILTIN_TAG
 
 LoggerManager.set_library_log_level("httpx", "WARNING")
 
@@ -78,9 +77,6 @@ class Task:
         self.streaming_callback: Callable | None = streaming_callback
         self.runtime_config = runtime_config if runtime_config is not None else {}
         self.tags: List[str] = tags if tags is not None else []
-
-        # Tags added by the user to its prompt
-        self.tags.append(BUILTIN_TAG)
 
         if len(self.tools) > 0 and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")

@@ -262,17 +262,16 @@ class GenericMessage(ABC):
         else:
             return json.dumps([tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls])
 
-    def add_tag(self, tag: str) -> None:
+    def add_tags(self, tags: List[str]) -> None:
         """
         Add a tag to the message.
 
         Parameters
         ----------
-        tag : str
+        tags : List[str]
             The tag to add to the message.
         """
-        if tag not in self.tags:
-            self.tags.append(tag)
+        self.tags.extend(tags)
 
     def remove_tag(self, tag: str) -> None:
         """

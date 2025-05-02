@@ -117,17 +117,17 @@ class TestBasicInference(BaseAgentTest):
         
         if self.run_ollama:
             assistant_message = Task("Describe the weather", self.ollama_agent).solve()
-            assistant_message.add_tag("weather")
+            assistant_message.add_tags(["weather"])
             history.add_message(assistant_message)
         
         if self.run_openai:
             assistant_message = Task("Describe the weather", self.openai_agent).solve()
-            assistant_message.add_tag("weather")
+            assistant_message.add_tags(["weather"])
             history.add_message(assistant_message)
         
         if self.run_vllm:
             assistant_message = Task("Describe the weather", self.vllm_agent).solve()
-            assistant_message.add_tag("weather")
+            assistant_message.add_tags(["weather"])
             history.add_message(assistant_message)
         
         # Test getting messages by tags
