@@ -223,19 +223,9 @@ from yacana import OllamaAgent, Task, Tool, Message, MessageRole, GroupSolve, En
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="installation.html#installing-ollama">Installing Ollama</a></li>
-                        <li><a href="installation.html#choosing-an-llm-model">Choosing an LLM model</a>
-                        </li>
-                        <li><a href="installation.html#running-the-model">Running the model</a></li>
-                        <li><a href="installation.html#installing-yacana">Installing Yacana</a></li>
-                        <li><a href="installation.html#imports">Imports</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -257,9 +247,10 @@ from yacana import OllamaAgent, Task, Tool, Message, MessageRole, GroupSolve, En
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 

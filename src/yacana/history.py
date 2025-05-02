@@ -170,7 +170,7 @@ class GenericMessage(ABC):
         self.medias: List[str] = medias if medias is not None else []
         self.structured_output: Type[T] | None = structured_output
         self.tool_call_id: str | None = tool_call_id
-        self.tags: List[str] = tags if tags is not None else []
+        self.tags: List[str] = list(tags) if tags is not None else []
 
         # Checking that both @message and @tool_calls are neither None nor empty at the same time
         if content is None and (tool_calls is None or (tool_calls is not None and len(tool_calls) == 0)):

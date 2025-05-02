@@ -333,7 +333,8 @@ Equation result =  22
 
                 <h4>Adding validation inside the Tool</h4>
 
-                <p>Since LLMs are not deterministic, we can never be certain of the values they’ll send to our tools. 
+                <p>
+                    Since LLMs are not deterministic, we can never be certain of the values they’ll send to our tools. 
                     That’s why you should think of a tool the same way you would a web server route—it requires server-side validation. 
                     Your tool must verify the input it receives and raise an error if the data is invalid.
                 </p>
@@ -400,7 +401,7 @@ This tool takes two integer arguments, `first_number` and `second_number`, and r
 
 I'm ready to use this tool when needed.
 
-INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect argument type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "&#60;value1&#62;", "arg2": "&#60;value2&#62;"}. You must respect argument type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
 
 INFO: [AI_RESPONSE][From: Ai assistant]: Thank you for the clarification.
 
@@ -425,7 +426,7 @@ Using this error message, fix the JSON arguments you gave.
 Remember that you must output ONLY the tool arguments as valid JSON. For instance: {'first_number': 'arg 0', 'second_number': 'arg 1'}
 
 INFO: [AI_RESPONSE][From: Ai assistant]: {"first_number": "arg 0", "second_number": "arg 1"}
-Tool adder was called with param 'arg 0' (<class 'str'>) and 'arg 1' (<class 'str'>)
+Tool adder was called with param 'arg 0' (&#60;class 'str'&#62;) and 'arg 1' (&#60;class 'str'&#62;)
 
 WARNING: Tool 'Adder' raised an error
 
@@ -435,7 +436,7 @@ Using this error message, fix the JSON arguments you gave.
 
 
 INFO: [AI_RESPONSE][From: Ai assistant]: {"first_number": 2, "second_number": 2}
-Tool adder was called with param '2' (<class 'int'>) and '2' (<class 'int'>)
+Tool adder was called with param '2' (&#60;class 'int'&#62;) and '2' (&#60;class 'int'&#62;)
 Result of added tool is:  4
 Equation result = 4
 					</code></pre>
@@ -987,6 +988,7 @@ Since I have now calculated all parts of the original expression, there are no m
             <!-- Menu Container -->
             <div id="menu-container"></div>
 
+
             <!-- Section -->
             <section>
                 <header class="major">
@@ -1002,19 +1004,9 @@ Since I have now calculated all parts of the original expression, there are no m
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="tool_calling.html#concept-of-calling-tools">Concepts of calling tools</a></li>
-                        <li><a href="tool_calling.html#writing-good-tool-prompts">Writing good tool prompts</a></li>
-                        <li><a href="tool_calling.html#calling-a-tool">Calling a tool</a></li>
-                        <li><a href="tool_calling.html#improving-tool-calling-results">Improving tool-calling results</a></li>
-                        <li><a href="tool_calling.html#optional-tools">Optional tools</a></li>
-                        <li><a href="tool_calling.html#assigning-multiple-tools">Assigning multiple Tools</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -1036,9 +1028,10 @@ Since I have now calculated all parts of the original expression, there are no m
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 

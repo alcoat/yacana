@@ -469,14 +469,9 @@ I will give you your task in the next message.
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="multi_agents_chat.html#multi-agents-chat">Multi-agents chat</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -498,9 +493,10 @@ I will give you your task in the next message.
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 

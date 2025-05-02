@@ -541,17 +541,9 @@ Question is NOT about plants sorry.
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="routing.html#concepts-of-routing">Concepts of routing</a></li>
-                        <li><a href="routing.html#self-reflection-routing">Self-reflection routing</a></li>
-                        <li><a href="routing.html#cleaning-history">Cleaning history</a></li>
-                        <li><a href="routing.html#routing-demonstration">Routing demonstration</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -573,9 +565,10 @@ Question is NOT about plants sorry.
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 

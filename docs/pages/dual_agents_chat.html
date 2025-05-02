@@ -1621,17 +1621,9 @@ The secret number is equal to the guessed number. You won ! // (tool)
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping chat using 'maximum iterations'</a></li>
-                        <li><a href="dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end the chat</a></li>
-                        <li><a href="dual_agents_chat.html#controlling-the-shift-message">Controlling the Shift Message</a></li>
-                        <li><a href="dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -1653,9 +1645,10 @@ The secret number is equal to the guessed number. You won ! // (tool)
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 

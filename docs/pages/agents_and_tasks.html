@@ -435,20 +435,9 @@ INFO: [AI_RESPONSE]: The sky appears blue because of a phenomenon called Rayleig
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="agents_and_tasks.html#creating-an-agent">Creating an Agent</a></li>
-                        <li><a href="agents_and_tasks.html#basic-roleplay">Basic roleplay</a></li>
-                        <li><a href="agents_and_tasks.html#creating-tasks">Creating Tasks</a></li>
-                        <li><a href="agents_and_tasks.html#getting-the-result-of-a-task">Getting the result of a Task</a></li>
-                        <li><a href="agents_and_tasks.html#chaining-tasks">Chaining Tasks</a></li>
-                        <li><a href="agents_and_tasks.html#logging-levels">Logging levels</a></li>
-                        <li><a href="agents_and_tasks.html#configuring-llms-settings">Configuring LLM's settings</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -470,9 +459,10 @@ INFO: [AI_RESPONSE]: The sky appears blue because of a phenomenon called Rayleig
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 

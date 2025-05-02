@@ -1421,22 +1421,9 @@
 
             <!-- Section -->
             <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="classes.html#agent">Agent</a></li>
-                        <li><a href="classes.html#task">Task</a></li>
-                        <li><a href="classes.html#tool">Tool</a></li>
-                        <li><a href="classes.html#message">Message</a></li>
-                        <li><a href="classes.html#history">History</a></li>
-                        <li><a href="classes.html#historyslot">HistorySlot</a></li>
-                        <li><a href="classes.html#modelsettings">ModelSettings</a></li>
-                        <li><a href="classes.html#endchat">EndChat</a></li>
-                        <li><a href="classes.html#groupsolve">GroupSolve</a></li>
-                    </ul>
-                </nav>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
             </section>
 
             <!-- Footer -->
@@ -1458,9 +1445,10 @@
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/menu.js"></script>
 <script>
-    // Initialize the menu when the document is ready
+    // Initialize both menus when the document is ready
     $(document).ready(function() {
-        initializeMenu();
+        initializeMainNavMenu();
+        initializePageNavMenu();
     });
 </script>
 
