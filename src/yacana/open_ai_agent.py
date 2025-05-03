@@ -404,7 +404,7 @@ class OpenAiAgent(GenericAgent):
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags + [RESPONSE_TAG]))
+                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
 
             elif self.is_common_chat(choice):
                 logging.debug("Response assessment is classic chat answer")

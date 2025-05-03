@@ -227,13 +227,13 @@ class OllamaAgent(GenericAgent):
         tool : Tool
             The tool that was called.
         """
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags))
+        self.history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG]))
         self.history.add_message(
             OllamaTextMessage(MessageRole.ASSISTANT,
                               f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly.", tags=self._tags))
         self.history.add_message(OllamaUserMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", tags=self._tags))
         self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, last_tool_call, tags=self._tags))
-        self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=self._tags))
+        self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=self._tags + [RESPONSE_TAG]))
 
     def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
         """

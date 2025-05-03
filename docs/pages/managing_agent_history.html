@@ -628,7 +628,7 @@ Task("What's 2+2 ?", agent1, tags=["first_task"]).solve().add_tags(["first_task_
                     <p>
                         Let's make a longer example to show how tagging works. Bellow is a script that will ask 3 numeric related questions to the LLM.<br>
                         The script will then change the second question / answer to something completly different.
-                        Finally it will ask the LLM what question was not about numbers. Because we updated the second task, it should tell us that it's the second one.
+                        Finally, the script will ask the LLM what question was not about numbers. Because we updated the second task, it should tell us that it's the second one.
                     </p>
                     <pre><code class="language-python">
 from yacana import OllamaAgent, Task, GenericMessage
@@ -708,62 +708,9 @@ What question was not about numbers ?
 [assistant]:
 That would be "Why is the sky blue?" It's a classic example of an explanation of a phenomenon in science.
                 </code></pre>
-                <p>
-                    Let's make another example. This time we'll count how many messages are present between the first LLM's response and the third task prompt.<br>
-                    We'll just be counting but you can think of anything, even deleting the messages!
-                </p>
-                <pre><code class="language-python">
-from typing import List
+                <br>
 
-from yacana import OllamaAgent, Task, GenericMessage
-
-agent1 = OllamaAgent("Ai assistant", "llama3.1:latest")
-
-Task("What's 2+2 ?", agent1, tags=["first_task_prompt"]).solve().add_tags(["first_task_response"])
-Task("What's 20+20 ?", agent1, tags=["second_task_prompt"]).solve().add_tags(["second_task_response"])
-Task("What's 200+200 ?", agent1, tags=["third_task_prompt"]).solve().add_tags(["third_task_response"])
-
-# Getting all messages from the history
-messages: List[GenericMessage] = agent1.history.get_all_messages()
-
-# Selecting these two tags to count the number of messages between them
-start_tag = "first_task_response"
-end_tag = "third_task_prompt"
-
-nb_messages = 0
-start_counting = False
-for message in messages:
-    if "first_task_response" in message.tags:
-        start_counting = True
-    if "third_task_prompt" in message.tags:
-        break
-    if start_counting:
-        nb_messages += 1
-
-print("Number of messages between the two selected messages: ", nb_messages)                   
-                </code></pre>
-                <p>
-                    Output:
-                </p>
-                <pre><code class="text-output">
-INFO: [PROMPT][To: Ai assistant]: What's 2+2 ?
-
-INFO: [AI_RESPONSE][From: Ai assistant]: The answer is: 4
-
-INFO: [PROMPT][To: Ai assistant]: What's 20+20 ?
-
-INFO: [AI_RESPONSE][From: Ai assistant]: Easy one!
-
-The answer is: 40
-
-INFO: [PROMPT][To: Ai assistant]: What's 200+200 ?
-
-INFO: [AI_RESPONSE][From: Ai assistant]: Similar to the previous ones...
-
-The answer is: 400
-Number of messages between the two selected messages:  3
-                </code></pre>
-                <hr>
+                <h3>Builtin tags</h3>
                 <p>
                     There are a few builtin tags that are automatically added to some messages:
                 </p>
@@ -789,10 +736,67 @@ Number of messages between the two selected messages:  3
                             </tr>
                         </tbody>
                     </table>
-                </div>
-                <p>
                     More may be added in the future.
+                </div>
+                <br>
+
+                <h3>Let's build!</h3>
+                <p>
+                    Let's make another example. This time we'll count how many messages are present between the first LLM's response and the third task prompt.
+                    <br>
+                    It's quite specific so be sure to understand the range we're selecting.
+                    <br>
+                    We'll just be counting but you can think of anything, even deleting the messages!
                 </p>
+                <pre><code class="language-python">
+from typing import List
+
+from yacana import OllamaAgent, Task, GenericMessage
+
+agent1 = OllamaAgent("Ai assistant", "llama3.1:latest")
+
+start_tag = "start"
+end_tag = "end"
+
+Task("What's 2+2 ?", agent1).solve().add_tags([start_tag])
+Task("What's 20+20 ?", agent1).solve()
+Task("What's 200+200 ?", agent1, tags=[end_tag]).solve()
+
+# Getting all messages from the history
+messages: List[GenericMessage] = agent1.history.get_all_messages()
+
+nb_messages = 0
+start_counting = False
+for message in messages:
+    print("\n" + message.content + " ==> " + str(message.tags))
+    if start_tag in message.tags:
+        start_counting = True
+    elif end_tag in message.tags:
+        break
+    elif start_counting is True:
+        nb_messages += 1
+
+print("Number of messages between the two selected messages: ", nb_messages)               
+                </code></pre>
+                <br>
+                <p>
+                    Output (without logging):
+                </p>
+                <pre><code class="text-output">
+What's 2+2 ? ==> ['yacana_prompt']
+
+The answer is: 4! ==> ['yacana_response', 'start']
+
+What's 20+20 ? ==> ['yacana_prompt']
+
+Easy one!
+
+The answer is: 40! ==> ['yacana_response']
+
+What's 200+200 ? ==> ['end', 'yacana_prompt']
+Number of messages between the two selected messages:  2
+                </code></pre>
+
                 <div style="text-align: center; margin-top: 50px;">
                     <h4>Pagination</h4>
                     <ul class="pagination">
