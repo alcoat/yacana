@@ -43,13 +43,13 @@ class Media:
             return {
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:image/{file_mime};base64,{Media._path_to_base64(path)}",
+                    "url": f"data:image/{file_mime};base64,{Media.path_to_base64(path)}",
                 }}
         elif main_type == "audio":
             return {
                 "type": "input_audio",
                 "input_audio": {
-                    "data": Media._path_to_base64(path),
+                    "data": Media.path_to_base64(path),
                     "format": file_mime
             }}
         else:
@@ -85,7 +85,7 @@ class Media:
 
 
     @staticmethod
-    def _path_to_base64(path: str) -> str:
+    def path_to_base64(path: str) -> str:
         """
         Convert the content of a file or URL to a base64-encoded string.
 

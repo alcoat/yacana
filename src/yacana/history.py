@@ -695,10 +695,13 @@ class OllamaUserMessage(GenericMessage):
         dict
             A dictionary containing the role, content, and media information.
         """
+        final_medias = []
+        for media in self.medias:
+            final_medias.append(Media.path_to_base64(media))
         return {
             "role": self.role.value,
             "content": self.content,
-            **({'images': self.medias} if self.medias is not None else {}),
+            **({'images': final_medias} if self.medias is not None else {}),
         }
 
     def _structured_output_to_dict(self) -> Dict:

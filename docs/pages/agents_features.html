@@ -1,0 +1,284 @@
+<!DOCTYPE HTML>
+<!--
+	Editorial by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+
+<head>
+    <title>Yacana - Multi-agent chat</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+    <link rel="stylesheet" href="../assets/css/main.css"/>
+    <link rel="stylesheet" href="../assets/css/codemirror.min.css">
+    <link rel="stylesheet" href="../assets/css/monokai.min.css">
+    <link rel="stylesheet" href="../assets/css/foldgutter.min.css">
+    <link rel="stylesheet" href="../assets/css/codemirror-custom.css">
+    <link rel="stylesheet" href="../assets/css/zenburn.min.css">
+    <script src="../assets/js/codemirror.min.js"></script>
+    <script src="../assets/js/python.min.js"></script>
+    <script src="../assets/js/foldcode.min.js"></script>
+    <script src="../assets/js/foldgutter.min.js"></script>
+    <script src="../assets/js/brace-fold.min.js"></script>
+    <script src="../assets/js/codemirror-custom.js"></script>
+</head>
+
+<body class="is-preload">
+
+<!-- Wrapper -->
+<div id="wrapper">
+
+    <!-- Main -->
+    <div id="main">
+        <div class="inner">
+
+            <!-- Header -->
+            <header id="header">
+                <a href="../index.html" class="logo"><strong>Yacana</strong>, powering open source LLMs</a>
+                <ul class="icons">
+                    <li><a href="https://x.com/RSoftwares_ofc" class="icon brands fa-twitter"><span class="label">Twitter</span></a>
+                    </li>
+                    <li><a href="https://medium.com/@docteur_rs" class="icon brands fa-medium-m"><span class="label">Medium</span></a>
+                    </li>
+                    <li><a href="https://www.youtube.com/channel/UCvi7R0CRmtxhWOVw62XteTw"
+                           class="icon brands fa-youtube"><span class="label">Medium</span></a></li>
+                    <li><a href="https://github.com/rememberSoftwares/yacana" class="icon brands fa-github"><span
+                            class="label">Github</span></a></li>
+                </ul>
+            </header>
+
+            <!-- Content -->
+            <section>
+                <header class="main">
+                    <h1 id="structured-output">Structured output</h1>
+                </header>
+
+                <p>Yacana provides two ways to get structured JSON outputs:</p>
+
+                <h2 id="simple-json-mode">Simple JSON Mode</h2>
+                <p>The simplest way to get JSON output is to use the <code>json_output=True</code> parameter on a task:</p>
+                <pre><code class="language-python">
+message = Task("Tell me 1 fact about Canada.", agent, json_output=True).solve()
+                </code></pre>
+                <p>However, this approach is "best effort" - the agent will do its best to generate valid JSON, but there's no guarantee on the syntactic quality of the generated JSON as no grammar is enforced.</p>
+
+                <h2 id="structured-output-with-pydantic">Structured Output with Pydantic</h2>
+                <p>To get more reliable and typed JSON outputs, Yacana offers <code>structured_output</code>. This feature uses Pydantic to define a strict schema that the response must follow.</p>
+
+                <p>Here's a complete example:</p>
+                <pre><code class="language-python">
+from pydantic import BaseModel
+
+class CountryFact(BaseModel):
+    name: str
+    fact: str
+
+class Facts(BaseModel):
+    countryFacts: list[CountryFact]
+
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+
+message1 = Task("Tell me 3 facts about Canada.", agent, structured_output=Facts).solve()
+# Prints the response as a pure JSON string
+print(message1.content)
+
+# Typed access to data through the structured_output object
+print("Name = ", message1.structured_output.countryFacts[0].name)
+print("Fact = ", message1.structured_output.countryFacts[0].fact)
+                </code></pre>
+
+                <p>The benefits of this approach are numerous:</p>
+                <ul>
+                    <li>Automatic schema validation of the response</li>
+                    <li>Typed access to data through Python classes</li>
+                    <li>Better quality of generated JSON responses</li>
+                    <li>IDE autocompletion support</li>
+                </ul>
+
+                <p>The <code>structured_output</code> is particularly useful when you need to process responses programmatically and want to guarantee the data structure.</p>
+
+                <header class="main">
+                    <h1 id="streaming">Streaming</h1>
+                </header>
+                <p>
+                    Streaming allows you to get the output of the LLM token by token instead of waiting for the whole response.
+                    <br>
+                    It's particularly useful when you want to display the response to the user in real-time or need to process the response incrementally.
+                    <br>
+                    To enable streaming, you can define a streaming callback that will receive the tokens as they are generated:
+                </p>
+                <pre><code class="language-python">
+from yacana import Task, OllamaAgent, GenericMessage
+
+def streaming(chunk: str):
+    print(f"chunk = |{chunk}|")
+
+agent = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+
+message: GenericMessage = Task("Tell me 1 facts about France.", agent, streaming_callback=streaming).solve()
+print("Fullresponse = ", message.content)
+                </code></pre>
+
+                <h2 id="using-medias">Using medias</h2>
+                <p>
+                    You can give medias to Agents and make them interact with them.
+                    <br>
+                    For instance, you can pass images or even audio files to an agent. You can even use tools on medias so that the LLM can use them in accordance the media content.
+                    <br>
+                    To use medias with Ollama you'll need to install a multi-modal model like <a href="https://ollama.com/library/llama3.2-vision">llama3.2-vision</a> or <a href="https://ollama.com/library/llava">Llava</a>.
+                    <code><pre>
+ollama pull llama3.2-vision
+                    </pre></code>
+                    <br>
+                    To run the following snippets, cd into the <a href="https://github.com/rememberSoftwares/yacana">root github repo</a>, create the file there and run the code.
+                    <pre><code class="language-python">
+from yacana import Task, OllamaAgent, GenericMessage
+
+vision_agent = OllamaAgent("AI assistant", "llama3.2-vision:latest", system_prompt="You are a helpful AI assistant")
+
+Task("Describe this image", vision_agent, medias=["./tests/assets/burger.jpg"]).solve()
+                    </code></pre>
+                    Outputs:
+                    <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: Describe this image
+
+INFO: [AI_RESPONSE][From: AI assistant]: This black and white photo showcases a close-up view of a hamburger. The burger is centered on the image, with its bun covered in sesame seeds and two patties visible beneath. A slice of cheese is positioned between the buns, while lettuce peeks out from underneath. A small amount of ketchup or mustard is visible at the bottom of the patty.
+                        
+ The background is blurred, suggesting that the burger was photographed on a table or countertop. The overall mood and atmosphere of this photo are casual and informal, as if it was taken by someone enjoying their meal in a relaxed setting.
+                    </code></pre>
+                    This model doesn't support multiple medias in the same request, but you can use <a href="other_inference_servers.html">Yacana with ChatGPT</a> to do so.
+                    <br>
+                    Now let's use tools on medias:
+                    <pre><code class="language-python">
+from yacana import Task, OllamaAgent, GenericMessage, Tool
+
+# Defining a simple function to be used as tool
+def color_name_to_hexa(color_name: str) -> str:
+    color_map = {
+        "red": "#FF0000",
+        "green": "#00FF00",
+        "blue": "#0000FF",
+        "yellow": "#FFFF00",
+        "black": "#000000",
+        "white": "#FFFFFF"
+    }
+    return color_map.get(color_name.lower(), "#000000")
+
+# Defining the tool itself, referencing the function
+color_name_to_hexa_tool = Tool("ColorNameToHexa", "Converts a color name to its hexadecimal representation. For example red -> #FF0000", color_name_to_hexa)
+
+vision_agent = OllamaAgent("AI assistant", "llama3.2-vision:latest", system_prompt="You are a helpful AI assistant")
+
+Task("What color is the object ?", agent, medias=["https://avatars.githubusercontent.com/u/12821004"], tools=[color_name_to_hexa_tool]).solve()
+                    </code></pre>
+                </p>
+                <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: I give you the following tool definition that you must use to fulfill a future task: color_name_to_hexa(color_name: str) -> str - Converts a color name to its hexadecimal representation. For example red -> #FF0000. Please acknowledge the given tool.
+
+INFO: [AI_RESPONSE][From: AI assistant]: I have taken note of the provided tool:
+
+`color_name_to_hexa(color_name: str) -> str`
+
+This function takes a string representing a color name as input and returns a string representing the corresponding hexadecimal color code.
+
+I'm ready to use this tool for any future task that requires converting color names to their hexadecimal representations. What's the next step?
+
+INFO: [PROMPT][To: AI assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'color_name': 'arg 0'}
+
+INFO: [AI_RESPONSE][From: AI assistant]: I understand the requirement now. To use the `color_name_to_hexa(color_name: str) -> str` tool, I will extract each parameter and create a JSON object with the extracted parameters as keys.
+
+In this case, since there is only one parameter, `color_name`, which is of type `str`, I will structure the call like this:
+
+{'color_name': 'red'}
+
+Please let me know when to proceed!
+
+INFO: [PROMPT][To: AI assistant]: You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:
+What color is the object ?
+
+INFO: [AI_RESPONSE][From: AI assistant]: { "color_name": "blue" }
+
+INFO: [TOOL_RESPONSE][ColorNameToHexa]: #0000FF
+                </code></pre>
+                
+                The answer to the question was indeed blue. And the tool returned the hexadecimal code for blue.
+                <br>
+                Also, we used a http URL as media so you are not limited to the local filesystem.
+
+                <div style="text-align: center; margin-top: 50px;">
+                    <h4>Pagination</h4>
+                    <ul class="pagination">
+                        <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations"
+                               class="button">Prev</a></li>
+
+                        <li><span class="button disabled">Next</span></li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <div class="inner">
+
+            <!-- Search -->
+            <section id="search" class="alt">
+                <form method="post" action="#">
+                    <input type="text" name="query" id="query" placeholder="Search"/>
+                </form>
+            </section>
+
+            <!-- Menu Container -->
+            <div id="menu-container"></div>
+
+            <!-- Section -->
+            <section>
+                <header class="major">
+                    <h2>Related Youtube video</h2>
+                </header>
+                <div class="mini-posts">
+                    <article>
+                        <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
+                        <p>Youtube video for this section is still under creation. Please be patient ^^</p>
+                    </article>
+                </div>
+            </section>
+
+            <!-- Section -->
+            <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer id="footer">
+                <p class="copyright">&copy; Emilien Lancelot. All rights reserved.<br>
+                    Design: <a href="https://html5up.net">HTML5UP</a>.</p>
+            </footer>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/jquery.min.js"></script>
+<script src="../assets/js/browser.min.js"></script>
+<script src="../assets/js/breakpoints.min.js"></script>
+<script src="../assets/js/util.js"></script>
+<script src="../assets/js/main.js"></script>
+<script src="../assets/js/menu.js"></script>
+<script>
+    // Initialize both menus when the document is ready
+    $(document).ready(function() {
+        initializeMainNavMenu();
+        initializePageNavMenu();
+    });
+</script>
+
+</body>
+
+</html>
