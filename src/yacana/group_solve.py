@@ -111,6 +111,20 @@ class GroupSolve:
     shift_message_content : str, optional
         A custom message instead of using the opposite agent response as shift message content. Defaults to None.
 
+    Properties
+    ----------
+    tasks : List[Task]
+        All tasks that must be solved during group chat.
+    mode : EndChatMode
+        The modality to end a chat with multiple agents.
+    reconcile_first_message : bool
+        Should the first message from both LLMs be available to one another. Only useful in dual chat.
+    shift_message_owner : Task
+        The Task to which the shift message should be assigned to. In the end it's rather the corresponding Agent
+        than the Task that is involved here.
+    shift_message_content : str
+        A custom message instead of using the opposite agent response as shift message content.
+
     Raises
     ------
     ValueError

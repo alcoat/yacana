@@ -49,8 +49,8 @@ class OpenAiAgent(GenericAgent):
         All settings that OpenAI currently supports as model configuration. Defaults to None.
     runtime_config : Dict | None, optional
         Runtime configuration for the agent. Defaults to None.
-    **kwargs
-        Additional keyword arguments passed to the parent class.
+
+        @todo missing attribute for api_token
 
     Raises
     ------
@@ -59,8 +59,9 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
-        api_token = "cantbeempty" if api_token == "" else api_token
+                 api_token: str = "cant_be_empty", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
+        if api_token == "":
+            logging.warning(f"Empty api_token provided. This will most likely clash with the underlying inference library. You should probably set this to any non empty string.")
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")

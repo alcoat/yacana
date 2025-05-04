@@ -861,7 +861,7 @@ class HistorySlot:
     ----------
     messages : List[GenericMessage], optional
         A list of messages. Each message is a variation of the main message defined by the
-        @currently_selected_message_index parameter.
+        @main_message_index parameter.
     raw_llm_json : str, optional
         The raw LLM JSON response for the slot. This is the raw JSON from the inference server.
         When using OpenAI this may contain more than one message hence the slot system acts as a

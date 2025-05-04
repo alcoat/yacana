@@ -49,7 +49,7 @@ class BaseAgentTest(unittest.TestCase):
         if cls.run_vllm:
             cls.vllm_agent = OpenAiAgent(
                 name="VLLM AI Assistant",
-                model_name="meta-llama/Llama-3.2-1B-Instruct",
+                model_name="meta-llama/Llama-3.1-8B-Instruct",
                 model_settings=cls.openai_settings,
                 system_prompt="You are a helpful AI assistant",
                 endpoint="http://127.0.0.1:8000/v1",

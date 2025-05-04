@@ -1,90 +1,4 @@
-# Yacana
-
-Task-driven multi-agents framework for developers to create open source LLM-powered apps with ease.  
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/e59e056b-35c8-4077-a22a-3b6a72c9eb03">
-</p>
-
----
-
-## What is Yacana
-
-Yacana is designed for both *beginners* and *advanced* AI users.  
-
-It features a simple OOP API with a **smooth learning curve**, while also offering advanced runtime LLM configurations when needed.  
-
-The real strength of the framework lies in its ability to deliver impressive results with open-source models, even small ones, making **tool calling effortless with any LLM**.  
-
-Yacana offers a **guided workflow** approach or **multi-turn chat** for production-grade capabilities, leveraging what we typically call '*Agents*'. However, Yacana takes a different approach to Agents compared to other frameworks, focusing more on chaining Tasks together rather than on the Agents themselves.
-
----
-
-## Key Features
-
-* 🔗 **Link** tasks together to create workflows
-* 🧰 Tool calling for **every** LLMs
-* 🤖 **Multi-agents** & **multi-turn** autonomous chat
-* 🚄 Streaming for speed and structured output for reliability  
-* 🚀 *Ready to use in minutes*
-
-▶️▶️▶️ [Start by reading the documentation here](https://remembersoftwares.github.io/yacana/). ◀️◀️◀️    
-
-*Yacana is free and open source under MIT license.*  
-If you like Yacana consider giving a star to the repo! Opensource projects need your help! ⭐  
-
----
-
-## Installation
-```shell
-pip install yacana
-```
-
----
-
-## Quick demo
-
-Let's make an application that looks for PDF invoices inside a folder then checks if you have enough money to pay them and finaly rename them so things don't get messy!  
-Order of operation:   
-1. Check if it is an invoice. If not it will skip to the next one.
-2. Deduct the money on the invoice from the bank account (`@checking_account_limit` variable) and tell you if you don't have enough money to pay for everything!
-3. Rename the invoice file to match `<category><total price>.pdf` so that it's clean.
-
-*We'll test with these 3 PDFs. Two invoices and one random text:*
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/9a58b927-0017-4214-b1ef-331a7c0fafaf">
-</p>
-
-### Demo setup
-
-```shell
-pip install yacana
-
-# Only for parsing the PDFs in this demo
-pip install pypdf
-
-git clone https://github.com/rememberSoftwares/yacana.git
-cd yacana/examples/invoices_checker/ollama
-python3 quick_demo.py
-```
-
-⚠️ **Requirements:**  
-* Before running the script make sure that you installed Ollama on your computer  
-* The Agents are using `llama3.1:8b`. If you are using another LLM model, update the 3 agents' declaration in the script to match the one you installed:  
-
-➡️
-```
-agent1 = Agent("Expert banker", "llama3.1:8b", model_settings=ms)
-agent2 = Agent("Naming expert", "llama3.1:8b")
-agent3 = Agent("File-system helper", "llama3.1:8b", model_settings=ms)
-```
-* If you are not using Ollama please refer to: [Using other inference servers](https://remembersoftwares.github.io/yacana/pages/other_inference_servers.html) and use one of the corresponding [demos](https://github.com/rememberSoftwares/yacana/tree/main/examples/invoices_checker).
-
-**Script:**
-
-```python
-from yacana import OllamaAgent, Task, Tool, GroupSolve, EndChat, EndChatMode, LoggerManager, ToolError, OllamaModelSettings
+from yacana import Task, Tool, GroupSolve, EndChat, EndChatMode, LoggerManager, ToolError, OpenAiModelSettings, OpenAiAgent
 import os
 from typing import List
 from pypdf import PdfReader
@@ -92,7 +6,7 @@ from pypdf import PdfReader
 # How much money you have on your bank account
 checking_account_limit: int = 3000
 # Path where to find the invoices
-invoices_folder_path = "../assets/invoices/"
+invoices_folder_path = "../../assets/invoices/"
 # Uncomment to hide info logs.
 # LoggerManager.set_log_level(None)
 
@@ -166,12 +80,12 @@ def check_file_existence(file_name: str) -> str:
 ###############
 
 # Lowering temperature so the LLM doesn't get too creative
-ms = OllamaModelSettings(temperature=0.4)
+ms = OpenAiModelSettings(temperature=0.4)
 
 # Creating 3 agents
-agent1 = OllamaAgent("Expert banker", "llama3.1:8b", model_settings=ms)
-agent2 = OllamaAgent("File-system helper", "llama3.1:8b", model_settings=ms)
-agent3 = OllamaAgent("Naming expert", "llama3.1:8b")
+agent1 = OpenAiAgent("Expert banker", "meta-llama/Llama-3.1-8B-Instruct", endpoint="http://127.0.0.1:8000/v1", model_settings=ms, runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
+agent2 = OpenAiAgent("File-system helper", "meta-llama/Llama-3.1-8B-Instruct", endpoint="http://127.0.0.1:8000/v1", model_settings=ms, runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
+agent3 = OpenAiAgent("Naming expert", "meta-llama/Llama-3.1-8B-Instruct", endpoint="http://127.0.0.1:8000/v1", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
 
 
 # Registering 2 tools
@@ -228,30 +142,3 @@ for invoice_file in files:
     agent1.history.load_check_point(checkpoint_ag1)
     agent2.history.load_check_point(checkpoint_ag2)
     agent3.history.load_check_point(checkpoint_ag3)
-```
-
-### Call graph
-
-![invoice_demo](https://github.com/user-attachments/assets/7cf6fd5f-325f-4868-b4c9-0667a30543fd)
-
----
-
-## Roadmap
-
-❗ Highest priority  
-* Making Enhanced Tool Calling available for the OpenAi compatible backends and OpenAi standard for Ollama backends  
-* Compatibility with **MCP**  
-
-❕ Lower priority  
-* Adding memory to agents  
-* Adding native RAG capabilities
-* Simplify shift message and maybe rework GroupChat itself a bit.  
-* Keeping working on the documentation.  
-* Adding a section about code generation.  
-
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more details.
-
-

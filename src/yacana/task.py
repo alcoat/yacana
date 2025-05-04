@@ -54,7 +54,38 @@ class Task:
     runtime_config : Dict | None, optional
         Optional runtime configuration for the task. Defaults to None.
     tags : List[str] | None, optional
-        Optional list of tags that will be added to the message(s) corresponding to the user's prompt. Defaults to None.
+        Optional list of tags that will be added to all message(s) corresponding to this task. Defaults to None.
+
+    Attributes
+    ----------
+    prompt : str
+        The task to solve. It is the prompt given to the assigned LLM.
+    agent : GenericAgent
+        The agent assigned to this task.
+    json_output : bool
+        If True, will force the LLM to answer as JSON.
+    structured_output : Type[BaseModel] | None
+        The expected structured output type for the task.
+    tools : List[Tool]
+        A list of tools that the LLM will get access to when trying to solve this task.
+    medias : List[str] | None
+        An optional list of paths pointing to images on the filesystem.
+    llm_stops_by_itself : bool
+        Only useful when the task is part of a GroupSolve(). Signals the assigned LLM
+        that it will have to stop talking by its own means.
+    use_self_reflection : bool
+        Only useful when the task is part of a GroupSolve(). Allows keeping the self
+        reflection process done by the LLM in the next GS iteration.
+    forget : bool
+        When True, the Agent won't remember this task after completion. Useful for
+        routing purposes.
+    streaming_callback : Callable | None
+        Optional callback for streaming responses.
+    runtime_config : Dict | None
+        Optional runtime configuration for the task.
+    tags : List[str] | None
+        Optional list of tags that will be added to all message(s) corresponding to this task.
+
     Raises
     ------
     IllogicalConfiguration
