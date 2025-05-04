@@ -581,7 +581,7 @@ class OllamaAgent(GenericAgent):
             **self.runtime_config,
             **self.task_runtime_config
         }
-        logging.debug("Runtime parameters before inference: ", params)
+        logging.debug("Runtime parameters before inference: %s", str(params))
         response = client.chat(**params)
         logging.debug("Inference output: %s", str(response))
         if structured_output is not None:
