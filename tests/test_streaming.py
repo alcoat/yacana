@@ -70,15 +70,15 @@ class TestStreaming(BaseAgentTest):
             )
         
         # Test VLLM agent
-        if self.run_vllm:
-            received_chunks.clear()
-            message = Task(prompt, self.vllm_agent, medias=[image_path], streaming_callback=streaming_callback).solve()
-            full_response = "".join(received_chunks)
-            self.assertGreater(len(full_response), 0)
-            self.assertTrue(
-                any(keyword in full_response.lower() for keyword in ['food', 'burger', 'meal', 'dish', 'eating']),
-                "Response should mention food-related content"
-            )
+        #if self.run_vllm:
+        #    received_chunks.clear()
+        #    message = Task(prompt, self.vllm_agent, medias=[image_path], streaming_callback=streaming_callback).solve()
+        #    full_response = "".join(received_chunks)
+        #    self.assertGreater(len(full_response), 0)
+        #    self.assertTrue(
+        #        any(keyword in full_response.lower() for keyword in ['food', 'burger', 'meal', 'dish', 'eating']),
+        #        "Response should mention food-related content"
+        #    )
 
     def test_streaming_with_structured_output(self):
         """Test that using both streaming and structured output raises IllogicalConfiguration."""

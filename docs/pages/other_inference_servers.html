@@ -113,38 +113,7 @@ print(message.content)
                 When using the OpenAiAgent with an inference server different from OpenAi, your LLM might not be able to call tools correctly. Using the enhaced tool calling for the
                 OpenAIAgent will be addressed in a future update.
 
-                <h4>Using structured outputs</h4>
-                <p>
-                    Using structured outputs is the same as with the OllamaAgent. This is the power of Yacana. It provides you with the same API for structured outputs on
-                    local LLMs as on OpenAI.
-                </p>
-                <pre><code class="language-python">
-from yacana import OpenAiAgent, GenericMessage, Task
-
-class CountryFact(BaseModel):
-    name: str
-    fact: str
-
-class Facts(BaseModel):
-    countryFacts: list[CountryFact]
-
-
-openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXX")
-
-message: GenericMessage = Task("Tell me 3 facts about Canada.", openai_agent, structured_output=Facts).solve()
-
-# Print the content of the message as a JSON string
-print(message.content)
-# Print the structured output as a real class instance
-print("Name = ", message.structured_output.countryFacts[0].name)
-print("Fact = ", message.structured_output.countryFacts[0].fact)
-                </code></pre>
-                <p>
-                    All other features, like medias, streaming, etc. are also available with the OpenAiAgent and can be used in the exact same way.
-                    Please refer to the main documentation for more information.
-                </p>
-                <br>
-                <h4>Configuring model settings</h>
+                <h4>Configuring model settings</h4>
 
                 Yacana offers a class to configure the LLM. The class was made to aggregate all the parameters understood by the OpenAI API.
                 <br>
@@ -188,6 +157,55 @@ openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are
 Task("Describe this image", openai_agent, medias=["./tests/assets/burger.jpg", "./tests/assets/flower.png"]).solve()
                     </code></pre>
                     ⚠️ Images are transformed into base64 before being sent to the LLM. This means that the size of the request will be quite large and you will pay for a lot of tokens.
+                </p>
+
+                <h3>Getting alternative responses</h3>
+                <p>
+                    ChatGPT has a feature allowing it to return multiple version of the same message. It's used to provide you with alternative responses. For instance,
+                    some could be more formal, some could be more creative, etc.
+                    <br>
+                    Yacana offers a way to get these alternative responses.
+                    <br>
+                    Let's say we want to get 3 alternative responses to the message "What is the capital of France ?"
+                </p>
+                <pre><code class="language-python">
+from typing import List
+from yacana import Task, OpenAiAgent, GenericMessage, OpenAiModelSettings, HistorySlot
+
+openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXXXX")
+
+# Requesting 3 alternative responses using "n" parameter
+model_settings = OpenAiModelSettings(n=3)
+
+Task("What is the capital of France ?", openai_agent, model_settings=model_settings).solve()
+
+# Getting the last slot from the history
+slot: HistorySlot = openai_agent.history.get_last_slot()
+
+# Getting the messages from the slot
+messages: List[GenericMessage] = slot.messages
+
+# Printing the messages
+for message in messages:
+    print(message.content)
+                </code></pre>
+                <p>
+                    You might be wandering what is an HistorySlot? It's a class that wraps the message from the LLM.<br>
+                    There are very few usecases where you'll need to use it so it has been hided from the user. For instance, when adding a message to the history you're secretly adding an HistorySlot and then<br>
+                    a message to that slot. You can see the history as a list of slots instead of a list of messages. In each slot you'll find one or more messages. Most of the time there will only be one 
+                    because only OpenAi supports the "n" parameter hence making the functionnality  pretty much useless for other inference server.<br>
+                    However, you can create your own slots and add messages to them yourself if the need arises.<br>
+                    Finally, how does the slot knows what message to use by default when it has more than one ? It's simple, by default it's the first one.
+                    To change the default message you can use the <code>my_slot.set_main_message_index(n: int)</code> method to set the correct index in the list of messages.<br>
+                    In the above example we've used the <code>get_last_slot()</code> method to get the last slot from the history and then we've accessed the list of messages inside the slot.<br>
+                    We've then used a for loop to print the content of each message. These messages could be given to a different agent to achieve different results. Maybe select the message
+                    with the most creative answer. Let's say it's the third one.<br>
+                    To make the third message the default one we can do:
+                    <pre><code class="language-python">
+slot.set_main_message_index(3)
+                    </code></pre>
+                    Then, when Yacana sends the current history to the LLM to solve another task it will use the third message as the main one. The other messages are still in the slot, 
+                    but unused.
                 </p>
 
 
@@ -289,6 +307,37 @@ vllm_agent.history.pretty_print()
                     <br>
                     These settings can either be set at the Agent level or at the Task level. For more information 
                     please refer to the <a href="agents_and_tasks.html#accessing-the-underlying-client-library">Accessing the underlying client library</a> section.
+                </p>
+                <br>
+                <h4>Using structured outputs</h4>
+                <p>
+                    Using structured outputs is the same as the OllamaAgent. This is the power of Yacana. It provides you with the same API for structured outputs on
+                    local LLMs as on OpenAI. However, you still need to provide the <code>outline</code> parameter. In this example we set it at the Agent level because it will be
+                    usefull for every future task requiring grammar enforcement.
+                </p>
+                <pre><code class="language-python">
+from yacana import OpenAiAgent, GenericMessage, Task
+
+class CountryFact(BaseModel):
+    name: str
+    fact: str
+
+class Facts(BaseModel):
+    countryFacts: list[CountryFact]
+
+vllm_agent = OpenAiAgent("AI assistant", "meta-llama/Llama-3.2-1B-Instruct", system_prompt="You are a helpful AI assistant", endpoint="http://127.0.0.1:8000/v1", api_token="leave blank", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
+
+message: GenericMessage = Task("Tell me 3 facts about Canada.", vllm_agent, structured_output=Facts).solve()
+
+# Print the content of the message as a JSON string
+print(message.content)
+# Print the structured output as a real class instance
+print("Name = ", message.structured_output.countryFacts[0].name)
+print("Fact = ", message.structured_output.countryFacts[0].fact)
+                </code></pre>
+                <p>
+                    All other features, like medias, streaming, etc. are also available with the OpenAiAgent and can be used in the exact same way.
+                    Please refer to the main documentation for more information.
                 </p>
                 <br>
         </div>

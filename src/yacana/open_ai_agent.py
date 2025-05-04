@@ -60,6 +60,7 @@ class OpenAiAgent(GenericAgent):
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
                  api_token: str = "", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
+        api_token = "cantbeempty" if api_token == "" else api_token
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
@@ -212,7 +213,7 @@ class OpenAiAgent(GenericAgent):
                     tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
                     if tool is None:
                         raise ValueError(f"Tool {tool_call.name} not found in tools list")
-                    print("found ", tool.tool_name)
+                    logging.debug("Found tool: %s", tool.tool_name)
                     tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
                     self.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=self._tags))
                 logging.info(f"[PROMPT][To: {self.name}]: Retrying with original task and tools answer: '{task}'")
@@ -369,25 +370,17 @@ class OpenAiAgent(GenericAgent):
             **self.runtime_config,
             **self.task_runtime_config
         }
-        print("tool choice = ", tool_choice_option)
-        print("----")
-        print("params = ", params)
-        print("----")
+        logging.debug("Runtime parameters before inference: %s", str(params))
 
         history_slot = HistorySlot()
         if structured_output is not None:
-            print("before request")
             response = client.beta.chat.completions.parse(**params)
-            print("after request")
         else:
             response = client.chat.completions.create(**params)
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
 
         self.task_runtime_config = {}
         history_slot.set_raw_llm_json(response.model_dump_json())
-
-        print("Résultat de l'inférence quelle quelle soit = ")
-        print(response.model_dump_json(indent=2))
         logging.debug("Inference output: %s", response.model_dump_json(indent=2))
 
         for choice in response.choices:
@@ -403,7 +396,7 @@ class OpenAiAgent(GenericAgent):
                 tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
-                    print("tool info = ", tool_call.id, tool_call.function.name, tool_call.function.arguments)
+                    logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
                 history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
 
             elif self.is_common_chat(choice):

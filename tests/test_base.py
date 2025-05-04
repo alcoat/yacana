@@ -32,7 +32,7 @@ class BaseAgentTest(unittest.TestCase):
         if cls.run_ollama:
             cls.ollama_agent = OllamaAgent(
                 name="Ollama AI Assistant",
-                model_name="llama3.1:8b",
+                model_name="llama3.1:latest",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
                 endpoint="http://127.0.0.1:11434"
@@ -40,35 +40,35 @@ class BaseAgentTest(unittest.TestCase):
             
             cls.ollama_vision_agent = OllamaAgent(
                 name="Ollama Vision AI Assistant",
-                model_name="llama3.2-vision:11b",
+                model_name="llama3.2-vision:latest",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
                 endpoint="http://127.0.0.1:11434"
             )
         
-        if cls.run_openai or cls.run_vllm:
+        if cls.run_vllm:
+            cls.vllm_agent = OpenAiAgent(
+                name="VLLM AI Assistant",
+                model_name="meta-llama/Llama-3.2-1B-Instruct",
+                model_settings=cls.openai_settings,
+                system_prompt="You are a helpful AI assistant",
+                endpoint="http://127.0.0.1:8000/v1",
+                api_token="empty",
+                runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}}
+            )
+            
+        if cls.run_openai:
             openai_api_token = os.getenv('OPENAI_API_TOKEN')
             if not openai_api_token:
                 raise unittest.SkipTest("OPENAI_API_TOKEN environment variable not set")
+            cls.openai_agent = OpenAiAgent(
+                name="OpenAI AI Assistant",
+                model_name="gpt-4o-mini",
+                model_settings=cls.openai_settings,
+                system_prompt="You are a helpful AI assistant",
+                api_token=openai_api_token
+            )
             
-            if cls.run_openai:
-                cls.openai_agent = OpenAiAgent(
-                    name="OpenAI AI Assistant",
-                    model_name="gpt-4o-mini",
-                    model_settings=cls.openai_settings,
-                    system_prompt="You are a helpful AI assistant",
-                    api_token=openai_api_token
-                )
-            
-            if cls.run_vllm:
-                cls.vllm_agent = OpenAiAgent(
-                    name="VLLM AI Assistant",
-                    model_name="meta-llama/Llama-3.2-1B-Instruct",
-                    model_settings=cls.openai_settings,
-                    system_prompt="You are a helpful AI assistant",
-                    endpoint="http://localhost:8000/v1",
-                    api_token=openai_api_token
-                )
 
     @classmethod
     def tearDownClass(cls):

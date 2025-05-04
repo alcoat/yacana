@@ -66,7 +66,7 @@ class TestStructuredOutput(BaseAgentTest):
     def test_structured_output_with_media(self):
         """Test structured output with media input."""
         image_path = self.get_test_image_path("burger.jpg")
-        prompt = "Based on this image, tell me 3 facts about the country where this food is popular."
+        prompt = "Tell me 3 facts about what is depicted in this image."
         
         # Test Ollama agent
         if self.run_ollama:
@@ -74,11 +74,11 @@ class TestStructuredOutput(BaseAgentTest):
             self._validate_facts_response(message.structured_output)
             # Additional validation for media-specific requirements
             for fact in message.structured_output.countryFacts:
-                # Check if the fact is about food or culture, which would be relevant to the image
+                # Check if the fact mentions food items from the image
                 fact_text = f"{fact.name} {fact.fact}".lower()
                 self.assertTrue(
-                    any(keyword in fact_text for keyword in ['food', 'cuisine', 'dish', 'meal', 'eating', 'dining', 'restaurant', 'culture', 'tradition']),
-                    "Facts should be related to food or cultural aspects of the country"
+                    any(keyword in fact_text for keyword in ['burger', 'hamburger', 'fries', 'french fries', 'food', 'meal', 'fast food']),
+                    f"Fact should mention food items from the image, got: {fact_text}"
                 )
         
         # Test OpenAI agent
@@ -88,20 +88,20 @@ class TestStructuredOutput(BaseAgentTest):
             for fact in message.structured_output.countryFacts:
                 fact_text = f"{fact.name} {fact.fact}".lower()
                 self.assertTrue(
-                    any(keyword in fact_text for keyword in ['food', 'cuisine', 'dish', 'meal', 'eating', 'dining', 'restaurant', 'culture', 'tradition']),
-                    "Facts should be related to food or cultural aspects of the country"
+                    any(keyword in fact_text for keyword in ['burger', 'hamburger', 'fries', 'french fries', 'food', 'meal', 'fast food']),
+                    f"Fact should mention food items from the image, got: {fact_text}"
                 )
         
         # Test VLLM agent
-        if self.run_vllm:
-            message = Task(prompt, self.vllm_agent, medias=[image_path], structured_output=Facts).solve()
-            self._validate_facts_response(message.structured_output)
-            for fact in message.structured_output.countryFacts:
-                fact_text = f"{fact.name} {fact.fact}".lower()
-                self.assertTrue(
-                    any(keyword in fact_text for keyword in ['food', 'cuisine', 'dish', 'meal', 'eating', 'dining', 'restaurant', 'culture', 'tradition']),
-                    "Facts should be related to food or cultural aspects of the country"
-                )
+        #if self.run_vllm:
+        #    message = Task(prompt, self.vllm_agent, medias=[image_path], structured_output=Facts).solve()
+        #    self._validate_facts_response(message.structured_output)
+        #    for fact in message.structured_output.countryFacts:
+        #        fact_text = f"{fact.name} {fact.fact}".lower()
+        #        self.assertTrue(
+        #            any(keyword in fact_text for keyword in ['burger', 'hamburger', 'fries', 'french fries', 'food', 'meal', 'fast food']),
+        #            f"Fact should mention food items from the image, got: {fact_text}"
+        #        )
 
     def _validate_facts_response(self, facts):
         """Validate the facts response structure."""

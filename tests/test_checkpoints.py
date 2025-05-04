@@ -153,8 +153,6 @@ class TestCheckpoints(BaseAgentTest):
             # Save agent state
             state_file = os.path.join(self.temp_dir, f"{agent.name}_full_state.json")
 
-            print(str(agent.history.get_messages_as_dict()))
-
             agent.export_to_file(state_file)
             
             # Create new agent from state

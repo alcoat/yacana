@@ -581,7 +581,9 @@ class OllamaAgent(GenericAgent):
             **self.runtime_config,
             **self.task_runtime_config
         }
+        logging.debug("Runtime parameters before inference: ", params)
         response = client.chat(**params)
+        logging.debug("Inference output: %s", str(response))
         if structured_output is not None:
             history_slot.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
         else:

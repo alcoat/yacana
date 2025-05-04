@@ -114,7 +114,7 @@ class TestBasicInference(BaseAgentTest):
         # Create messages with tags for all agents
         user_message = Message(MessageRole.USER, "What's the weather like?", tags=["weather", "query"])
         history.add_message(user_message)
-        
+
         if self.run_ollama:
             assistant_message = Task("Describe the weather", self.ollama_agent).solve()
             assistant_message.add_tags(["weather"])
@@ -207,34 +207,44 @@ class TestBasicInference(BaseAgentTest):
 
     def test_builtin_tags(self):
         """Test the builtin tag system (yacana_builtin, yacana_prompt, yacana_response)."""
-        # Create a task with a custom tag
-        Task("Count from 1 to 3", self.ollama_agent, tags=["custom_tag"]).solve()
+        def test_agent_builtin_tags(agent: GenericAgent):
+            # Create a task with a custom tag
+            Task("Count from 1 to 3", agent, tags=["custom_tag"]).solve()
+            
+            # Get the history
+            history: History = agent.history
+            
+            # Test getting prompt messages
+            prompt_messages = history.get_messages_by_tags(["yacana_prompt"])
+            self.assertEqual(len(prompt_messages), 1, "Should find exactly one prompt message")
+            self.assertEqual(prompt_messages[0].role, MessageRole.USER, "Prompt message should be from user")
+            
+            # Test getting response messages
+            response_messages = history.get_messages_by_tags(["yacana_response"])
+            self.assertEqual(len(response_messages), 1, "Should find exactly one response message")
+            self.assertEqual(response_messages[0].role, MessageRole.ASSISTANT, "Response message should be from assistant")
+            
+            # Test getting both messages using non-strict matching with both tags (False by default)
+            all_messages = history.get_messages_by_tags(["yacana_prompt", "yacana_response"], strict=False)
+            self.assertEqual(len(all_messages), 2, "Should find both prompt and response messages")
+            
+            # Verify the custom tag is also present
+            custom_tag_messages = history.get_messages_by_tags(["custom_tag"])
+            self.assertEqual(len(custom_tag_messages), 2, "Should find the messages with custom tag")
+            self.assertEqual(custom_tag_messages[0].role, MessageRole.USER, "Custom tag should be on user message")
+            self.assertEqual(custom_tag_messages[1].role, MessageRole.ASSISTANT, "Custom tag should be on assistant message")
+
+        # Test OpenAI agent
+        if self.run_openai:
+            test_agent_builtin_tags(self.openai_agent)
         
-        # Get the history
-        history = self.ollama_agent.history
+        # Test VLLM agent
+        if self.run_vllm:
+            test_agent_builtin_tags(self.vllm_agent)
         
-        # Test getting prompt messages
-        prompt_messages = history.get_messages_by_tags(["yacana_prompt"])
-        self.assertEqual(len(prompt_messages), 1, "Should find exactly one prompt message")
-        self.assertEqual(prompt_messages[0].role, MessageRole.USER, "Prompt message should be from user")
-        
-        # Test getting response messages
-        response_messages = history.get_messages_by_tags(["yacana_response"])
-        self.assertEqual(len(response_messages), 1, "Should find exactly one response message")
-        self.assertEqual(response_messages[0].role, MessageRole.ASSISTANT, "Response message should be from assistant")
-        
-        # Test getting both messages using non-strict matching with both tags
-        all_messages = history.get_messages_by_tags(["yacana_prompt", "yacana_response"], strict=False)
-        self.assertEqual(len(all_messages), 2, "Should find both prompt and response messages")
-        
-        # Verify the custom tag is also present
-        custom_tag_messages = history.get_messages_by_tags(["custom_tag"])
-        self.assertEqual(len(custom_tag_messages), 1, "Should find the message with custom tag")
-        self.assertEqual(custom_tag_messages[0].role, MessageRole.USER, "Custom tag should be on user message")
-        
-        # Verify builtin tag is present on all messages
-        builtin_messages = history.get_messages_by_tags(["yacana_builtin"])
-        self.assertEqual(len(builtin_messages), 2, "Should find both messages with builtin tag")
+        # Test Ollama agent
+        if self.run_ollama:
+            test_agent_builtin_tags(self.ollama_agent)
 
     def test_multiple_responses(self):
         """Test getting multiple responses from the model."""

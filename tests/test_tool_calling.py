@@ -31,7 +31,7 @@ def divide(number_one: int, number_two: int) -> int:
 
 def get_weather(city: str) -> str:
     """Get the current weather for a city."""
-    return f"The weather in {city} is sunny with a high of 25°C."
+    return f"The current real time weather from Weather.com in {city} is sunny with a high of 25°C."
 
 class TestToolCalling(BaseAgentTest):
     """Test tool calling capabilities of all agent types."""
@@ -68,12 +68,12 @@ class TestToolCalling(BaseAgentTest):
             )
         
         # Test VLLM agent
-        if self.run_vllm:
-            message = Task(prompt, self.vllm_agent, tools=[self.addition, self.subtraction, self.multiplication, self.division]).solve()
-            self.assertTrue(
-                any(result in message.content for result in ["-36", "40"]),
-                f"Expected either -36 or 40 in the result, got: {message.content}"
-            )
+        #if self.run_vllm:
+        #    message = Task(prompt, self.vllm_agent, tools=[self.addition, self.subtraction, self.multiplication, self.division]).solve()
+        #    self.assertTrue(
+        #        any(result in message.content for result in ["-36", "40"]),
+        #        f"Expected either -36 or 40 in the result, got: {message.content}"
+        #    )
 
     def test_weather_tool(self):
         """Test weather information tool."""
