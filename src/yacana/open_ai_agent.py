@@ -50,8 +50,6 @@ class OpenAiAgent(GenericAgent):
     runtime_config : Dict | None, optional
         Runtime configuration for the agent. Defaults to None.
 
-        @todo missing attribute for api_token
-
     Raises
     ------
     IllogicalConfiguration

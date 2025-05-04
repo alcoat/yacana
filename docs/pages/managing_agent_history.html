@@ -393,7 +393,7 @@ The answer is 4
                 <br>
                 <p>The Agent's History successfully contains the two messages we manually added. </p>
                 <p class="icon solid fa-info-circle"> The <code>.add_message()</code> always adds new messages
-                    at the end of the stack, however you can add messages wherever you want using some other methods. @todo doc
+                    at the end of the stack, however you can add messages wherever you want using <a href="classes.html#tech-doc-history">other History methods</a>.
                 </p>
                 <p>⚠️ Try to keep the alternation of USER and ASSISTANT as this is how "instruct" LLMs have been
                     trained. </p>
@@ -436,7 +436,7 @@ Let me know if you'd like me to help with anything else!
                     Let's introduce another optional Task() parameter: <code>json_output=True</code>. This relies on
                     the inference server (Ollama, OpenAI, etc.) to output as JSON. <br/>
                     <p class="icon solid fa-info-circle"> It is preferable to prompt the LLM to "output as JSON" in addition to this option. </p>
-                    <p>⚠️ This is only <b>best effort</b> ! Meaning that it may fail at ouputing correct JSON. If you need reliable JSON than go try structured output ! @todo doc</p>
+                    <p>⚠️ This is only <b>best effort</b> ! Meaning that it may fail at ouputing correct JSON. If you need reliable JSON then go try <a href="agents_features.html#structured-output">structured output</a> !</p>
                 </p>
                 <p>Replace the Task with this one:</p>
                 <pre><code class="language-python">

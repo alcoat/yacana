@@ -66,12 +66,13 @@
                 <p>Yacana was initially designed to work with <strong>Ollama</strong>, but now supports any OpenAI-compatible endpoints like <strong>ChatGPT</strong> or <strong>VLLM</strong>.<br>
                     This documentation serves as a comprehensive tutorial, guiding you through Yacana's features step by step.
                     Since the programming API is identical across all inference servers, we'll primarily demonstrate examples using the Ollama agent.
-                    You can easily adapt any code snippet to work with your preferred inference server by simply <a href="other_inference_servers.html">swapping the agent type</a>.
+                    You can easily adapt any code snippets to work with your preferred inference server by simply <a href="other_inference_servers.html">swapping the agent type</a>.
                     Let's start by installing Ollama on your computer, it's one of the simplest inference servers to set up.
                 </p>
                 <p>
                     Click <a href="https://ollama.com/download">here</a> to get the latest release.<br>
                 </p>
+                <br>
                 <span>Ollama is:</span>
                 <ul>
                     <li>Compatible with all operating systems Windows/Mac/Linux ;</li>
@@ -103,15 +104,13 @@
                         </thead>
                         <tbody>
                         <tr>
-                            @todo update with LMstudio and 4090
                             <td><strong>Out of this world</strong> <em>(RTX 4090 / 64 GB RAM)</em></td>
-                            <td style="text-align:center">'llama3.1:70b' or 'mixtral:8x22b'</td>
+                            <td style="text-align:center">llama3.3:70b, gemma3:27b, deepseek-r1:32b, mixtral:8x22b</td>
                             <td style="text-align:center">Excellent reasoning and instruction following.</td>
                         </tr>
                         <tr>
                             <td><strong>Epic</strong> <em>(RTX 4090 / 32 GB RAM)</em></td>
-                            <td style="text-align:center">'llama3.1:8b' or 'dolphin-mixtral:8x7b' or
-                                'dolphin-mixtral:8x7b-v2.5-q6_K'
+                            <td style="text-align:center">llama3.1:8b, gemma3:27b, dolphin-mixtral:8x7b, dolphin-mixtral:8x7b-v2.5-q6_K
                             </td>
                             <td style="text-align:center">Good reasoning and instruction following. (q6_K model
                                 should be less
@@ -120,7 +119,7 @@
                         </tr>
                         <tr>
                             <td><strong>Gamer</strong> <em>(GTX 1080TI / 16 GB RAM)</em></td>
-                            <td style="text-align:center">'llama3.1:8b' or 'mistral:7b'</td>
+                            <td style="text-align:center">llama3.1:8b, mistral:7b</td>
                             <td style="text-align:center">Llama still works but is slower. Expect limited
                                 reasoning
                                 and no more than
@@ -129,7 +128,7 @@
                         </tr>
                         <tr>
                             <td><strong>Potato</strong></td>
-                            <td style="text-align:center">'phi:2.7b' or 'phi3:3.8b' or 'tinyllama:1.1b'</td>
+                            <td style="text-align:center">phi:2.7b, phi3:3.8b, tinyllama:1.1b</td>
                             <td style="text-align:center">Almost no reasoning, incapable of following more than
                                 1
                                 instruction at a
@@ -177,7 +176,7 @@ pip install yacana
                     your files and clean them later. This way the IDE will have auto-completion available and will
                     help you develop 10 times faster.</p>
                 <pre><code class="language-python">
-from yacana import OllamaAgent, Task, Tool, Message, MessageRole, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, LoggerManager, ToolError, MaxToolErrorIter
+                    from yacana import OllamaAgent, OpenAiAgent, GenericAgent, Task, Tool, Message, GenericMessage, MessageRole, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, OpenAiModelSettings, LoggerManager, ToolError, MaxToolErrorIter
 					</code></pre>
 
 
@@ -210,6 +209,13 @@ from yacana import OllamaAgent, Task, Tool, Message, MessageRole, GroupSolve, En
 
             <!-- Section -->
             <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Section -->
+            <section>
                 <header class="major">
                     <h2>Related Youtube video</h2>
                 </header>
@@ -218,13 +224,6 @@ from yacana import OllamaAgent, Task, Tool, Message, MessageRole, GroupSolve, En
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
                         <p>Youtube video for this section is still under creation. Please be patient ^^</p>
                     </article>
-                </div>
-            </section>
-
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
                 </div>
             </section>
 
