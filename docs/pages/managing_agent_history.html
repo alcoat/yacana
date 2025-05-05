@@ -52,7 +52,7 @@
             <!-- Content -->
             <section>
                 <header class="main">
-                    <h1 id="printing-history">IV. Managing Agents history</h1>
+                    <h1 id="printing-history">III. Managing Agents history</h1>
                 </header>
 
                 <span class="image main"><img src="../images/managing_agents_history.jpg" alt="Managing agent history"/></span>
@@ -68,18 +68,18 @@
                         src="https://github.com/user-attachments/assets/631b634a-8699-4fff-9ac4-06b403c06ae1"
                         alt="history1A"/></span>
                 <p><u>There are 4 types of messages:</u></p>
-                <span><i>First, there is the "System" prompt:</i></span>
+                <span><i>First, there is the "System" prompt, if present, always goes first:</i></span>
                 <ul>
-                    <li>1: The optional "System" prompt that, if present, always goes first.</li>
+                    <li>1: The optional "System" prompt allows to set the initial instructions for the LLM.</li>
                 </ul>
                 <span><i>Then it's only an alternation between these two:</i></span>
                 <ul>
-                    <li>2: The "User" prompts coming from the Task you set.</li>
+                    <li>2: The "User" prompt coming from the Task you write.</li>
                     <li>3: The "Assistant" message which is the answer from the LLM.</li>
                 </ul>
                 <span><i>You may also have noticed a "Tool" message:</i></span>
                 <ul>
-                    <li>4: The "Tool" message which is is used by the OpenAi standard to use tools. This is abstract by Yacana so you don't have to deal with this fine mess.</li>
+                    <li>4: The "Tool" message is is used by the OpenAi standard to use tools. This is abstract by Yacana so you don't have to deal with this fine mess.</li>
                 </ul>
                 <hr/>
                 <div>
@@ -103,7 +103,7 @@
                     response do not get saved to the history. You'll see there are many ways to preserve the history from useless noise. <br/>
                 </p>
                 <p>
-                    The Agent class comes with a <code>.history</code> property of type <code>History</code>.
+                    The Agent class comes with a <code>.history</code> property of type <a href="classes.html#tech-doc-history">History</a>.
                     It exposes methods to manipulate and view the history.
                     For instance, you can use the <code>.pretty_print()</code> method to print the history on the standard output
                     using the classic color scheme:
@@ -120,6 +120,7 @@ messages[1].content # Second message
                 </p>
 
                 <p>Let's discover all the different ways to interact with an agent's history!</p>
+                <hr/>
 
                 <h2>Printing History</h2>
                 <p>
@@ -190,6 +191,8 @@ Let me know if you have any other questions!
 					</code></pre>
                 <br>
                 <p>Output speaks for itself. </p>
+                <hr/>
+
                 <h2 id="creating-and-loading-checkpoints">Creating and loading checkpoints</h2>
                 <p>As mentioned earlier it's better to keep the History clean. Too many prompts and unrelated
                     questions will lead to poorer results so if you have the opportunity to scratch some portion
@@ -511,11 +514,22 @@ INFO: [AI_RESPONSE]: {"name": "Marie", "action": "Walking with her dog."}
                 <hr class="major"/>
 
                 <h2 id="saving-agent-state">Saving Agent state</h2>
-                <p>Maybe your program needs to start, stop, and then resume where it stopped. For this use case, Yacana
-                    provides a way to store an Agent state into a file and load it later. All of the Agent's
-                    properties are saved including the History.<br>
-                    A real world example could be a chatbot for customers: When the customer leaves the session,
-                    the agent's state is saved and can be loaded back when the customer comes back to continue the conversation.
+                <p>
+                    Yacana provides a way to store an Agent state into a file and load it later. All of the Agent's
+                    properties, model settings, etc are saved including the History.<br><br>
+                    Examples of use cases:
+                    <ul>
+                        <li>
+                            A chatbot for customers: When the customer leaves the session,
+                            the agent's state is saved and can be loaded back when the customer comes back to continue the conversation.
+                        </li>
+                        <li>
+                            You are facing a crash at some point in a script and need to restart the whole inference steps to get to the desired history state.<br>
+                            Doing this cost a lot of money because tokens are not free. Fortunatly, you can save agent state just before the crash.<br>
+                            Now, you can boot your script right before the crash point, load the agent's state and investigate
+                            the crash by replaying it for free all the times you need.
+                        </li>
+                    </ul>
                 </p>
                 <p>To save an Agent do the following: </p>
                 <pre><code class="language-python">
@@ -599,8 +613,9 @@ agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 first_message: Message = Task("What's 2+2 ?", agent1, tags=["first_task"]).solve()
                     </code></pre>
+                    <br>
                     <p>
-                        This told Yacana to add the tag <code>"first_task"</code> to the prompt and LLM output message generated by the task.
+                        This told Yacana to add the tag <code>"first_task"</code> to both  the prompt and LLM output message generated by the task.
                     </p>
                     <p>
                         Note that you can also tag individual Message manualy:
@@ -610,6 +625,7 @@ first_message: Message = Task("What's 2+2 ?", agent1, tags=["first_task"]).solve
 
 first_message.add_tags(["first_task_response"])
                     </code></pre>
+                    <br>
                     <p>
                         This will add the tag <code>"first_task_response"</code> to the LLM's response.
                     </p>
@@ -627,7 +643,7 @@ Task("What's 2+2 ?", agent1, tags=["first_task"]).solve().add_tags(["first_task_
                     <br>
                     <p>
                         Let's make a longer example to show how tagging works. Bellow is a script that will ask 3 numeric related questions to the LLM.<br>
-                        The script will then change the second question / answer to something completly different.
+                        The script will then change the second question + answer to something completly different.
                         Finally, the script will ask the LLM what question was not about numbers. Because we updated the second task, it should tell us that it's the second one.
                     </p>
                     <pre><code class="language-python">
@@ -673,6 +689,7 @@ Task("What question was not about numbers ?", agent1).solve()
 print("\n--Showing whole history--\n")
 agent1.history.pretty_print()
                     </code></pre>
+                    <br>
                     Output (without logging) :
                     <pre><code class="text-output">
 First task prompt:  What's 2+2 ?
@@ -823,6 +840,12 @@ Number of messages between the two selected messages:  2
             <!-- Menu Container -->
             <div id="menu-container"></div>
 
+            <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
+
             <!-- Section -->
             <section>
                 <header class="major">
@@ -833,13 +856,6 @@ Number of messages between the two selected messages:  2
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
                         <p>Youtube video for this section is still under creation. Please be patient ^^</p>
                     </article>
-                </div>
-            </section>
-
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
                 </div>
             </section>
 

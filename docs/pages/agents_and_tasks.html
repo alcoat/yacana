@@ -392,29 +392,41 @@ INFO: [AI_RESPONSE]: The sky appears blue because of a phenomenon called Rayleig
                     <br>
                     For OpenAiAgent the method is the same. But instead of using <code>OllamaModelSettings</code> you can use <code>OpenAiModelSettings</code>. For more information please refer to the <a href="other_inference_servers.html">Other inference servers</a> section.
                 </p>
+                <hr class="major"/>
 
 
                 <h2 id="accessing-the-underlying-client-library">Accessing the underlying client library</h2>
                 <p>
-                    Yacana cannot recreate every functionality of the underlying client library. This is why we provide you with an access to the underlying library used by Yacana to
-                    interact with the LLM.
+                    Yacana cannot recreate every functionality made available by the underlying client library. This is why we provide you with
+                    a direct access to the underlying library. This way, if you need more control over the LLM, you can set the desired parameters yourself.
                     <br>
                     <ul>
-                        <li>For the OllamaAgent, the library used is <a href="https://github.com/ollama/ollama-python">python ollama</a>.</li>
-                        <li>For OpenAIAgent, the library used is <a href="https://github.com/openai/openai-python">python openai</a>.</li>
+                        <li>For the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a>, the library used is <a href="https://github.com/ollama/ollama-python">python ollama</a>.</li>
+                        <li>For the <a href="classes.html#tech-doc-openai-agent">OpenAIAgent</a>, the library used is <a href="https://github.com/openai/openai-python">python openai</a>.</li>
                     </ul>
                     You can pass any parameter supported by the underlying library to the Agent during runtime.
                     <br>
+                    <br>
                     Configuration of the runtime can be done at two separate levels using the <code>runtime_config</code> parameter:
                     <ul>
-                        <li>At the Agent level: <code>vllm_agent_2 = OpenAiAgent("AI assistant", "meta-llama/Llama-3.1-8B-Instruct", endpoint="http://127.0.0.1:8000/v1", api_token="", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})</code></li>
-                        <li>At the task level: <code>Task("Tell me 2 facts about Canada.", agent, runtime_config={"extra_body": {'guided_decoding_backend': 'xgrammar'}}).solve()</code></li>                        
+                        <li>At the <b>Agent level</b>:
                     </ul>
+                    <pre><code class="language-python">
+vllm_agent = OpenAiAgent("AI assistant", "meta-llama/Llama-3.1-8B-Instruct", endpoint="http://127.0.0.1:8000/v1", api_token="", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
+                    </code></pre>
+                    <br>
+                    <ul>
+                        <li>At the <b>task level</b>:
+                    </ul>
+                    <pre><code class="language-python">
+Task("Tell me 2 facts about Canada.", agent, runtime_config={"extra_body": {'guided_decoding_backend': 'xgrammar'}}).solve()
+                    </code></pre>
+                    <br>
                     Configuration at the Agent level will be effective during the whole agent's life span.
                     <br>
                     Configuration at the task level will be effective for the current task only and will overide parameters given at Agent level.
                     <br>
-                    To look at a more complete example, please refer to the <a href="other_inference_servers.html">VLLM inference server</a> section.
+                    To look at a more complete example, please refer to the <a href="other_inference_servers.html#using-vllm">VLLM inference server</a> section.
                 </p>
                 <br>
 
@@ -870,7 +882,7 @@ Question is NOT about plants sorry.
                     <ul class="pagination">
                         <li><a href="installation.html#installing-ollama" class="button">Prev</a></li>
 
-                        <li><a href="routing.html#concepts-of-routing" class="button">Next</a></li>
+                        <li><a href="managing_agent_history.html#printing-history" class="button">Next</a></li>
                     </ul>
                 </div>
 
@@ -894,6 +906,13 @@ Question is NOT about plants sorry.
 
             <!-- Section -->
             <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Section -->
+            <section>
                 <header class="major">
                     <h2>Related Youtube video</h2>
                 </header>
@@ -902,13 +921,6 @@ Question is NOT about plants sorry.
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
                         <p>Youtube video for this section is still under creation. Please be patient ^^</p>
                     </article>
-                </div>
-            </section>
-
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
                 </div>
             </section>
 

@@ -62,13 +62,16 @@
                     "tool"? A tool simply refers to a Python function. This function can be the entry point to any
                     level of underlying complexity. But it doesn't matter. What matters is that the LLM can call the
                     tool with parameters that match the function. This way, LLMs can interact with <em>classic</em>
-                    programming interfaces that produce deterministic results (aka normal programming).</p>
+                    programming interfaces that produce deterministic results (aka normal programming).
+                </p>
                 <p>For instance, let's say you want a calculator powered by an LLM. You cannot rely on the LLM to do
                     the math because even though it knows how to decompose equations to an extent and has basic
                     arithmetics, it will fail on more advanced calculations. Therefore we do not expect the LLM to
                     perform the operation itself. We already have the CPU to do this task perfectly. On the other
                     hand, we expect the LLM to decompose the equation correctly and call tools for each arithmetic
-                    operation needed to solve it.</p>
+                    operation needed to solve it.
+                </p>
+                <br>
                 <h4>In what way is Yacana different than other frameworks?</h4>
                 <p>Other frameworks assign their tools to the agent during its initialization. This creates a hard
                     link between the tools and the agents. In our opinion, this implementation tends to confuse the
@@ -76,7 +79,9 @@
                     it is given. In Yacana tools are only available at the Task level. Thus no noise is generated
                     before having to solve a particular task. The tool is made available to the LLM only when it's
                     needed and not before. Also, the Agent doesn't keep the memory of the available tools so it
-                    won't be tempted to use them elsewhere, where it wouldn't be appropriate.</p>
+                    won't be tempted to use them elsewhere, where it wouldn't be appropriate.
+                </p>
+                <br>
                 <h4>Understanding the underlying mechanism of tool calling in LLMs</h4>
                 <p>A side note for those interested...</p>
                 <p>If you don't understand how a text-to-text neural network can call a Python function let me tell
@@ -96,16 +101,23 @@
                     To overcome this particular issue, Yacana comes with its own JSON structure to call Python
                     functions! It's way lighter than the OpenAI standard and Yacana uses <a href="https://youtube.com/shorts/Sb1spHDHU_4?si=yZsSLGx-7LeyG-5B">percussive
                         maintenance</a> to force the LLM to output the JSON in a way that the tool
-                    expects.</p>
+                    expects.
+                </p>
+                <br>
                 <h4>Difference between the OllamaAgent and the OpenAIAgent</h4>
                 <p>
                     Tools in Yacana share the same programming API across both Ollama and OpenAI-compatible backends. 
                     However, they currently don't behave identically.<br>
                     The OllamaAgent uses an enhanced tool calling mechanism tailored for local open-source models. 
                     In contrast, the OpenAIAgent uses the standard OpenAI function calling approach, fully compatible with 
-                    ChatGPT and any backend that follows OpenAI’s API (like vLLM). At the moment, each agent is locked to 
-                    its respective mechanism: the OllamaAgent uses the enhanced version, and the OpenAIAgent uses the OpenAI 
-                    standard. In the near future, Yacana will support both mechanisms on both agents. The enhanced tool calling 
+                    ChatGPT and any backend that follows OpenAI’s API (like vLLM).<br>
+                    At the moment, each agent is stuck with its respective mechanism:
+                    <ul>
+                        <li>The <a href=classes.html#tech-doc-OllamaAgent>OllamaAgent</a> uses the Enhanced Tool Calling</li>
+                        <li>The <a href=classes.html#tech-doc-openai-agent>OpenAiAgent</a> uses the OpenAI standard.</li>
+                     
+                    </ul>
+                    In the near future, Yacana will support both mechanisms on both agents. The Enhanced Tool Calling 
                     system will be made available to OpenAI-compatible backends, and the OllamaAgent will gain support for the 
                     OpenAI standard via Ollama’s OpenAI-compatible endpoint.
                 </p>
@@ -139,51 +151,31 @@
                     the LLM to the outside world, it might not need to return anything. However, we recommand that you return a "success" string
                     so that the LLM isn't left hanging.</p>
                 <p>Example of a <strong>bad</strong> prompt with a Tool that gets the current weather of a city:</p>
-                <ul>
-                    <li><code>Task(f"I give you the following city: '{city}'. Get the current weather there and output
-                        'So much sun !' if there is some sun else say 'So much rain !'", some_agent,
-                        tools=[get_weather_tool]).solve()</code>
-                        <br>
-                        You'll never get the output <i>'So much sun !'</i> or <i>'So much rain !'</i>. <strong>The result of
-                            this task will be the tool output.</strong><br>
-                        The prompt is ONLY useful to the Agent to extract the city name that must be given to the
-                        tool.
-                    </li>
-                </ul>
-                <p>To actually use the result of the tool you have two options:</p>
-                <span>1. Split the Task in two:</span>
-                <ul>
-                    <li><code>Task(f"I give you the following city: '{city}'. Get the current weather there.",
-                        some_agent, tools=[get_weather_tool]).solve()</code>
-                    </li>
-                    <li><code>Task(f"Output 'So much sun !' if there is some sun else say 'So much rain !'",
-                        some_agent).solve()</code><br>
-                        Splitting the tasks into two allows the second Task to work on the output of the first one
-                        (the tool output).
-                    </li>
-                </ul>
-                <span>2. Make the tool do the work:</span>
-                <ul>
-                    <li>Let's write a <u>pseudo code</u> <code>get_weather</code> tool</li>
-                </ul>
                 <pre><code class="language-python">
-def get_weather(city: str) -> str:
-    some_json = curl weather.com?city=$city
-    if some_json["sun_level_percent"] > 50:
-    	return "So much sun !"
-    else:
-    	return "So much rain !"
-					</code></pre>
+Task(f"I give you the following city: '{city}'. Get the current weather there and output  'So much sun !'  if there is some sun else say  'So much rain !'", some_agent, tools=[get_weather_tool]).solve()
+                </code></pre>
                 <br>
-                <p>
-                    This tool would return either <i>"So much sun !"</i> or <i>"So much rain !"</i> based on the
-                    output of some fake weather API. This was the output we needed.<br>
-                <hr>
+                <div>
+                    You'll never get the output <i>'So much sun !'</i> or <i>'So much rain !'</i>.<br>
+                    <strong>The result of this task will be the tool output and not something the LLM generated.</strong><br>
+                    The prompt is ONLY useful to the Agent to extract the city name that must be given to the tool.
+                </div>
+               <br>
+                <p>To actually use the result of the tool you can split the task in two:</p>
+                <pre><code class="language-python">
+Task(f"I give you the following city: '{city}'. Get the current weather there.", some_agent, tools=[get_weather_tool]).solve()
+
+Task(f"Output 'So much sun !' if there is some sun else say 'So much rain !'", some_agent).solve()
+                </code></pre>
+                <br>
+                Splitting the tasks into two allows the second Task to work on the output of the first one (the tool output).
+                <br>
+                
                 <p>⚠️⚠️The full example for those who wish to test IRL. However, we haven't even shown a real tool
                     example yet, so this section should be optional!⚠️⚠️</p>
                 <p>You should read the next section <strong>"Calling a tool"</strong> below and come back to this
                     later.</p>
-                <p>Bad prompt:</p>
+                <p><b>Bad prompt:</b></p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Tool, Task
 
@@ -197,11 +189,11 @@ get_weather_tool = Tool("get_weather", "Returns the weather for a given city.", 
 
 Task(f"I give you the following city: LA. Get the current weather there and output 'So much sun !' if there is some sun else say 'So  much rain !'", agent1, tools=[get_weather_tool]).solve()
 
-print("--history--")
+print("\n--history--\n")
 agent1.history.pretty_print()
 					</code></pre>
                 <br>
-                <p>Good prompt:</p>
+                <p><b>Good prompt:</b></p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Tool, Task
 
@@ -217,7 +209,7 @@ get_weather_tool = Tool("get_weather", "Returns the weather for a given city.", 
 Task(f"I give you the following city: LA. Get the current weather there.", agent1, tools=[get_weather_tool]).solve()
 Task(f"Output 'So much sun !' if there is some sun else say 'So  much rain !'", agent1).solve()
 
-print("--history--")
+print("\n--history--\n")
 agent1.history.pretty_print()
 					</code></pre>
                 <br>
@@ -250,7 +242,7 @@ def adder(first_number: int, second_number: int) -> int:
                     built-in <code>str(...)</code> function. LLMs can only understand text so make sure that
                     whatever you send back can be cast correctly (override the <strong>str</strong> if needed).</p>
                 <p>Let's create a <a href="classes.html#tech-doc-tool">Tool</a> instance using the Yacana Tool constructor. It takes a
-                    name, a description, and a reference to the actual function.<br>
+                    name (no space), a description, and a reference to the actual function.<br>
                     <span class="icon solid fa-info-circle"> I can only emphasize once more on the importance of
 							providing an accurate description.</span>
                 </p>
@@ -317,7 +309,7 @@ Equation result =  22
                 <hr>
                 <p>When looking at the logs we can see that the tool was called with the following JSON:
                     <code>{"first_number": "2", "second_number": "2"}</code>. The values are of type
-                    <code>string</code>. Later confirmed by the print() inside the tool itself:
+                    <code>string</code>. Later confirmed by the <code>print()</code> inside the tool itself:
                     <code>param '2' ('str') and '2' ('str')</code>.<br>
                     So instead of having integers, we got strings and what's the result of <code>"2" + "2"</code> in
                     Python?<br>
@@ -328,8 +320,11 @@ Equation result =  22
                 <hr class="major"/>
 
                 <h2 id="improving-tool-calling-results">Improving tool-calling results</h2>
-                <p>As you saw in the previous adder example we ran into trouble with the <code>2 + 2</code> call
-                    sent as a string. Let's fix that.</p>
+                <p>
+                    As you saw in the previous adder example we ran into trouble with the <code>2 + 2</code> call
+                    sent as a string. Let's fix that.
+                </p>
+                <br>
 
                 <h4>Adding validation inside the Tool</h4>
 
@@ -358,11 +353,16 @@ def adder(first_number: int, second_number: int) -> int:
         raise ToolError("Parameter 'second_number' expected a type integer")
 					</code></pre>
                 <br>
-                <p>We added type validation on both parameters. But you should also check for None values, etc. As I
-                    said. Think of this as server-side validation. You cannot trust AI more than humans...</p>
-                <p>Let's remove the "examples" set in the previous section. The LLM will be blind once again. As
+                <p>
+                    We added type validation on both parameters. But you should also check for None values, etc. As I
+                    said. Think of this as server-side validation. You cannot trust AI more than humans...
+                </p>
+                <p>
+                    Let's remove the "examples" set in the previous section. The LLM will be blind once again. As
                     such, he will probably make mistakes but the ToolError exception will guide it onto the correct
-                    path. Let's see:</p>
+                    path. Let's see:
+                </p>
+                <br>
                 <p><em>Complete code</em></p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Tool, Task, ToolError
@@ -955,18 +955,15 @@ Since I have now calculated all parts of the original expression, there are no m
 
 					</code></pre>
                 <br>
-                <p>-44 is the correct answer. You could throw in maybe one more operation. However, in our tests
-                    using Llama 3.0, going over 4 operations does not guarantee a correct result anymore. It may be
-                    about prompt engineering but we also think that Yacana should continue improving. For the moment
-                    the LLM tends to contradict itself at some point which sends the final result off. In the next
-                    update, Yacana will try to detect errors in reasoning and self-correct between each tool call.
-                    Stay tuned for updates.</p>
+                <p>
+                    -44 is the correct answer!
+                </p>
                 <div style="text-align: center; margin-top: 50px;">
                     <h4>Pagination</h4>
                     <ul class="pagination">
                         <li><a href="managing_agent_history.html#printing-history" class="button">Prev</a></li>
 
-                        <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations"
+                        <li><a href="agents_features.html"
                                class="button">Next</a></li>
                     </ul>
                 </div>
@@ -988,6 +985,12 @@ Since I have now calculated all parts of the original expression, there are no m
             <!-- Menu Container -->
             <div id="menu-container"></div>
 
+            <!-- Section -->
+            <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
 
             <!-- Section -->
             <section>
@@ -999,13 +1002,6 @@ Since I have now calculated all parts of the original expression, there are no m
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
                         <p>Youtube video for this section is still under creation. Please be patient ^^</p>
                     </article>
-                </div>
-            </section>
-
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
                 </div>
             </section>
 

@@ -1,5 +1,6 @@
 import inspect
 import json
+import logging
 from typing import List, Callable
 
 from .exceptions import IllogicalConfiguration
@@ -93,6 +94,8 @@ class Tool:
         self.max_call_error: int = max_call_error
         if max_custom_error < 0 or max_call_error < 0:
             raise IllogicalConfiguration("@max_custom_error and @max_call_error must be > 0")
+        if " " in self.tool_name:
+            logging.warning(f"Tool name {self.tool_name} contains spaces. Some inference servers may not support it. We recommand you use CamelCase instead.")
         # Unused for now as it poses pb when there are multiple tools. We lack of a tool parent object that could store this information.
         #self.post_tool_prompt: str | None = post_tool_prompt_reflection
 

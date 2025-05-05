@@ -52,7 +52,7 @@
             <!-- Content -->
             <section>
                 <header class="main">
-                    <h1 id="installing-ollama">VIII. OpenAI inference servers</h1>
+                    <h1 id="installing-ollama">VII. OpenAI inference servers</h1>
                 </header>
 
                 <span class="image main"><img src="../images/other_inf_servers_banner.png"
@@ -71,19 +71,23 @@
                     <br>
                     To be fair there is one important difference between the OllamaAgent and OpenAiAgent : the way tools are called.
                     <br>
-                    For Ollama, tools are called using an "enhanced tool calling" system where Yacana will iterate over the tools and call the appropriate one with its own 
+                    For Ollama, tools are called using an "enhanced tool calling" system where Yacana will iterate over the tools and call the appropriate ones with its own 
                     internal method. This system was made specifically for local LLMs to achieve higher call success rates.
                     <br>
-                    For OpenAI, tools are called following the OpenAI standard. So, when using ChatGPT you won't have any troubles calling tools as chatGPT is tailored for this.
+                    <br>
+                    For OpenAI, tools are called following the OpenAI standard. So, when using ChatGPT you won't have any troubles calling tools as chatGPT is tailored for this.<br>
                     However, when using other inference servers like VLLM you will have a lower success rate at calling tools. This is a little bit unfortunate and will be addressed in
-                    another update. We will make the OllamaAgent able to use the OpenAi tool calling standard and allow the OpenAIAgent to benefit from the enhanced tool calling capabilities.
+                    another update. Our aim is to make both Agents capable of using both tool calling systems.
                     <br>
                     Stay tuned for future updates!
                 </p>
                 <br>
                 <h2 id="using-chatgpt">Using ChatGPT</h2>
                 <p>
-                    To use ChatGPT, you can do:
+                    Using ChatGpt requires using the <code>OpenAiAgent</code>. It has the same constructor and functionnalities
+                    than the <code>OllamaAgent</code>. It just has one more parameter: the <code>api_token</code> required to authenticate to OpenAI servers.
+                    <br>
+                    To connect Yacana to ChatGPT, simply use the <a href="classes.html#tech-doc-openai-agent">OpenAiAgent</a> like this:
                 </p>
                 <pre><code class="language-python">
 from yacana import OpenAiAgent, Task, GenericMessage
@@ -94,70 +98,238 @@ openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are
 message: GenericMessage = Task("What is the capital of France?", openai_agent).solve()
 print(message.content)
                 </code></pre>
+                <hr>
 
                 <h4>Using tools</h4>
-
+                The Yacana API for calling tools with the  <a href="classes.html#tech-doc-openai-agent">OpenAiAgent</a>
+                is the same as with the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a>. The difference lies in how they are 
+                called internaly. Let me show you what I mean:
                 <pre><code class="language-python">
-from yacana import OpenAiAgent, Task, GenericMessage
+from yacana import OpenAiAgent, Task, ToolError, Tool
 
-openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXX")
+def get_temperature(city: str):
+    if type(city) is not str:
+        raise ToolError("City name must be a string.")
+    return f"The temperature in {city} is 18 degrees celcius."
 
-# Use the agent to solve a task
-message: GenericMessage = Task("What is the capital of France?", openai_agent).solve()
-print(message.content)
+get_temperature_tool = Tool("get_temperature", "Takes a city name and returns the temperature in this city.", get_temperature)
+
+openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXXXX")
+
+Task("What's the temperature in Paris?", openai_agent, tools=[get_temperature_tool]).solve()
                 </code></pre>
-
-                We can see by looking at the output that the tool calling is more concise than the one done by the OllamaAgent. This effectivness can only work with 
-                very smart LLMs like chatGPT.
                 <br>
-                When using the OpenAiAgent with an inference server different from OpenAi, your LLM might not be able to call tools correctly. Using the enhaced tool calling for the
-                OpenAIAgent will be addressed in a future update.
+                Output:
+                <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: What's the temperature in Paris?
+
+INFO: [AI_RESPONSE][From: AI assistant]: [{"id": "call_aJvyCX0wamCaORoNfQcyE5O2", "type": "function", "function": {"name": "get_temperature", "arguments": "{\"city\": \"Paris\"}"}}]
+
+INFO: [TOOL_RESPONSE][get_temperature]: The temperature in Paris is 18 degrees celcius.
+
+
+INFO: [PROMPT][To: AI assistant]: Retrying with original task and tools answer: 'What's the temperature in Paris?'
+
+INFO: [AI_RESPONSE][From: AI assistant]: The temperature in Paris is currently 18 degrees Celsius.
+                </code></pre>
+                <br>
+                First, in the ouput we can see that the tool calling is more concise than the one done by the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a>.
+                This effectiveness can only work with very smart LLMs like ChatGPT.
+                <br>
+                What’s particularly interesting is this line:
+                <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: Retrying with original task and tools answer: 'What's the temperature in Paris?'
+                </code></pre>
+                <br>
+                This line indicates that after the tool has responded,
+                the LLM is prompted again to complete the original task. It's essentially a kind of replay!<br>
+                In fact, within a single Task, the LLM is prompted twice: first, when it doesn't yet know the answer 
+                and calls the tool; then again, once the tool's response is available, so the LLM can generate a final answer.
+                The result you get from this Task is <i>that</i> final answer.<br>
+                In contrast, the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a> does not perform this replay, you would need to create a second Task manually to handle the tool’s output.
+                <br>
+                Using the enhaced tool calling for the OpenAIAgent will be addressed in a future update.
+                <br>
+                <hr>
 
                 <h4>Configuring model settings</h4>
 
-                Yacana offers a class to configure the LLM. The class was made to aggregate all the parameters understood by the OpenAI API.
+                Yacana offers a class to configure the LLM. For Ollama it's <a href="classes.html#tech-doc-OllamaAgent">OllamaModelSettings</a> 
+                and for OpenAi it's <a href="classes.html#tech-doc-openai-agent">OpenAiModelSettings</a><br>
+                The class was made to aggregate all the parameters understood by the OpenAI API so you don't have to do it yourself ^^.
                 <br>
-                Note that it was made specifically for chatGPT and some settings may not work with other inference servers.
+                ⚠️ Note that it was made specifically for chatGPT and some settings may not work with other OpenAi compatible inference servers.
                 <br>
-                In the following example we will use the <code>OpenAiModelSettings</code> class to configure the LLM. Using <code>logprobs</code> and <code>top_logprobs</code>
-                the OpenAI library will return the 3 best candidates for each token.
                 <br>
-                However, Yacana was not meant to parse the logprobs in particular. So, we'll use the <code>.raw_llm_json</code> member to access the raw JSON output of the LLM.
-                In there we'll find all the information we need.
+                In the following example we will use the <code>OpenAiModelSettings</code> class to configure the
+                LLM to show the <code>logprobs</code>.
+                Logprobs are the probability for each next token. It ranges from 0 to minus infinity. So the closer to 0 the most probable will
+                the next token be. Using the model config, we'll ask for the best 3 candidates for each token.
                 <br>
-                <code class="language-python"><pre>
-from yacana import OpenAiAgent, Task, GenericMessage, OpenAiModelSettings, HistorySlot
+                <br>
+                However, Yacana was not meant to parse the logprobs in particular. So, we'll use the <code>.raw_llm_json</code> member to access
+                the raw JSON output of the LLM. In there we'll find all the information we need.<br>
+                let's see!
+                <br>
+                <pre><code class="language-python">
+import json
 
+from yacana import OpenAiAgent, Task, ToolError, Tool, OpenAiModelSettings, HistorySlot
+
+# Defining parameters for our agent
 model_settings = OpenAiModelSettings(temperature=0, logprobs=True, top_logprobs=3)
 
-openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", model_settings=model_settings, system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXXXX")
+openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", model_settings=model_settings, api_token="sk-proj-XXXXXXXXXXXXXXX")
 
 Task("Tell me 1 facts about Canada.", openai_agent).solve()
 
+# Getting the last slot added to the History
 slot: HistorySlot = openai_agent.history.get_last_slot()
 
-print("raw_llm_json :", slot.raw_llm_json)
-                </pre></code>
+# Showing the output of the LLM to get the logprobs
+print("Raw JSON output from LLM :")
+print(json.dumps(json.loads(slot.raw_llm_json), indent=2))
+                </code></pre>
+                <br>
+                Output (truncated):
+                <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: Tell me 1 facts about Canada.
 
-                If you are unfamiliar with the HistorySlot object, let me explain. It's a class that wraps the message from the LLM. There are very few usecases where you'll need to
-                interact with it. When you need to access a Message from the history in reality you go through the HistorySlot object before acccessing the Message object.
+INFO: [AI_RESPONSE][From: AI assistant]: Canada is the second-largest country in the world by total area, covering approximately 9.98 million square kilometers (3.85 million square miles).
+Raw JSON output from LLM :
+{
+    "id": "chatcmpl-BTrS4UC2GyJSNTf9AqOYDrklPd3Sx",
+    "choices": [
+    {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": {
+        "content": [
+            {
+            "token": "Canada",
+            "bytes": [
+                67,
+                97,
+                110,
+                97,
+                100,
+                97
+            ],
+            "logprob": -0.011068690568208694,
+            "top_logprobs": [
+                {
+                "token": "Canada",
+                "bytes": [
+                    67,
+                    97,
+                    110,
+                    97,
+                    100,
+                    97
+                ],
+                "logprob": -0.011068690568208694
+                },
+                {
+                "token": "One",
+                "bytes": [
+                    79,
+                    110,
+                    101
+                ],
+                "logprob": -4.511068820953369
+                },
+                {
+                "token": " Canada",
+                "bytes": [
+                    32,
+                    67,
+                    97,
+                    110,
+                    97,
+                    100,
+                    97
+                ],
+                "logprob": -11.386068344116211
+                }
+            ]
+            },
+            {
+            "token": " is",
+            "bytes": [
+                32,
+                105,
+                115
+            ],
+            "logprob": -0.08894743025302887,
+            "top_logprobs": [
+                {
+                "token": " is",
+                "bytes": [
+                    32,
+                    105,
+                    115
+                ],
+                "logprob": -0.08894743025302887
+                },
+                {
+                "token": " has",
+                "bytes": [
+                    32,
+                    104,
+                    97,
+                    115
+                ],
+                "logprob": -2.4639475345611572
+                },
+                {
+                "token": " possesses",
+                "bytes": [
+                    32,
+                    112,
+                    111,
+                    115,
+                    115,
+                    101,
+                    115,
+                    115,
+                    101,
+                    115
+                ],
+                "logprob": -12.588947296142578
+                }
+            ]
+            },
+            ...
+                </code></pre>
                 <br>
-                However, in this case the <code>logprobs</code> data is not available inside the <code>Message</code> object itself. So, we'll use the <code>.raw_llm_json</code> 
-                member from the surrounding slot to access the raw JSON output of the LLM and get a look at the logprobs.
+                <b>About the output:</b><br>
+                We can see that for the first token, the 3 best candidates were: "Canada" (-0.011), "One" (-4.51), " Canada" (-11.38). Makes sense that "Canada" (-0,11) was picked.<br>
+                For the second token we have: " is" ( -0.08), " has" (-2.46), " possesses" (-12.58). It's quite interesting to see the possible outcomes and their probability.<br>
                 <br>
+                <b>About the <a href="classes.html#tech-doc-history-slot">HistorySlot</a></b>:<br>
+
+                The HistorySlot is class that wraps the message from the LLM. There are very few usecases where you'll need to
+                interact with it. When accessing a Message from the history in reality you go through the HistorySlot object even though you can't see it.
+                <br>
+                However, in this case the <code>logprobs</code> data is not available inside the <a href="classes.html#tech-doc-message">Message</a> object itself. So, we must use the <code>.raw_llm_json</code> 
+                member from the surrounding slot to access the raw JSON LLM output and get a look at the logprobs.
+                <hr>
 
                 <h4>Using multiple medias</h4>
                 <p>
-                    Using medias with ChatGPT is the same than using the OllamaAgent with the difference being that ChatGPT supports multiple medias in a single request.
+                    Using media with ChatGPT is similar to the OllamaAgent, with the key difference being that ChatGPT supports multiple media files in a single request.
                     <pre><code class="language-python">
-from yacana import Task, OpenAiAgent, GenericMessage
+from yacana import Task, OpenAiAgent
 
 openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXXXX")
 
 Task("Describe this image", openai_agent, medias=["./tests/assets/burger.jpg", "./tests/assets/flower.png"]).solve()
                     </code></pre>
+                    <br>
                     ⚠️ Images are transformed into base64 before being sent to the LLM. This means that the size of the request will be quite large and you will pay for a lot of tokens.
                 </p>
+
+                <hr>
 
                 <h3>Getting alternative responses</h3>
                 <p>
@@ -166,18 +338,22 @@ Task("Describe this image", openai_agent, medias=["./tests/assets/burger.jpg", "
                     <br>
                     Yacana offers a way to get these alternative responses.
                     <br>
-                    Let's say we want to get 3 alternative responses to the message "What is the capital of France ?"
+                    Let's say we want 3 alternative responses to the prompt "What is the main invention of Nicolas Tesla?" then select
+                    the third one as the main message of the slot instead of the first one (default).
                 </p>
                 <pre><code class="language-python">
 from typing import List
 from yacana import Task, OpenAiAgent, GenericMessage, OpenAiModelSettings, HistorySlot
 
-openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", api_token="sk-proj-XXXXXXXXXXXXXXXXX")
-
 # Requesting 3 alternative responses using "n" parameter
-model_settings = OpenAiModelSettings(n=3)
+model_settings = OpenAiModelSettings(n=3, temperature=1.0)
 
-Task("What is the capital of France ?", openai_agent, model_settings=model_settings).solve()
+openai_agent = OpenAiAgent("AI assistant", "gpt-4o-mini", system_prompt="You are a helpful AI assistant", model_settings=model_settings, api_token="sk-proj-XXXXXXXXXXXXXXX")
+
+Task("What is the main invention of Nicolas Tesla (short response) ?", openai_agent).solve()
+
+message: GenericMessage = openai_agent.history.get_last_message()
+print(f"\nCurrent main message is: {message.content}\n")
 
 # Getting the last slot from the history
 slot: HistorySlot = openai_agent.history.get_last_slot()
@@ -185,29 +361,46 @@ slot: HistorySlot = openai_agent.history.get_last_slot()
 # Getting the messages from the slot
 messages: List[GenericMessage] = slot.messages
 
-# Printing the messages
-for message in messages:
-    print(message.content)
-                </code></pre>
-                <p>
-                    You might be wandering what is an HistorySlot? It's a class that wraps the message from the LLM.<br>
-                    There are very few usecases where you'll need to use it so it has been hided from the user. For instance, when adding a message to the history you're secretly adding an HistorySlot and then<br>
-                    a message to that slot. You can see the history as a list of slots instead of a list of messages. In each slot you'll find one or more messages. Most of the time there will only be one 
-                    because only OpenAi supports the "n" parameter hence making the functionnality  pretty much useless for other inference server.<br>
-                    However, you can create your own slots and add messages to them yourself if the need arises.<br>
-                    Finally, how does the slot knows what message to use by default when it has more than one ? It's simple, by default it's the first one.
-                    To change the default message you can use the <code>my_slot.set_main_message_index(n: int)</code> method to set the correct index in the list of messages.<br>
-                    In the above example we've used the <code>get_last_slot()</code> method to get the last slot from the history and then we've accessed the list of messages inside the slot.<br>
-                    We've then used a for loop to print the content of each message. These messages could be given to a different agent to achieve different results. Maybe select the message
-                    with the most creative answer. Let's say it's the third one.<br>
-                    To make the third message the default one we can do:
-                    <pre><code class="language-python">
-slot.set_main_message_index(3)
-                    </code></pre>
-                    Then, when Yacana sends the current history to the LLM to solve another task it will use the third message as the main one. The other messages are still in the slot, 
-                    but unused.
-                </p>
+# Printing the messages with a counter for readability
+for i, message in enumerate(messages, start=1):
+    print(f"\n{i}): {message.content}")
 
+# Setting the main message index to 2 (3rd message)
+slot.set_main_message_index(2)
+
+# Getting the main message again
+message: GenericMessage = openai_agent.history.get_last_message()
+print(f"\nCurrent main message is: {message.content}\n")
+                </code></pre>
+                Output:
+                <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: What is the main invention of Nicolas Tesla (short response) ?
+
+INFO: [AI_RESPONSE][From: AI assistant]: Nicolas Tesla is best known for his development of the alternating current (AC) electrical system, which became the standard for electrical power distribution. He also made significant contributions to wireless communication, induction motors, and numerous other innovations in electrical engineering.
+
+Current main message is: Nicolas Tesla is best known for his development of the alternating current (AC) electrical system, which became the standard for electrical power distribution. He also made significant contributions to wireless communication, induction motors, and numerous other innovations in electrical engineering.
+
+
+1): Nicolas Tesla is best known for his development of the alternating current (AC) electrical system, which became the standard for electrical power distribution. He also made significant contributions to wireless communication, induction motors, and numerous other innovations in electrical engineering.
+
+2): Nicolas Tesla is best known for his development of the alternating current (AC) electrical system, which is the basis for modern electrical power distribution. Additionally, he made significant contributions to numerous innovations, including the Tesla coil, radio technology, and wireless transmission of energy.
+
+3): One of Nikola Tesla's main inventions is the alternating current (AC) electrical system, which includes the AC motor and transformer. This system revolutionized the way electricity is generated and transmitted, enabling long-distance power distribution and laying the foundation for the modern electrical grid.
+
+Current main message is: One of Nikola Tesla's main inventions is the alternating current (AC) electrical system, which includes the AC motor and transformer. This system revolutionized the way electricity is generated and transmitted, enabling long-distance power distribution and laying the foundation for the modern electrical grid.
+                </code></pre>
+                <br>
+                <p>
+                    The <a href="classes.html#tech-doc-history-slot">HistorySlot</a> has been discused above. But to put it simply, it wraps each message in the history.
+                    This means that the history is not a list of <a href="classes.html#tech-doc-message">Message</a> but a list of slots (makes sense?).<br>
+                    Each slot has one or more message. In our case, we have 3. The first one is the main message and is the one presented to the LLM during inference
+                    and the other 2 are alternate messages.<br>
+                    The slot allows to switch what message should be considered as main message using <code>.set_main_message_index(n)</code>.<br>
+                    <br>
+                    In the output, the first look at <i>Current main message</i> shows that the first message is selected (ends with "engineering").<br>
+                    After setting the index at 2 (starting from 0) the second round of <i>Current main message</i> show the third message is selected (ends with "grid").<br>
+                </p>
+                <hr>
 
                 <h2 id="using-vllm">Using VLLM</h2>
                 <h4>Installation</h4>
@@ -229,6 +422,7 @@ conda activate vllm
 pip install vllm
                     </code></pre>
                 </p>
+                <br>
                 <p>
                     Now, let's start the inference server with a model. If it's not already present it will be downloaded.
                     <br>
@@ -263,9 +457,10 @@ vllm serve meta-llama/Llama-3.1-8B-Instruct --max-model-len 8192 --guided-decodi
                     Once the inference server is running, you can use the following code to create an OpenAI-compatible agent:
                 </p>
                 <pre><code class="language-python">
-from yacana import OpenAiAgent
+from yacana import OpenAiAgent, GenericMessage, Task
 
-vllm_agent_2 = OpenAiAgent("AI assistant", "meta-llama/Llama-3.1-8B-Instruct", system_prompt="You are a helpful AI assistant", endpoint="http://127.0.0.1:8000/v1", api_token="leave blank", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
+# Note the endpoint parameter is set to the VLLM server address
+vllm_agent = OpenAiAgent("AI assistant", "meta-llama/Llama-3.1-8B-Instruct", system_prompt="You are a helpful AI assistant", endpoint="http://127.0.0.1:8000/v1", api_token="leave blank", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
 
 # Use the agent to solve a task
 message: GenericMessage = Task("What is the capital of France?", vllm_agent).solve()
@@ -277,7 +472,7 @@ print(message.content)
                     Doing simple tool calling:
                 </p>
                 <pre><code class="language-python">
-from yacana import OpenAiAgent
+from yacana import OpenAiAgent, Tool, Task
 
 vllm_agent = OpenAiAgent("AI assistant", "meta-llama/Llama-3.1-8B-Instruct", system_prompt="You are a helpful AI assistant", endpoint="http://127.0.0.1:8000/v1", api_token="leave blank", runtime_config={"extra_body": {'guided_decoding_backend': 'outlines'}})
 
@@ -296,14 +491,13 @@ extra_body = {
     'tool_call_parser': 'auto'
 }
 Task("What's the weather in paris ?", vllm_agent, tools=[get_weather_tool], runtime_config={"extra_body": extra_body}).solve()
-
-vllm_agent.history.pretty_print()
                 </code></pre>
+                <br>
                 <p>
                     Note how we used the <code>runtime_config</code> parameter to specify the guided decoding backend. You can use this parameter to specify other parameters as well.
                     This is a direct access to the underlying library.
                     <br>
-                    For OpenAI we use the <a href="https://github.com/openai/openai-python">OpenAI python client</a>. You can set any parameter supported by the OpenAI python client.
+                    For OpenAI we use the <a href="https://github.com/openai/openai-python">OpenAI python client</a>. You can set any parameter supported by this library.
                     <br>
                     These settings can either be set at the Agent level or at the Task level. For more information 
                     please refer to the <a href="agents_and_tasks.html#accessing-the-underlying-client-library">Accessing the underlying client library</a> section.
@@ -311,11 +505,12 @@ vllm_agent.history.pretty_print()
                 <br>
                 <h4>Using structured outputs</h4>
                 <p>
-                    Using structured outputs is the same as the OllamaAgent. This is the power of Yacana. It provides you with the same API for structured outputs on
+                    Using structured outputs is the same as with the OllamaAgent. This is the power of Yacana. It provides you with the same API for structured outputs on
                     local LLMs as on OpenAI. However, you still need to provide the <code>outline</code> parameter. In this example we set it at the Agent level because it will be
                     usefull for every future task requiring grammar enforcement.
                 </p>
                 <pre><code class="language-python">
+from pydantic import BaseModel
 from yacana import OpenAiAgent, GenericMessage, Task
 
 class CountryFact(BaseModel):
@@ -340,6 +535,13 @@ print("Fact = ", message.structured_output.countryFacts[0].fact)
                     Please refer to the main documentation for more information.
                 </p>
                 <br>
+                <div style="text-align: center; margin-top: 50px;">
+                    <h4>Pagination</h4>
+                    <ul class="pagination">
+                        <li><a href="dual_agents_chat.html" class="button">Prev</a></li>
+                        <li><a class="button disabled">Next</a></li>
+                    </ul>
+                </div>
         </div>
     </div>
 
@@ -359,6 +561,13 @@ print("Fact = ", message.structured_output.countryFacts[0].fact)
 
             <!-- Section -->
             <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Section -->
+            <section>
                 <header class="major">
                     <h2>Related Youtube video</h2>
                 </header>
@@ -367,13 +576,6 @@ print("Fact = ", message.structured_output.countryFacts[0].fact)
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
                         <p>Youtube video for this section is still under creation. Please be patient ^^</p>
                     </article>
-                </div>
-            </section>
-
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
                 </div>
             </section>
 

@@ -92,8 +92,8 @@ agent3 = OpenAiAgent("Naming expert", "gpt-4o-mini", api_token=openai_api_token)
 
 
 # Registering 2 tools
-expense_tracker_tool: Tool = Tool("Expense tracker", "Takes as input a price from an invoice and deducts it from the user's account. Returns the new account balance.", invoice_expense_tracker)
-check_file_existence_tool = Tool("File existence checker", "Takes as input a file name and tells if the name in already taken", check_file_existence)
+expense_tracker_tool: Tool = Tool("ExpenseTracker", "Takes as input a price from an invoice and deducts it from the user's account. Returns the new account balance.", invoice_expense_tracker)
+check_file_existence_tool: Tool = Tool("FileExistenceChecker", "Takes as input a file name and tells if the name in already taken", check_file_existence)
 
 # Making a checkpoint, so we can go back in time later
 checkpoint_ag1: str = agent1.history.create_check_point()
