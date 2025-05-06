@@ -58,35 +58,24 @@
                 <p>
                     <u><i>The Yacana adventure is merely just starting.</i></u>
                 </p>
+                <hr>
                 <p>
-                    <b>We expect to release the following new features in the next update:</b>
+                    We will be working on these new features in the next months:
                 </p>
                 <ul>
-		    <li>Compatibility with vision models like llama3.2-vision. [Status]: Done. Available on dev branch.</li>
-                    <li>Compatibility with VLLM [Status]: In progress. We need to shift from the Ollama client library to allow the OpenAi one.</li>
-		    <li>Rework JSON mode to allow "structured output". [Status]: Todo. This will allow better tool calling success. In particular with VLLM which does not support the JSON mode.</li>
-		    <li>Compatibility with OpenAI. [Status]: Todo. It should be simple to develop after adding VLLM support as it must be in "OpenAI mode".</li>
-		    <li>Monitoring Yacana workflows to track down prompt engineering failures like tool calling failures count, etc. [Status]: Todo. Low priority.</li>
-                    <li>Simplifying shift message system and maybe reworking GroupChat itself a bit. [Status]: Todo.</li>
-                    <li>Keep working on the documentation.</li>
-                    <li>Add a section on code generation. In theory, we won't add any abstraction because this can be
-                        achieved using the current features but still needs documentation. FYI just call a tool that
-                        takes a string in input. The string would be the code to execute. Execute the code inside the
-                        tool. Problem solved... [Status]: Todo.
-                    </li>
+                    <li>Compatibility with MCP</li>
+                    <li>Allowing both Agents types to use enhanced tool calling and the OpenAI tool calling format.</li>
+                    <li>Adding memory to Agents</li>
+                    <li>Adding a RAG tool available for all agents</li>
                     <li>More to come</li>
                 </ul>
-
-                <p><b>Related to Yacana:</b></p>
-                <ul>
-                    <li>Updating Gno6 as it's a good demonstration of what cool stuff can be achieved with Yacana</li>
-                    <li>Making a RAG tool using Yacana</li>
-                    <li>Making another smart CLI. Either GIT or Docker maybe.</li>
-		    <li>More youtube videos to come</li>
-                    <li>More to come</li>
-                </ul>
-
+                <p>
+                    If there's a functionality that you need, please open an issue and we will gladly look into it!
+                </p>
             </section>
+
+
+
         </div>
     </div>
 
@@ -101,105 +90,7 @@
                 </form>
             </section>
 
-            <!-- Menu -->
-            <nav class="menu">
-                <header class="major">
-                    <h2>Menu</h2>
-                </header>
-                <ul>
-                    <li><a href="../index.html">Homepage</a></li>
-                    <li>
-                        <span class="opener">I. Installation</span>
-                        <ul>
-                            <li><a href="installation.html#installing-ollama">Installing Ollama</a></li>
-                            <li><a href="installation.html#choosing-an-llm-model">Choosing an LLM model</a>
-                            </li>
-                            <li><a href="installation.html#running-the-model">Running the model</a></li>
-                            <li><a href="installation.html#installing-yacana">Installing Yacana</a></li>
-                            <li><a href="installation.html#imports">Imports</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">II. Agents & Tasks</span>
-                        <ul>
-                            <li><a href="agents_and_tasks.html#creating-an-agent">Creating an Agent</a></li>
-                            <li><a href="agents_and_tasks.html#basic-roleplay">Basic roleplay</a></li>
-                            <li><a href="agents_and_tasks.html#creating-tasks">Creating Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#getting-the-result-of-a-task">Getting the
-                                result of a Task</a></li>
-                            <li><a href="agents_and_tasks.html#chaining-tasks">Chaining Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#logging-levels">Logging levels</a></li>
-                            <li><a href="agents_and_tasks.html#configuring-llms-settings">Configuring LLM's
-                                settings</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">III. Routing</span>
-                        <ul>
-                            <li><a href="routing.html#concepts-of-routing">Concepts of routing</a></li>
-                            <li><a href="routing.html#self-reflection-routing">Self-reflection routing</a>
-                            </li>
-                            <li><a href="routing.html#cleaning-history">Cleaning history</a></li>
-                            <li><a href="routing.html#routing-demonstration">Routing demonstration</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">IV. Managing Agents history</span>
-                        <ul>
-                            <li><a href="managing_agent_history.html#printing-history">Printing history</a>
-                            </li>
-                            <li><a href="managing_agent_history.html#creating-and-loading-checkpoints">Creating
-                                and loading checkpoints</a></li>
-                            <li><a href="managing_agent_history.html#Zero-prompt-shot-vs-multi-prompt-shot">Zero-prompt
-                                shot vs multi-prompt shot</a></li>
-                            <li><a href="managing_agent_history.html#saving-agent-state">Saving Agent
-                                state</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">V. Tool calling</span>
-                        <ul>
-                            <li><a href="tool_calling.html#concept-of-calling-tools">Concepts of calling
-                                tools</a></li>
-                            <li><a href="tool_calling.html#writing-good-tool-prompts">Writing good tool
-                                prompts</a></li>
-                            <li><a href="tool_calling.html#calling-a-tool">Calling a tool</a></li>
-                            <li><a href="tool_calling.html#improving-tool-calling-results">Improving
-                                tool-calling results</a></li>
-                            <li><a href="tool_calling.html#optional-tools">Optional tools</a></li>
-                            <li><a href="tool_calling.html#assigning-multiple-tools">Assigning multiple
-                                Tools</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">VI. Dual-agents chat</span>
-                        <ul>
-                            <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping
-                                chat using 'maximum iterations'</a></li>
-                            <li><a href="dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end
-                                the chat</a></li>
-                            <li><a href="dual_agents_chat.html#controlling-the-shift-message">Controlling the
-                                Shift Message</a></li>
-                            <li><a href="dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li><a href="multi_agents_chat.html#multi-agents-chat">VII. Multi-agents chat</a></li>
-                </ul>
-                <br>
-                <ul>
-                    <li>
-                        <a href="classes.html">
-                            <span style="display: inline" class="icon solid fa-cog">
-                                <span class="label">
-                                    Technical Documentation
-                                </span>
-                                Technical Documentation
-                            </span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+            <div id="menu-container"></div>
 
 
             <!-- Footer -->
@@ -219,7 +110,13 @@
 <script src="../assets/js/breakpoints.min.js"></script>
 <script src="../assets/js/util.js"></script>
 <script src="../assets/js/main.js"></script>
-
+<script src="../assets/js/menu.js"></script>
+<script>
+    // Initialize both menus when the document is ready
+    $(document).ready(function() {
+        initializeMainNavMenu();
+        initializePageNavMenu();
+    });
+</script>
 </body>
-
 </html>

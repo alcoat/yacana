@@ -1,50 +1,110 @@
 class ToolError(Exception):
-    """Raised by the user from inside a tool when the tool 'thinks' that the given parameters are incorrect.
-    The message given in the raise(...) should help the LLM to fix its mistakes or else it will probably loop till
-    reaching MaxToolErrorIter. The error message must be didactic.
-    For instance: 'Parameter xxxx expected type int but got type string'.
-
     """
+    Exception raised when a tool encounters incorrect parameters.
+
+    This exception is raised by the user from inside a tool when the tool determines
+    that the given parameters are incorrect. The error message should be didactic
+    to help the LLM fix its mistakes, otherwise it may loop until reaching
+    MaxToolErrorIter.
+
+    Parameters
+    ----------
+    message : str
+        A descriptive message that will be given to the LLM to help fix the issue.
+        Example: 'Parameter xxxx expected type int but got type string'.
+
+    Notes
+    -----
+    The error message should be clear and instructive to help the LLM understand
+    and correct the parameter issue.
+    """
+
     def __init__(self, message):
-        """
-        Raised by the user from inside a tool when the tool 'thinks' that the given parameters are incorrect.
-        :param message: str: The message will be given to the LLM, so it tries to fix the issue.
-        """
         self.message = message
         super().__init__(self.message)
 
 
 class MaxToolErrorIter(Exception):
-    """Raised when the maximum amount of errors has been reached. This counts errors raised from the tool but also when
-    Yacana fails to all the tool correctly. However, note that both situation have their own counter variable. Meaning
-    that if set to 5 you can have 4 ToolError and 4 Yacana tool call error ((4 + 4) > 5) and it will be okay. It is when
-    we reach one more error of either types that this exception will be raised and chat will stop.
-
     """
+    Exception raised when maximum error iterations are reached.
+
+    This exception is raised when the maximum number of allowed errors has been
+    reached. This includes both errors raised from the tool itself and errors
+    when Yacana fails to call the tool correctly.
+
+    Parameters
+    ----------
+    message : str
+        Information about which specific iteration counter reached its maximum.
+
+    Notes
+    -----
+    The error counters for ToolError and Yacana tool call errors are tracked
+    separately. For example, if the maximum is set to 5, you could have 4 ToolError
+    and 4 Yacana tool call errors (4 + 4 > 5) without raising this exception.
+    The exception is only raised when one more error of either type occurs.
+    """
+
     def __init__(self, message):
-        """
-        Raised when the maximum amount of errors has been reached.
-        :param message: Info on what specific iteration counter got maxed out
-        """
         self.message = message
         super().__init__(self.message)
 
 
 class ReachedTaskCompletion(Exception):
+    """
+    Exception raised when a task has been successfully completed.
+
+    This exception is used to signal that the current task has reached its
+    completion state. It is typically used to break out of processing loops
+    or to indicate successful task termination.
+    """
 
     def __init__(self):
         pass
 
 
 class IllogicalConfiguration(Exception):
-    """You used the framework in an incoherent way.
-    Seek the stacktrace message.
-
     """
+    Exception raised when the framework is used in an incoherent way.
+
+    This exception indicates that the framework has been configured or used
+    in a way that doesn't make logical sense. The stacktrace message should
+    provide details about the specific configuration issue.
+
+    Parameters
+    ----------
+    message : str
+        A description of the illogical configuration or usage.
+    """
+
     def __init__(self, message):
-        """
-        You used the framework in an incoherent way. Seek the stacktrace message.
-        :param message:
-        """
+        self.message = message
+        super().__init__(self.message)
+
+
+class TaskCompletionRefusal(Exception):
+    """
+    Exception raised when the model refuses to complete a task.
+
+    This exception is raised when the model explicitly refuses to complete
+    the requested task, typically due to ethical, safety, or capability reasons.
+
+    Parameters
+    ----------
+    message : str
+        The reason for the task completion refusal.
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class UnknownResponseFromLLM(Exception):
+    """
+    Exception raised when the model returns an unknown response.
+    """
+
+    def __init__(self, message):
         self.message = message
         super().__init__(self.message)

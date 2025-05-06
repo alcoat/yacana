@@ -91,11 +91,11 @@
                 </ol>
                 <p>Let's look at an example: </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
 # Creating two agents
-agent1 = Agent("Ai assistant 1", "llama3.1:8b")
-agent2 = Agent("Ai assistant 2", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant 1", "llama3.1:8b")
+agent2 = OllamaAgent("Ai assistant 2", "llama3.1:8b")
 
 # Creating two different Tasks to solve but that are related to one another
 task1 = Task("Your task is to create a list of attractions for an amusement park.", agent1)
@@ -237,30 +237,30 @@ These are just a few ideas to get you started! What do you think? Would you like
                     </thead>
                     <tbody>
                     <tr>
-                        <td>MAX<em>ITERATIONS</em>ONLY</td>
+                        <td>MAX_ITERATIONS_ONLY</td>
                         <td>False</td>
                         <td>Chat ends when we reach the maximum number of rounds. <em>Defaults to 5.</em></td>
                     </tr>
                     <tr>
-                        <td>END<em>CHAT</em>AFTER<em>FIRST</em>COMPLETION</td>
+                        <td>END_CHAT_AFTER_FIRST_COMPLETION</td>
                         <td>True</td>
                         <td>When a Task is marked as complete the chat ends immediately.</td>
                     </tr>
                     <tr>
-                        <td>ONE<em>LAST</em>CHAT<em>AFTER</em>FIRST_COMPLETION</td>
+                        <td>ONE_LAST_CHAT_AFTER_FIRST_COMPLETION</td>
                         <td>True</td>
                         <td>When a Task is marked as complete, one last agent can speak and then the chat ends.
                         </td>
                     </tr>
                     <tr>
-                        <td>ONE<em>LAST</em>GROUP<em>CHAT</em>AFTER<em>FIRST</em>COMPLETION</td>
+                        <td>ONE_LAST_GROUP_CHAT_AFTER_FIRST_COMPLETION</td>
                         <td>True</td>
                         <td>When a Task is marked as complete, one whole table turn will be allowed before the
                             chat ends.
                         </td>
                     </tr>
                     <tr>
-                        <td>ALL<em>TASK</em>MUST_COMPLETE</td>
+                        <td>ALL_TASK_MUST_COMPLETE</td>
                         <td>True</td>
                         <td>All tasks must be marked as complete before the chat is ended.</td>
                     </tr>
@@ -283,13 +283,15 @@ These are just a few ideas to get you started! What do you think? Would you like
                     Yacana uses the following wording: </p>
                 <blockquote>
                     "In your opinion, what objectives from your initial task have you 'NOT completed?" <br/>
+                </blockquote>
+                <p>
                     Therefore you should use the same prompt style in your Task prompt. For instance <em>"The
                     task is fulfilled when the objective
                     <insert here> is completed."
-                </em>.<br/>
+                    </em>.<br/>
                     You should try different versions of this "objective completed" prompt to find one that
                     matches your task and LLM best.
-                </blockquote>
+                </p>
                 <h4>Testing all available chat ending modes</h4>
                 <p>We'll test the different modes with simple games between two Agents. </p>
                 <p><strong>END_CHAT_AFTER_FIRST_COMPLETION</strong></p>
@@ -305,10 +307,10 @@ These are just a few ideas to get you started! What do you think? Would you like
                     functionality so it's okay.
                 </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
-agent1 = Agent("Ai assistant 1", "dolphin-mixtral:8x7b-v2.7-q4_K_M")
-agent2 = Agent("Ai assistant 2", "dolphin-mixtral:8x7b-v2.7-q4_K_M")
+agent1 = OllamaAgent("Ai assistant 1", "dolphin-mixtral:8x7b-v2.7-q4_K_M")
+agent2 = OllamaAgent("Ai assistant 2", "dolphin-mixtral:8x7b-v2.7-q4_K_M")
 
 # We create a Task to generate the secret number BEFORE entering the chat so that only Agent1 knows the secret number
 Task("You must choose a number between 1 and 3. It will be referred as the 'secret number'. Output it once, now.", agent1).solve()
@@ -587,10 +589,10 @@ GroupSolve([task1, task2], EndChat(EndChatMode.ONE_LAST_GROUP_CHAT_AFTER_FIRST_C
                 <p>❕ Shifting back to "llama:3.0" because "Dolphin" always wants to execute Python code when it has
                     to do maths… </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
-agent1 = Agent("Ai assistant 1", "llama3.1:8b")
-agent2 = Agent("Ai assistant 2", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant 1", "llama3.1:8b")
+agent2 = OllamaAgent("Ai assistant 2", "llama3.1:8b")
 
 task1 = Task("Your task is to add 1 to the initial count which is 0. Your objective is complete when you get to output number '2'", agent1, llm_stops_by_itself=True)
 task2 = Task("Your task is to add 1 to the initial count which is 0. Your objective is complete when you get to output number '3'", agent2, llm_stops_by_itself=True)
@@ -723,8 +725,10 @@ Looks like we've completed the task successfully! Well done! Would you like to s
                 </ul>
                 <p>The "game" finishes when Agent1 has 15 numbers in its list. </p>
                 <pre><code class="language-python">
-agent1 = Agent("Ai assistant 1", "llama3.1:8b")
-agent2 = Agent("Ai assistant 2", "llama3.1:8b")
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
+
+agent1 = OllamaAgent("Ai assistant 1", "llama3.1:8b")
+agent2 = OllamaAgent("Ai assistant 2", "llama3.1:8b")
 
 
 task1 = Task("Your task is to create a list of numbers. The list starts empty. The numbers will be given to you. Your objective is fulfilled when you have more than 15 numbers in the list.", agent1, llm_stops_by_itself=True)
@@ -1072,10 +1076,10 @@ GroupSolve([task1, task2], EndChat(EndChatMode.END_CHAT_AFTER_FIRST_COMPLETION),
 							Outside a GroupSolve it has no effect.</span>
                 </p>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
-agent1 = Agent("Ai assistant 1", "llama3.1:8b")
-agent2 = Agent("Ai assistant 2", "llama3.1:8b")
+agent1 = OllamaAgent("Ai assistant 1", "llama3.1:8b")
+agent2 = OllamaAgent("Ai assistant 2", "llama3.1:8b")
 
 task1 = Task(f"A bat and a ball together cost $1.10. The bat costs $1 more than the ball. How much does the ball cost? Your objective is complete when you are confident that you solved the problem correctly.", agent1, use_self_reflection=True, llm_stops_by_itself=True)
 task2 = Task(f"What do you think of the reasoning ?", agent2)
@@ -1136,11 +1140,11 @@ So, in hindsight, I have not fully completed the objective of considering altern
                     </li>
                 </ul>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
 
 # Creating our two players
-agent1 = Agent("Player 1", "llama3.1:8b")
-agent2 = Agent("Player 2", "llama3.1:8b")
+agent1 = OllamaAgent("Player 1", "llama3.1:8b")
+agent2 = OllamaAgent("Player 2", "llama3.1:8b")
 
 
 # Making up a number and guiding player 2 
@@ -1343,7 +1347,7 @@ Let's do it again sometime soon!
                     </li>
                 </ul>
                 <pre><code class="language-python">
-from yacana import Agent, Task, GroupSolve, EndChat, EndChatMode, ToolError, Tool
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode, ToolError, Tool
 
 # Creating our tool with type checking and 3 conditional returns
 def high_low(secret_number: int, guessed_number: int) -> str:
@@ -1365,10 +1369,10 @@ def high_low(secret_number: int, guessed_number: int) -> str:
 
 
 # Creating our two Agents
-player = Agent("Player", "llama3.1:8b")
-game_master = Agent("Game master", "llama3.1:8b")
+player = OllamaAgent("Player", "llama3.1:8b")
+game_master = OllamaAgent("Game master", "llama3.1:8b")
 
-# Instanciating our tool
+# Instantiating our tool
 high_low_tool = Tool("high_low", "Compares 2 numbers and returns a description of the relation between the two. Higher, lower or equal.", high_low)
 
 # Solo Task to create the secret number before entering GroupSolve()
@@ -1576,12 +1580,390 @@ The secret number is equal to the guessed number. You won ! // (tool)
                 <p>Last tool output:
                     <code>The secret number is equal to the guessed number. You won ! // (tool)</code>
                 </p>
+                <hr class="major">
+
+                <header class="main">
+                    <h2 id="multi-agents-chat">Multi-agents (>2) chat</h2>
+                </header>
+                <span class="image main"><img src="../images/multi_agents.jpg" alt="Multi chat"/></span>
+
+                <p>Yacana provides a way to make more than two agents speak one after the other. Better yet, there
+                    is no limit to the number of agents that you can add. However, note that the dual conversation
+                    pattern should be the one giving the best results as LLM were trained to speak to one user. Not
+                    be part of a multi-user conversation… <br/>
+                    Still, the functionality is here for you to use! <br/>
+                    To make this happen Yacana makes the Agents enter a role-play situation. It will heavily rely on
+                    the agent's name, so be sure that each of them has a concise, yet meaningful, name/title. </p>
+                <p>Let's play another dumb game where 3 players must output one letter each. The game is won when
+                    the fourth player (the game master) can make a valid 4-letter word from the previously outputted
+                    letters. </p>
+                <pre><code class="language-python">
+from yacana import OllamaAgent, Task, GroupSolve, EndChat, EndChatMode
+
+agent1 = OllamaAgent("James", "llama3.1:8b")
+agent2 = OllamaAgent("Emily", "llama3.1:8b")
+agent3 = OllamaAgent("Michael", "llama3.1:8b")
+game_master = OllamaAgent("Game master", "llama3.1:8b")
+
+task1 = Task("You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.", agent1)
+task2 = Task("You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.", agent2)
+task3 = Task("You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.", agent3)
+game_master_task = Task("Your task is to check if the word created by the other players is composed of 4 letters. Your objective is complete when a valid 4 letter word is found.", game_master, llm_stops_by_itself=True)
+
+print("################Starting GroupSolve#################")
+GroupSolve([task1, task2, task3, game_master_task], EndChat(EndChatMode.END_CHAT_AFTER_FIRST_COMPLETION)).solve()
+
+print("------ agent1 --------")
+agent1.history.pretty_print()
+
+print("------agent2----------")
+agent1.history.pretty_print()
+
+print("------agent3----------")
+agent1.history.pretty_print()
+
+print("------game_master----------")
+game_master.history.pretty_print()
+					</code></pre>
+                <br>
+                <p>▶️ Output:</p>
+                <pre><code class="text-output">
+################Starting GroupSolve#################
+
+INFO: [PROMPT][To: James]: [TaskManager]: James: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+INFO: [AI_RESPONSE][From: James]: [James]: T
+
+INFO: [PROMPT][To: Emily]: [TaskManager]: Emily: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+INFO: [AI_RESPONSE][From: Emily]: [Emily]: E
+
+INFO: [PROMPT][To: Michael]: [TaskManager]: Michael: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+INFO: [AI_RESPONSE][From: Michael]: [Michael]: H
+
+INFO: [PROMPT][To: Game master]: [TaskManager]: Game master: this is your main task: `Your task is to check if the word created by the other players is composed of 4 letters. Your objective is complete when a valid 4 letter word is found.`
+
+INFO: [AI_RESPONSE][From: Game master]: [Game master]: After analyzing the letters provided so far (T-E-H), I can see that they don't form a valid 4-letter word. The game continues!
+
+INFO: [PROMPT][To: Game master]: [TaskManager]: In your opinion, what objectives from your initial task have you NOT completed ?
+
+INFO: [AI_RESPONSE][From: Game master]: [Game master]: As the Game master, my only objective was to check if the word created by the other players is composed of 4 letters. Since I've checked and it's not a valid 4-letter word yet, my objective remains incomplete.
+
+INFO: [PROMPT][To: Game master]: To summarize in one word, did you still had some objectives to fulfill ? Answer ONLY by 'yes' or 'no'. Do not output anything else !
+
+INFO: [AI_RESPONSE][From: Game master]: yes
+
+INFO: [PROMPT][To: James]: [TaskManager]: James it's your turn to speak now.
+
+INFO: [AI_RESPONSE][From: James]: [James]: A
+
+INFO: [PROMPT][To: Emily]: [TaskManager]: Emily it's your turn to speak now.
+
+INFO: [AI_RESPONSE][From: Emily]: [Emily]: L
+
+INFO: [PROMPT][To: Michael]: [TaskManager]: Michael it's your turn to speak now.
+
+INFO: [AI_RESPONSE][From: Michael]: [Michael]: S
+
+INFO: [PROMPT][To: Game master]: [TaskManager]: Game master it's your turn to speak now.
+
+INFO: [AI_RESPONSE][From: Game master]: [Game master]: After analyzing the letters provided so far (T-E-H-A-L-S), I can see that they form a valid 4-letter word: HALE! Congratulations, the game is complete!
+
+INFO: [PROMPT][To: Game master]: [TaskManager]: In your opinion, what objectives from your initial task have you NOT completed ?
+
+INFO: [AI_RESPONSE][From: Game master]: [Game master]: Upon reviewing my original task, I realize that I was supposed to check if the word created by the other players is composed of 4 letters. However, since the game has been completed and a valid 4-letter word "HALE" has been formed, I can say that this objective has indeed been met. Therefore, in my opinion, I have NOT left any objectives from my initial task uncompleted.
+
+INFO: [PROMPT][To: Game master]: To summarize in one word, did you still had some objectives to fulfill ? Answer ONLY by 'yes' or 'no'. Do not output anything else !
+
+INFO: [AI_RESPONSE][From: Game master]: no
+------ agent1 --------
+[user]:
+[TaskManager]: You are entering a roleplay with multiple speakers where each one has his own objectives to fulfill. Each message must follow this syntax '[speaker_name]: message'.
+The other speakers are: [Emily],[Michael],[Game master].
+Your speaker name is [James].
+I will give you your task in the next message.
+
+[assistant]:
+[James]: Received and acknowledged. I'm ready to execute my tasks as James. Please proceed with my assignment.
+
+[user]:
+[TaskManager]: James: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[James]: T
+
+[user]:
+[TaskManager]: Emily: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Emily]: E
+
+[user]:
+[TaskManager]: Michael: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Michael]: H
+
+[user]:
+[TaskManager]: Game master: this is your main task: `Your task is to check if the word created by the other players is composed of 4 letters. Your objective is complete when a valid 4 letter word is found.`
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H), I can see that they don't form a valid 4-letter word. The game continues!
+
+[user]:
+[TaskManager]: James it's your turn to speak now.
+
+[assistant]:
+[James]: A
+
+[user]:
+[TaskManager]: Emily it's your turn to speak now.
+
+[assistant]:
+[Emily]: L
+
+[user]:
+[TaskManager]: Michael it's your turn to speak now.
+
+[assistant]:
+[Michael]: S
+
+[user]:
+[TaskManager]: Game master it's your turn to speak now.
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H-A-L-S), I can see that they form a valid 4-letter word: HALE! Congratulations, the game is complete!
+
+------agent2----------
+[user]:
+[TaskManager]: You are entering a roleplay with multiple speakers where each one has his own objectives to fulfill. Each message must follow this syntax '[speaker_name]: message'.
+The other speakers are: [Emily],[Michael],[Game master].
+Your speaker name is [James].
+I will give you your task in the next message.
+
+[assistant]:
+[James]: Received and acknowledged. I'm ready to execute my tasks as James. Please proceed with my assignment.
+
+[user]:
+[TaskManager]: James: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[James]: T
+
+[user]:
+[TaskManager]: Emily: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Emily]: E
+
+[user]:
+[TaskManager]: Michael: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Michael]: H
+
+[user]:
+[TaskManager]: Game master: this is your main task: `Your task is to check if the word created by the other players is composed of 4 letters. Your objective is complete when a valid 4 letter word is found.`
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H), I can see that they don't form a valid 4-letter word. The game continues!
+
+[user]:
+[TaskManager]: James it's your turn to speak now.
+
+[assistant]:
+[James]: A
+
+[user]:
+[TaskManager]: Emily it's your turn to speak now.
+
+[assistant]:
+[Emily]: L
+
+[user]:
+[TaskManager]: Michael it's your turn to speak now.
+
+[assistant]:
+[Michael]: S
+
+[user]:
+[TaskManager]: Game master it's your turn to speak now.
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H-A-L-S), I can see that they form a valid 4-letter word: HALE! Congratulations, the game is complete!
+
+------agent3----------
+[user]:
+[TaskManager]: You are entering a roleplay with multiple speakers where each one has his own objectives to fulfill. Each message must follow this syntax '[speaker_name]: message'.
+The other speakers are: [Emily],[Michael],[Game master].
+Your speaker name is [James].
+I will give you your task in the next message.
+
+[assistant]:
+[James]: Received and acknowledged. I'm ready to execute my tasks as James. Please proceed with my assignment.
+
+[user]:
+[TaskManager]: James: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[James]: T
+
+[user]:
+[TaskManager]: Emily: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Emily]: E
+
+[user]:
+[TaskManager]: Michael: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Michael]: H
+
+[user]:
+[TaskManager]: Game master: this is your main task: `Your task is to check if the word created by the other players is composed of 4 letters. Your objective is complete when a valid 4 letter word is found.`
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H), I can see that they don't form a valid 4-letter word. The game continues!
+
+[user]:
+[TaskManager]: James it's your turn to speak now.
+
+[assistant]:
+[James]: A
+
+[user]:
+[TaskManager]: Emily it's your turn to speak now.
+
+[assistant]:
+[Emily]: L
+
+[user]:
+[TaskManager]: Michael it's your turn to speak now.
+
+[assistant]:
+[Michael]: S
+
+[user]:
+[TaskManager]: Game master it's your turn to speak now.
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H-A-L-S), I can see that they form a valid 4-letter word: HALE! Congratulations, the game is complete!
+
+------game_master----------
+[user]:
+[TaskManager]: You are entering a roleplay with multiple speakers where each one has his own objectives to fulfill. Each message must follow this syntax '[speaker_name]: message'.
+The other speakers are: [James],[Emily],[Michael].
+Your speaker name is [Game master].
+I will give you your task in the next message.
+
+[assistant]:
+[Game master]: Received and acknowledged. I'm ready to execute my tasks as Game master. Please proceed with my assignment.
+
+[user]:
+[TaskManager]: James: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[James]: T
+
+[user]:
+[TaskManager]: Emily: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Emily]: E
+
+[user]:
+[TaskManager]: Michael: this is your main task: `You play a game where each player must add ONE letter. The goal is to form an existing word of 4 letters long. You can only say one letter in each message.`
+
+[assistant]:
+[Michael]: H
+
+[user]:
+[TaskManager]: Game master: this is your main task: `Your task is to check if the word created by the other players is composed of 4 letters. Your objective is complete when a valid 4 letter word is found.`
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H), I can see that they don't form a valid 4-letter word. The game continues!
+
+[user]:
+[TaskManager]: James it's your turn to speak now.
+
+[assistant]:
+[James]: A
+
+[user]:
+[TaskManager]: Emily it's your turn to speak now.
+
+[assistant]:
+[Emily]: L
+
+[user]:
+[TaskManager]: Michael it's your turn to speak now.
+
+[assistant]:
+[Michael]: S
+
+[user]:
+[TaskManager]: Game master it's your turn to speak now.
+
+[assistant]:
+[Game master]: After analyzing the letters provided so far (T-E-H-A-L-S), I can see that they form a valid 4-letter word: HALE! Congratulations, the game is complete!
+					</code></pre>
+                <br>
+                <p>During the first round the proposed letters are "T - E - H".<br>
+                    The game master responds to this with:
+                    <code>After analyzing the letters provided so far (T-E-H), I can see that they don't form a valid
+                        4-letter word. The game continues!</code>
+                    <br/>
+                    During the second round new letters are added: "A - L - S".<br>
+                    To which the game master responds:
+                    <code>After analyzing the letters provided so far (T-E-H-A-L-S), I can see that they form a valid
+                        4-letter word: HALE! Congratulations, the game is complete!</code>.
+                    After which the chat ends!
+                </p>
+                <p class="icon solid fa-info-circle"> Note that all types of "end chat" modes are
+                    still valid in multi-user chat too.
+                    Tools and all their parameters are also available in this mode and follow the same tools
+                    principles. </p>
+                <h4>Pros and cons of multi-LLM group chat</h4>
+                <p><strong>Dual chat</strong> <br/>
+                    Pros: </p>
+                <ul>
+                    <li>The dual group chat may have better accuracy with "dumb" LLMs assuming that you don't use
+                        tools as this may plumber the model's limited reasoning skills.
+                    </li>
+                    <li>Many options to configure conversation kick-off (shift message, first message
+                        reconciliation)
+                    </li>
+                </ul>
+                <p>Cons: </p>
+                <ul>
+                    <li>Control of the "shift message" and "first message reconciliation" may be a burden for new
+                        users ;
+                    </li>
+                    <li>Logs readability is not great at the moment ;</li>
+                </ul>
+                <hr/>
+                <p><strong>Multi chat (>2)</strong></p>
+                <p>Pros: </p>
+                <ul>
+                    <li>Logs readability is good ;</li>
+                    <li>No "shift message" nor "first message reconciliation" to deal with.</li>
+                </ul>
+                <p>Multi (>2) chat cons: </p>
+                <ul>
+                    <li>LLMs that don't perform well with role-play may experience difficulties like impersonation ;
+                    </li>
+                </ul>
+                <p class="icon solid fa-info-circle"> We might consider adding an option to also use role-play for
+                    dual chat mode.
+                </p>
                 <div style="text-align: center; margin-top: 50px;">
                     <h4>Pagination</h4>
                     <ul class="pagination">
-                        <li><a href="tool_calling.html#concept-of-calling-tools" class="button">Prev</a></li>
+                        <li><a href="agents_features.html" class="button">Prev</a></li>
 
-                        <li><a href="multi_agents_chat.html#multi-agents-chat" class="button">Next</a></li>
+                        <li><a href="other_inference_servers.html" class="button">Next</a></li>
                     </ul>
                 </div>
             </section>
@@ -1599,105 +1981,15 @@ The secret number is equal to the guessed number. You won ! // (tool)
                 </form>
             </section>
 
-            <!-- Menu -->
-            <nav class="menu">
-                <header class="major">
-                    <h2>Menu</h2>
-                </header>
-                <ul>
-                    <li><a href="../index.html">Homepage</a></li>
-                    <li>
-                        <span class="opener">I. Installation</span>
-                        <ul>
-                            <li><a href="installation.html#installing-ollama">Installing Ollama</a></li>
-                            <li><a href="installation.html#choosing-an-llm-model">Choosing an LLM model</a>
-                            </li>
-                            <li><a href="installation.html#running-the-model">Running the model</a></li>
-                            <li><a href="installation.html#installing-yacana">Installing Yacana</a></li>
-                            <li><a href="installation.html#imports">Imports</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">II. Agents & Tasks</span>
-                        <ul>
-                            <li><a href="agents_and_tasks.html#creating-an-agent">Creating an Agent</a></li>
-                            <li><a href="agents_and_tasks.html#basic-roleplay">Basic roleplay</a></li>
-                            <li><a href="agents_and_tasks.html#creating-tasks">Creating Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#getting-the-result-of-a-task">Getting the
-                                result of a Task</a></li>
-                            <li><a href="agents_and_tasks.html#chaining-tasks">Chaining Tasks</a></li>
-                            <li><a href="agents_and_tasks.html#logging-levels">Logging levels</a></li>
-                            <li><a href="agents_and_tasks.html#configuring-llms-settings">Configuring LLM's
-                                settings</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">III. Routing</span>
-                        <ul>
-                            <li><a href="routing.html#concepts-of-routing">Concepts of routing</a></li>
-                            <li><a href="routing.html#self-reflection-routing">Self-reflection routing</a>
-                            </li>
-                            <li><a href="routing.html#cleaning-history">Cleaning history</a></li>
-                            <li><a href="routing.html#routing-demonstration">Routing demonstration</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">IV. Managing Agents history</span>
-                        <ul>
-                            <li><a href="managing_agent_history.html#printing-history">Printing history</a>
-                            </li>
-                            <li><a href="managing_agent_history.html#creating-and-loading-checkpoints">Creating
-                                and loading checkpoints</a></li>
-                            <li><a href="managing_agent_history.html#Zero-prompt-shot-vs-multi-prompt-shot">Zero-prompt
-                                shot vs multi-prompt shot</a></li>
-                            <li><a href="managing_agent_history.html#saving-agent-state">Saving Agent
-                                state</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">V. Tool calling</span>
-                        <ul>
-                            <li><a href="tool_calling.html#concept-of-calling-tools">Concepts of calling
-                                tools</a></li>
-                            <li><a href="tool_calling.html#writing-good-tool-prompts">Writing good tool
-                                prompts</a></li>
-                            <li><a href="tool_calling.html#calling-a-tool">Calling a tool</a></li>
-                            <li><a href="tool_calling.html#improving-tool-calling-results">Improving
-                                tool-calling results</a></li>
-                            <li><a href="tool_calling.html#optional-tools">Optional tools</a></li>
-                            <li><a href="tool_calling.html#assigning-multiple-tools">Assigning multiple
-                                Tools</a></li>
-                        </ul>
-                    </li>
-                    <li>
-                        <span class="opener">VI. Dual-agents chat</span>
-                        <ul>
-                            <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping
-                                chat using 'maximum iterations'</a></li>
-                            <li><a href="dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end
-                                the chat</a></li>
-                            <li><a href="dual_agents_chat.html#controlling-the-shift-message">Controlling the
-                                Shift Message</a></li>
-                            <li><a href="dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li><a href="multi_agents_chat.html#multi-agents-chat">VII. Multi-agents chat</a></li>
-                </ul>
-                <br>
-                <ul>
-                    <li>
-                        <a href="classes.html">
-                            <span style="display: inline" class="icon solid fa-cog">
-                                <span class="label">
-                                    Technical Documentation
-                                </span>
-                                Technical Documentation
-                            </span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+            <!-- Menu Container -->
+            <div id="menu-container"></div>
+
+            <!-- Section -->
+            <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
 
             <!-- Section -->
             <section>
@@ -1710,25 +2002,6 @@ The secret number is equal to the guessed number. You won ! // (tool)
                         <p>Youtube video for this section is still under creation. Please be patient ^^</p>
                     </article>
                 </div>
-            </section>
-
-            <!-- Section -->
-            <section>
-                <nav class="menu">
-                    <header class="major">
-                        <h2>Page menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping
-                            chat using 'maximum iterations'</a></li>
-                        <li><a href="dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end
-                            the chat</a></li>
-                        <li><a href="dual_agents_chat.html#controlling-the-shift-message">Controlling the
-                            Shift Message</a></li>
-                        <li><a href="dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a>
-                        </li>
-                    </ul>
-                </nav>
             </section>
 
             <!-- Footer -->
@@ -1748,6 +2021,14 @@ The secret number is equal to the guessed number. You won ! // (tool)
 <script src="../assets/js/breakpoints.min.js"></script>
 <script src="../assets/js/util.js"></script>
 <script src="../assets/js/main.js"></script>
+<script src="../assets/js/menu.js"></script>
+<script>
+    // Initialize both menus when the document is ready
+    $(document).ready(function() {
+        initializeMainNavMenu();
+        initializePageNavMenu();
+    });
+</script>
 
 </body>
 

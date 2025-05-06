@@ -1,4 +1,4 @@
-from yacana import Agent, Task, Tool, GroupSolve, EndChat, EndChatMode, ModelSettings, LoggerManager, ToolError
+from yacana import Task, Tool, GroupSolve, EndChat, EndChatMode, LoggerManager, ToolError, OpenAiModelSettings, OpenAiAgent
 import os
 from typing import List
 from pypdf import PdfReader
@@ -6,11 +6,14 @@ from pypdf import PdfReader
 # How much money you have on your bank account
 checking_account_limit: int = 3000
 # Path where to find the invoices
-invoices_folder_path = "../assets/invoices/"
+invoices_folder_path = "../../assets/invoices/"
 # Uncomment to hide info logs.
 # LoggerManager.set_log_level(None)
 
 
+#################
+#    HELPERS    #
+#################
 def list_invoices() -> List[str]:
     """
     Not a 'tool' ; List all files in the folder
@@ -77,17 +80,20 @@ def check_file_existence(file_name: str) -> str:
 ###############
 
 # Lowering temperature so the LLM doesn't get too creative
-ms = ModelSettings(temperature=0.4)
+ms = OpenAiModelSettings(temperature=0.4)
+
+# Set your OpenAi token in the terminal by doing 'export OPENAI_API_TOKEN=<your_token>'
+openai_api_token = os.getenv('OPENAI_API_TOKEN')
 
 # Creating 3 agents
-agent1 = Agent("Expert banker", "llama3.1:8b", model_settings=ms)
-agent2 = Agent("File-system helper", "llama3.1:8b", model_settings=ms)
-agent3 = Agent("Naming expert", "llama3.1:8b")
+agent1 = OpenAiAgent("Expert banker", "gpt-4o-mini", api_token=openai_api_token, model_settings=ms)
+agent2 = OpenAiAgent("File-system helper", "gpt-4o-mini", api_token=openai_api_token, model_settings=ms)
+agent3 = OpenAiAgent("Naming expert", "gpt-4o-mini", api_token=openai_api_token)
 
 
 # Registering 2 tools
-expense_tracker_tool: Tool = Tool("Expense tracker", "Takes as input a price from an invoice and deducts it from the user's account. Returns the new account balance.", invoice_expense_tracker)
-check_file_existence_tool = Tool("File existence checker", "Takes as input a file name and tells if the name in already taken", check_file_existence)
+expense_tracker_tool: Tool = Tool("ExpenseTracker", "Takes as input a price from an invoice and deducts it from the user's account. Returns the new account balance.", invoice_expense_tracker)
+check_file_existence_tool: Tool = Tool("FileExistenceChecker", "Takes as input a file name and tells if the name in already taken", check_file_existence)
 
 # Making a checkpoint, so we can go back in time later
 checkpoint_ag1: str = agent1.history.create_check_point()

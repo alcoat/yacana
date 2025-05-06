@@ -1,0 +1,113 @@
+<!-- Menu -->
+<nav class="menu">
+    <header class="major">
+        <h2>Menu</h2>
+    </header>
+    <ul>
+        <li><a href="/index.html">Homepage</a></li>
+        <li>
+            <span class="opener">I. Installation</span>
+            <ul>
+                <li><a href="/pages/installation.html#installing-ollama">Installing Ollama</a></li>
+                <li><a href="/pages/installation.html#choosing-an-llm-model">Choosing an LLM model</a></li>
+                <li><a href="/pages/installation.html#running-the-model">Running the model</a></li>
+                <li><a href="/pages/installation.html#installing-yacana">Installing Yacana</a></li>
+                <li><a href="/pages/installation.html#imports">Imports</a></li>
+            </ul>
+        </li>
+        <li>
+            <span class="opener">II. Agents & Tasks</span>
+            <ul>
+                <li><a href="/pages/agents_and_tasks.html#creating-an-agent">Creating an Agent</a></li>
+                <li><a href="/pages/agents_and_tasks.html#creating-tasks">Creating Tasks</a></li>
+                <li><a href="/pages/agents_and_tasks.html#getting-the-result-of-a-task">Getting the result of a Task</a></li>
+                <li><a href="/pages/agents_and_tasks.html#chaining-tasks">Chaining Tasks</a></li>
+                <li><a href="/pages/agents_and_tasks.html#logging-levels">Logging levels</a></li>
+                <li><a href="/pages/agents_and_tasks.html#configuring-llms-settings">Configuring LLM's settings</a></li>
+                <li><a href="/pages/agents_and_tasks.html#accessing-the-underlying-client-library">Accessing the underlying client library</a></li>
+                <li><a href="/pages/agents_and_tasks.html#concepts-of-routing">Concepts of routing</a></li>
+                <li><a href="/pages/agents_and_tasks.html#self-reflection-routing">Self-reflection routing</a></li>
+                <li><a href="/pages/agents_and_tasks.html#cleaning-history">Cleaning history</a></li>
+                <li><a href="/pages/agents_and_tasks.html#routing-demonstration">Routing demonstration</a></li>
+            </ul>
+        </li>
+        <li>
+            <span class="opener">III. Managing Agents history</span>
+            <ul>
+                <li><a href="/pages/managing_agent_history.html#introduction-to-history-management">Introduction to history management</a></li>
+                <li><a href="/pages/managing_agent_history.html#printing-history">Printing history</a></li>
+                <li><a href="/pages/managing_agent_history.html#creating-and-loading-checkpoints">Creating and loading checkpoints</a></li>
+                <li><a href="/pages/managing_agent_history.html#Zero-prompt-shot-vs-multi-prompt-shot">Zero-prompt shot vs multi-prompt shot</a></li>
+                <li><a href="/pages/managing_agent_history.html#saving-agent-state">Saving Agent state</a></li>
+                <li><a href="/pages/managing_agent_history.html#managing-agent-history-using-tags">Managing Agent History using tags</a></li>
+            </ul>
+        </li>
+        <li>
+            <span class="opener">IV. Tool calling</span>
+            <ul>
+                <li><a href="/pages/tool_calling.html#introduction-to-the-tool-calling-concept">Introduction to the tool calling concept</a></li>
+                <li><a href="/pages/tool_calling.html#writing-good-tool-prompts">Writing good tool prompts</a></li>
+                <li><a href="/pages/tool_calling.html#calling-a-tool">Calling a tool</a></li>
+                <li><a href="/pages/tool_calling.html#improving-tool-calling-results">Improving tool-calling results</a></li>
+                <li><a href="/pages/tool_calling.html#optional-tools">Optional tools</a></li>
+                <li><a href="/pages/tool_calling.html#assigning-multiple-tools">Assigning multiple Tools</a></li>
+            </ul>
+        </li>
+        <li>
+            <span class="opener">V. Agents' features</span>
+            <ul>
+                <li><a href="/pages/agents_features.html#simple-json-mode">Simple JSON Mode</a></li>
+                <li><a href="/pages/agents_features.html#structured-output-with-pydantic">Structured Output with Pydantic</a></li>
+                <li><a href="/pages/agents_features.html#streaming">Streaming</a></li>
+                <li><a href="/pages/agents_features.html#using-medias">Using medias</a></li>
+            </ul>
+        </li>
+        <li>
+            <span class="opener">VI. Multi-agents chat</span>
+            <ul>
+                <li><a href="/pages/dual_agents_chat.html#stopping-chat-using-maximum-iterations">Stopping chat using 'maximum iterations'</a></li>
+                <li><a href="/pages/dual_agents_chat.html#letting-agents-end-the-chat">Letting Agents end the chat</a></li>
+                <li><a href="/pages/dual_agents_chat.html#controlling-the-shift-message">Controlling the Shift Message</a></li>
+                <li><a href="/pages/dual_agents_chat.html#using-tools-in-chat">Using tools in chat</a></li>
+                <li><a href="/pages/dual_agents_chat.html#multi-agents-chat">Multi-agents chat</a></li>
+            </ul>
+        </li>
+        <li>
+            <span class="opener">VII. OpenAI inference servers</span>
+            <ul>
+                <li><a href="/pages/other_inference_servers.html#compatibility-with-openai-api">Compatibility with OpenAI API</a></li>
+                <li><a href="/pages/other_inference_servers.html#using-chatgpt">Using ChatGPT</a></li>
+                <li><a href="/pages/other_inference_servers.html#using-vllm">Using VLLM</a></li>
+            </ul>
+        </li>
+    </ul>
+    <br>
+    <ul>
+        <li>
+            <a href="/pages/classes.html">
+                <span style="display: inline" class="icon solid fa-cog">
+                    <span class="label">
+                        Technical Documentation
+                    </span>
+                    Technical Documentation
+                </span>
+            </a>
+        </li>
+    </ul>
+</nav>
+<script>
+    // Reinitialize menu event handlers after the menu is loaded
+    $(document).ready(function() {
+        var $menu = $('.menu'),
+            $menu_openers = $menu.children('ul').find('.opener');
+
+        $menu_openers.each(function() {
+            var $this = $(this);
+            $this.off('click').on('click', function(event) {
+                event.preventDefault();
+                $menu_openers.not($this).removeClass('active');
+                $this.toggleClass('active');
+            });
+        });
+    });
+</script> 
