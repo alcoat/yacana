@@ -25,6 +25,17 @@ function initializeMainNavMenu(templatePath = 'templates/tuto_nav.html') {
                     $(window).triggerHandler('resize.sidebar-lock');
                 });
             });
+
+            // Fix paths based on current page
+            var currentPath = window.location.pathname;
+            var $links = $('.menu a[href^="../pages/"]');
+            
+            if (currentPath.endsWith('index.html') || currentPath.endsWith('/')) {
+                $links.each(function() {
+                    var href = $(this).attr('href');
+                    $(this).attr('href', '/yacana/' + href.replace('../pages/', 'pages/'));
+                });
+            }
         });
 }
 
