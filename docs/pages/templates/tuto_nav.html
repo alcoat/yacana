@@ -109,5 +109,16 @@
                 $this.toggleClass('active');
             });
         });
+
+        // Fix paths based on current page
+        var currentPath = window.location.pathname;
+        var $links = $('.menu a[href^="../pages/"]');
+        
+        if (currentPath.endsWith('index.html') || currentPath.endsWith('/')) {
+            $links.each(function() {
+                var href = $(this).attr('href');
+                $(this).attr('href', href.replace('../pages/', 'pages/'));
+            });
+        }
     });
 </script> 
