@@ -117,7 +117,7 @@
         if (currentPath.endsWith('index.html') || currentPath.endsWith('/')) {
             $links.each(function() {
                 var href = $(this).attr('href');
-                $(this).attr('href', href.replace('../pages/', 'pages/'));
+                $(this).attr('href', '/yacana/' + href.replace('../pages/', 'pages/'));
             });
         }
     });
