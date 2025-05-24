@@ -3,7 +3,7 @@ from json import JSONDecodeError
 import json
 import logging
 from ollama import Client
-from typing import List, Type, Any, T, Dict, Callable, Mapping
+from typing import List, Type, Any, T, Dict, Callable, Mapping, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
 
@@ -44,6 +44,10 @@ class OllamaAgent(GenericAgent):
         All settings that Ollama currently supports as model configuration. Defaults to None.
     runtime_config : Dict | None, optional
         Runtime configuration for the agent. Defaults to None.
+    thinking_tokens : Tuple[str, str] | None, optional
+        A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
+        Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
+
     **kwargs
         Additional keyword arguments passed to the parent class.
 
@@ -53,7 +57,7 @@ class OllamaAgent(GenericAgent):
         If model_settings is not an instance of OllamaModelSettings.
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: Tuple[str, str] | None = None, **kwargs) -> None:
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
@@ -292,6 +296,22 @@ class OllamaAgent(GenericAgent):
         else:
             logging.info("Exiting tool calls loop\n")
             return False
+
+    def strip_string_from_tags(self, string: str) -> str:
+        """
+        Strips tags from a string.
+
+        Parameters
+        ----------
+        string : str
+            The string to strip tags from.
+
+        Returns
+        -------
+        str
+            The string without tags.
+        """
+        return string.replace("<", "").replace(">", "").replace("/", "")
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """

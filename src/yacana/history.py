@@ -5,7 +5,6 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Type, T, Any, Sequence
 import importlib
-from pydantic import BaseModel
 from typing_extensions import Self
 from abc import ABC, abstractmethod
 import logging
@@ -448,6 +447,7 @@ class OpenAIUserMessage(GenericMessage):
 
         return cls
 
+
 class OpenAITextMessage(GenericMessage):
     """
     Common message for OpenAI API. Mostly used for simple text messages.
@@ -484,30 +484,6 @@ class OpenAITextMessage(GenericMessage):
             "role": self.role.value,
             "content": self.content
         }
-
-
-"""class OpenAIMediaMessage(GenericMessage):
-
-    def __init__(self, role: MessageRole, content: str, medias: List[str], tags: List[str] = None, **kwargs):
-        tool_calls = None
-        structured_output = None
-        tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
-
-    def get_message_as_dict(self):
-        message = {
-            "role": self.role.value,
-            "content": [
-                {"type": "text", "text": self.content}
-            ]
-        }
-
-        # **({'images': self.medias} if self.medias is not None else {}),
-        for media in self.medias:
-            message["content"].append({"type": "image_url", "image_url": {
-                "url": media
-            }})
-        return message"""
 
 
 class OpenAIFunctionCallingMessage(GenericMessage):

@@ -43,6 +43,11 @@ class GenericAgent(ABC):
     task_runtime_config : Dict | None, optional
         Runtime configuration for tasks.
 
+    Raises
+    ------
+    ValueError
+        If model_settings is None.
+
     Attributes
     ----------
     name : str
@@ -73,45 +78,6 @@ class GenericAgent(ABC):
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
                  api_token: str = "", headers=None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None) -> None:
-        """
-        Initialize a new GenericAgent instance.
-
-        Parameters
-        ----------
-        name : str
-            Name of the agent. Can be used during conversations. Use something short and meaningful
-            that doesn't contradict the system prompt.
-        model_name : str
-            Name of the LLM model that will be sent to the inference server. For instance
-            'llama:3.1' or 'mistral:latest' etc.
-        model_settings : ModelSettings
-            All settings that Ollama currently supports as model configuration. This needs to be
-            tested with other inference servers. This allows modifying deep behavioral patterns
-            of the LLM.
-        system_prompt : str | None, optional
-            Defines the way the LLM will behave. For instance set the SP to "You are a pirate"
-            to have it talk like a pirate. Defaults to None.
-        endpoint : str | None, optional
-            By default will look for Ollama endpoint on your localhost. If you are using a VM
-            with GPU then update this to the remote URL + port. Defaults to None.
-        api_token : str, optional
-            The API token used for authentication with the inference server. Defaults to "".
-        headers : dict, optional
-            Custom headers to be sent with the inference request. If None, an empty dictionary
-            will be used. Defaults to None.
-        runtime_config : Dict | None, optional
-            Runtime configuration for the agent. Defaults to None.
-        history : History | None, optional
-            The conversation history. If None, a new History instance will be created.
-            Defaults to None.
-        task_runtime_config : Dict | None, optional
-            Runtime configuration for tasks. Defaults to None.
-
-        Raises
-        ------
-        ValueError
-            If model_settings is None.
-        """
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
 

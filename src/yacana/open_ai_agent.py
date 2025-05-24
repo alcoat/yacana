@@ -219,7 +219,7 @@ class OpenAiAgent(GenericAgent):
                 self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         return self.history.get_last_message()
 
-    def is_structured_output(self, choice: Choice) -> bool:
+    def _is_structured_output(self, choice: Choice) -> bool:
         """
         Checks if the choice contains structured output.
 
@@ -235,7 +235,7 @@ class OpenAiAgent(GenericAgent):
         """
         return hasattr(choice.message, "parsed") and choice.message.parsed is not None
 
-    def is_tool_calling(self, choice: Choice) -> bool:
+    def _is_tool_calling(self, choice: Choice) -> bool:
         """
         Checks if the choice contains tool calls.
 
@@ -251,7 +251,7 @@ class OpenAiAgent(GenericAgent):
         """
         return hasattr(choice.message, "tool_calls") and choice.message.tool_calls is not None and len(choice.message.tool_calls) > 0
 
-    def is_common_chat(self, choice: Choice) -> bool:
+    def _is_common_chat(self, choice: Choice) -> bool:
         """
         Checks if the choice contains a common chat message.
 
@@ -384,13 +384,13 @@ class OpenAiAgent(GenericAgent):
 
         for choice in response.choices:
 
-            if self.is_structured_output(choice):
+            if self._is_structured_output(choice):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
                 history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
 
-            elif self.is_tool_calling(choice):
+            elif self._is_tool_calling(choice):
                 logging.debug("Response assessment is tool calling")
                 tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
@@ -398,7 +398,7 @@ class OpenAiAgent(GenericAgent):
                     logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
                 history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
 
-            elif self.is_common_chat(choice):
+            elif self._is_common_chat(choice):
                 logging.debug("Response assessment is classic chat answer")
                 history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
             else:
