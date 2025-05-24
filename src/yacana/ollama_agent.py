@@ -61,7 +61,7 @@ class OllamaAgent(GenericAgent):
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens)
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
         """
