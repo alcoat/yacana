@@ -8,6 +8,7 @@ from .history import History, GenericMessage, MessageRole, Message
 from .logging_config import LoggerManager
 from .model_settings import ModelSettings
 from .tool import Tool
+from .exceptions import IllogicalConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,12 @@ class GenericAgent(ABC):
                  thinking_tokens: tuple[str, str] | None = None) -> None:
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
+
+        # Vérification de la validité de thinking_tokens
+        if thinking_tokens is not None:
+            if (not isinstance(thinking_tokens, tuple) or len(thinking_tokens) != 2 or
+                    not all(isinstance(t, str) and t.strip() for t in thinking_tokens)):
+                raise IllogicalConfiguration("Thinking tokens must be a tuple of two strings representing the start and end tags outputted by the LLM when thinking.")
 
         self.name: str = name
         self.model_name: str = model_name

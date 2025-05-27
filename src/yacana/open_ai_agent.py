@@ -86,7 +86,7 @@ class OpenAiAgent(GenericAgent):
             True if another tool call is needed, False otherwise.
         """
         tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
-        ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
+        ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt).content
 
         # Syncing with global history
         self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=self._tags))
@@ -94,7 +94,7 @@ class OpenAiAgent(GenericAgent):
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
-                                                  save_to_history=False)
+                                                  save_to_history=False).content
 
         if "yes" in ai_tool_continue_answer.lower():
             logging.info("Continuing tool calls loop\n")
@@ -312,7 +312,7 @@ class OpenAiAgent(GenericAgent):
         })
 
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
-                  streaming_callback: Callable | None = None) -> str | Iterator:
+                  streaming_callback: Callable | None = None) -> GenericMessage:
         """
         Main chat method that handles communication with the OpenAI API.
 
@@ -337,8 +337,8 @@ class OpenAiAgent(GenericAgent):
 
         Returns
         -------
-        str | Iterator
-            The response content or an iterator for streaming responses.
+        GenericMessage
+            The response message
 
         Raises
         ------
@@ -410,7 +410,7 @@ class OpenAiAgent(GenericAgent):
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
         if save_to_history is True:
             history.add_slot(history_slot)
-        return history_slot.get_message().content
+        return history_slot.get_message()
 
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:

@@ -1,4 +1,5 @@
 import copy
+import re
 from json import JSONDecodeError
 import json
 import logging
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
+from .structured_outputs import UseOtherTool
 from .utils import Dotdict
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, TaskCompletionRefusal
 from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage
@@ -87,17 +89,19 @@ class OllamaAgent(GenericAgent):
         max_tool_name_use_iter: int = 0
         while max_tool_name_use_iter < 5:
 
-            tool_choose: str = f"You can only use one tool at a time. From this list of tools which one do you want to use: [{', '.join([tool.tool_name for tool in tools])}]. You must answer ONLY with the single tool name. Nothing else."
-            ai_tool_choice: str = self._chat(local_history, tool_choose)
-            ai_tool_choice = ai_tool_choice.strip(" \n")
+            tool_choose: str = f"You can only use one tool at a time. From this list of tools which one do you want to use: [{', '.join([tool.tool_name for tool in tools])}] ? You must answer ONLY with the single tool name. Nothing else."
+            ai_tool_choice: str = self._chat(local_history, tool_choose).content
+            ai_tool_choice = self._strip_thinking_tags(ai_tool_choice).strip(" \n").lower()
 
             found_tools: List[Tool] = []
 
-            for tool in tools:
+            print(f"Alors... Le raisonnement final est {ai_tool_choice}")
+
+            for tool in tools: #@todo Pk ici on a plusieurs print alors qu'un seul tool a été print
                 # If tool name is present somewhere in AI response
-                if tool.tool_name.lower() in ai_tool_choice.lower():
+                if tool.tool_name.lower() in ai_tool_choice:
                     # If tool name is not an exact match in AI response
-                    if ai_tool_choice.lower() != tool.tool_name.lower():
+                    if ai_tool_choice != tool.tool_name.lower():
                         logging.warning("Tool choice was not an exact match but a substring match\n")
                     found_tools.append(tool)
 
@@ -110,11 +114,11 @@ class OllamaAgent(GenericAgent):
 
             # No tool or too many tools found
             local_history.add_message(OllamaUserMessage(MessageRole.USER,
-                                                        "You didn't only output a tool name. Let's try again with only outputting the tool name to use.", tags=self._tags))
-            logging.info(f"[prompt]: You didn't only output a tool name. Let's try again with only outputting the tool name to use.\n")
+                                                        "You outputted more than one tool name. Let's try again with only outputting the single tool name to use and no other.", tags=self._tags))
+            logging.info(f"[prompt]: You outputted more than one tool name. Let's try again with only outputting the single tool name to use and no other.\n")
             local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT,
-                                                        "I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !", tags=self._tags))
-            logging.info(f"[AI_RESPONSE]: I'm sorry. I know I must ONLY output the name of the tool I wish to use. Let's try again !\n")
+                                                        "I'm sorry. I know I must ONLY output the name of the one tool I wish to use. Let's try again and I'll output only the single tool name this time!", tags=self._tags))
+            logging.info(f"[AI_RESPONSE]: I'm sorry. I know I must ONLY output the name of the one tool I wish to use. Let's try again and I'll output only the single tool name this time!\n")
             max_tool_name_use_iter += 1
             # Forcing LLM to be less chatty and more focused
             if max_tool_name_use_iter >= 2:
@@ -158,7 +162,7 @@ class OllamaAgent(GenericAgent):
         while True:
             additional_prompt_help: str = ""
             try:
-                args: dict = json.loads(tool_training_history.get_last_message().content)
+                args: dict = json.loads(self._strip_thinking_tags(tool_training_history.get_last_message().content))
                 tool_output: str = tool.function_ref(**args)
                 if tool_output is None:
                     tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
@@ -180,7 +184,7 @@ class OllamaAgent(GenericAgent):
 
                 if max_custom_error < 0:
                     raise MaxToolErrorIter(
-                        f"Too many errors were raise by the tool '{tool.tool_name}'. Stopping after {tool.max_custom_error} errors. You can change the maximum errors a tool can raise in the Tool constructor with @max_custom_error.")
+                        f"Too many errors were raised by the tool '{tool.tool_name}'. Stopping after {tool.max_custom_error} errors. You can change the maximum errors a tool can raise in the Tool constructor with @max_custom_error.")
                 if max_call_error < 0:
                     raise MaxToolErrorIter(
                         f"Too many errors occurred while trying to call the python function by Yacana (tool name: {tool.tool_name}). Stopping after {tool.max_call_error} errors. You can change the maximum call error in the Tool constructor with @max_call_error.")
@@ -263,7 +267,7 @@ class OllamaAgent(GenericAgent):
         """
         raise NotImplemented
         if tool.post_tool_prompt is not None:
-            return self._chat(history, f"I give you the tool output between the tags <tool_output></tool_output>: <tool_output>{tool_output}</tool_output>.\nUsing this new knowledge you have this task to solve: '{tool.post_tool_prompt}'")
+            return self._chat(history, f"I give you the tool output between the tags <tool_output></tool_output>: <tool_output>{tool_output}</tool_output>.\nUsing this new knowledge you have this task to solve: '{tool.post_tool_prompt}'").content
 
     def _use_other_tool(self, local_history: History) -> bool:
         """
@@ -280,7 +284,7 @@ class OllamaAgent(GenericAgent):
             True if another tool call is needed, False otherwise.
         """
         tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
-        ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
+        ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt).content
 
         # Syncing with global history
         self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=self._tags))
@@ -288,30 +292,36 @@ class OllamaAgent(GenericAgent):
 
         tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
         ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
-                                                  save_to_history=False)
+                                                  save_to_history=False).content
 
-        if "yes" in ai_tool_continue_answer.lower():
+        if "yes" in self._strip_thinking_tags(ai_tool_continue_answer.lower()):
             logging.info("Continuing tool calls loop\n")
             return True
-        else:
-            logging.info("Exiting tool calls loop\n")
+        else: #@todo ici faire un stuctured output qui force une réponse claire
+            structured: UseOtherTool = self._chat(local_history, "Repeat your previous answer but as JSON format", structured_output=UseOtherTool, save_to_history=False).structured_output
+            if structured.shouldUseOtherTool is True:
+                print("ahhhh")
+                # In case it was a "yes" but not very explicit.
+                return True
+            logging.info("LLM didn't request another tool. Exiting tool calls loop\n")
             return False
 
-    def strip_string_from_tags(self, string: str) -> str:
+    def _strip_thinking_tags(self, message: str) -> str:
         """
         Strips tags from a string.
 
         Parameters
         ----------
-        string : str
-            The string to strip tags from.
+        message : str
+            The message to strip tags from.
 
         Returns
         -------
         str
             The string without tags.
         """
-        return string.replace("<", "").replace(">", "").replace("/", "")
+        pattern = fr'{self.thinking_tokens[0]}.*?{self.thinking_tokens[1]}'
+        return re.sub(pattern, '', message, flags=re.DOTALL)
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
@@ -374,8 +384,8 @@ class OllamaAgent(GenericAgent):
                 self._chat(local_history, task_outputting_prompt, medias=medias)
 
                 tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
-                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False)
-                if not ("yes" in tool_use_ai_answer.lower()):  # Better than checking for "no" as a substring could randomly match
+                tool_use_ai_answer: str = self._chat(local_history, tool_use_router_prompt, save_to_history=False).content
+                if not ("yes" in self._strip_thinking_tags(tool_use_ai_answer.lower())):  # Better than checking for "no" as a substring could randomly match
                     self._chat(self.history, task, medias=medias, json_output=json_output, structured_output=structured_output)  # !!Actual function calling
                     return self.history.get_last_message()
 
@@ -405,9 +415,9 @@ class OllamaAgent(GenericAgent):
             self._chat(local_history, tool_use_decision, medias=medias)
 
             tool_router: str = "In order to summarize your previous answer in one word. Did you chose to use any tools ? Respond ONLY by 'yes' or 'no'."
-            ai_may_use_tools: str = self._chat(local_history, tool_router, save_to_history=False)
+            ai_may_use_tools: str = self._chat(local_history, tool_router, save_to_history=False).content
 
-            if "yes" in ai_may_use_tools.lower():
+            if "yes" in self._strip_thinking_tags(ai_may_use_tools.lower()):
                 self.history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags))
                 self.history.add_message(
                     OllamaTextMessage(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly.", tags=self._tags))
@@ -430,7 +440,7 @@ class OllamaAgent(GenericAgent):
                     else:
                         break
             else:
-                if not ("no" in ai_may_use_tools.lower()):
+                if not ("no" in self._strip_thinking_tags(ai_may_use_tools.lower())):
                     logging.warning(
                         "Yacana couldn't determine if the LLM chose to use a tool or not. As a decision must be taken "
                         "the default behavior is to not use any tools. If this warning persists you might need to rewrite your initial prompt.")
@@ -557,7 +567,7 @@ class OllamaAgent(GenericAgent):
                 }
             )
 
-    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output = False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> str:
+    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output = False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> GenericMessage:
         """
         Main chat method that handles communication with the Ollama server.
 
@@ -582,7 +592,7 @@ class OllamaAgent(GenericAgent):
 
         Returns
         -------
-        str
+        GenericMessage
             The response content.
         """
 
@@ -616,4 +626,4 @@ class OllamaAgent(GenericAgent):
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
         if save_to_history is True:
             history.add_slot(history_slot)
-        return history_slot.get_message().content
+        return history_slot.get_message()
