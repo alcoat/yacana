@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 from json import JSONDecodeError
@@ -69,39 +68,6 @@ class OpenAiAgent(GenericAgent):
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens)
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
-
-
-    def _use_other_tool(self, local_history: History) -> bool:
-        """
-        Determines if another tool call is needed.
-
-        Parameters
-        ----------
-        local_history : History
-            The conversation history.
-
-        Returns
-        -------
-        bool
-            True if another tool call is needed, False otherwise.
-        """
-        tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
-        ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt).content
-
-        # Syncing with global history
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=self._tags))
-        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, tags=self._tags))
-
-        tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
-        ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
-                                                  save_to_history=False).content
-
-        if "yes" in ai_tool_continue_answer.lower():
-            logging.info("Continuing tool calls loop\n")
-            return True
-        else:
-            logging.info("Exiting tool calls loop\n")
-            return False
 
     def _call_openai_tool(self, tool: Tool, function_args: Dict) -> str:
         """

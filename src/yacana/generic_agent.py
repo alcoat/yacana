@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
@@ -122,6 +123,25 @@ class GenericAgent(ABC):
         """
         super().__init_subclass__(**kwargs)
         GenericAgent._registry[cls.__name__] = cls
+
+    def _strip_thinking_tags(self, message: str) -> str:
+        """
+        Strips tags from a string.
+
+        Parameters
+        ----------
+        message : str
+            The message to strip tags from.
+
+        Returns
+        -------
+        str
+            The string without tags.
+        """
+        if self.thinking_tokens is None or len(self.thinking_tokens) != 2:
+            return message
+        pattern = fr'{self.thinking_tokens[0]}.*?{self.thinking_tokens[1]}'
+        return re.sub(pattern, '', message, flags=re.DOTALL)
 
     def export_to_file(self, file_path: str, strip_api_token=False, strip_headers=False) -> None:
         """

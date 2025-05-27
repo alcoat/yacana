@@ -1,5 +1,4 @@
 import copy
-import re
 from json import JSONDecodeError
 import json
 import logging
@@ -7,6 +6,7 @@ from ollama import Client
 from typing import List, Type, Any, T, Dict, Callable, Mapping, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
+from pydantic_core.core_schema import BoolSchema
 
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
@@ -134,7 +134,7 @@ class OllamaAgent(GenericAgent):
         self.model_settings.reset()
         raise MaxToolErrorIter("[ERROR] LLM did not choose a tool from the list despite multiple attempts.")
 
-    def _tool_call(self, tool_training_history: History, tool: Tool) -> str:
+    def _tool_call(self, tool_training_history: History, tool: Tool) -> str | None:
         """
         Executes a tool call and handles any errors that occur.
 
@@ -147,8 +147,8 @@ class OllamaAgent(GenericAgent):
 
         Returns
         -------
-        str
-            The output from the tool execution.
+        str | None
+            The output from the tool execution. If None then no post-processing on the tool output by the LLM will be done.
 
         Raises
         ------
@@ -165,10 +165,11 @@ class OllamaAgent(GenericAgent):
                 args: dict = json.loads(self._strip_thinking_tags(tool_training_history.get_last_message().content))
                 tool_output: str = tool.function_ref(**args)
                 if tool_output is None:
-                    tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
+                    logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: None -> LLM won't be asked to reflect on the tool result.")
+                    #tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
                 else:
                     tool_output = str(tool_output)
-                logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")
+                    logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")
                 break
             except (ToolError, TypeError, JSONDecodeError) as e:
                 if type(e) is ToolError or type(e) is JSONDecodeError:
@@ -217,10 +218,14 @@ class OllamaAgent(GenericAgent):
         local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, tool_training_history.get_last_message().content, tags=self._tags))
 
         # Master history + local history get fake USER prompt with the answer of the tool
-        self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=self._tags))
-        local_history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=self._tags))
+        self.history.add_message(OllamaTextMessage(MessageRole.USER, f"The tool '{tool.tool_name}' gave the following output:\n{tool_output}", tags=self._tags))
+        local_history.add_message(OllamaTextMessage(MessageRole.USER, f"The tool '{tool.tool_name}' gave the following output:\n{tool_output}", tags=self._tags))
 
-    def _reconcile_history_solo_tool(self, last_tool_call: str, tool_output: str, task: str, tool: Tool) -> None:
+        # Master history + local history get fake ASSISTANT prompt that acknowledge the tool output
+        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, f"Now that the tool '{tool.tool_name}' gave its answer. What should I do next ?", tags=self._tags))
+        local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, f"Now that the tool '{tool.tool_name}' gave its answer. What should I do next ?", tags=self._tags))
+
+    def _reconcile_history_solo_tool(self, initial_task: str, final_response: str) -> None:
         """
         Reconciles the history for a single tool call.
 
@@ -235,13 +240,14 @@ class OllamaAgent(GenericAgent):
         tool : Tool
             The tool that was called.
         """
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG]))
-        self.history.add_message(
-            OllamaTextMessage(MessageRole.ASSISTANT,
-                              f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly.", tags=self._tags))
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", tags=self._tags))
-        self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, last_tool_call, tags=self._tags))
-        self.history.add_message(OllamaTextMessage(MessageRole.TOOL, tool_output, tags=self._tags + [RESPONSE_TAG]))
+        self.history.add_message(OllamaUserMessage(MessageRole.USER, initial_task, tags=self._tags + [PROMPT_TAG]))
+        #self.history.add_message(
+        #    OllamaTextMessage(MessageRole.ASSISTANT,
+        #                      f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly.", tags=self._tags))
+        #self.history.add_message(OllamaUserMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", tags=self._tags))
+        #self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, last_tool_call, tags=self._tags))
+        #self.history.add_message(OllamaTextMessage(MessageRole.USER, tool_output, tags=self._tags + [RESPONSE_TAG]))
+        self.history.add_message((OllamaUserMessage(MessageRole.ASSISTANT, final_response, tags=self._tags + [PROMPT_TAG])))
 
     def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
         """
@@ -300,28 +306,10 @@ class OllamaAgent(GenericAgent):
         else: #@todo ici faire un stuctured output qui force une réponse claire
             structured: UseOtherTool = self._chat(local_history, "Repeat your previous answer but as JSON format", structured_output=UseOtherTool, save_to_history=False).structured_output
             if structured.shouldUseOtherTool is True:
-                print("ahhhh")
                 # In case it was a "yes" but not very explicit.
                 return True
             logging.info("LLM didn't request another tool. Exiting tool calls loop\n")
             return False
-
-    def _strip_thinking_tags(self, message: str) -> str:
-        """
-        Strips tags from a string.
-
-        Parameters
-        ----------
-        message : str
-            The message to strip tags from.
-
-        Returns
-        -------
-        str
-            The string without tags.
-        """
-        pattern = fr'{self.thinking_tokens[0]}.*?{self.thinking_tokens[1]}'
-        return re.sub(pattern, '', message, flags=re.DOTALL)
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
@@ -392,15 +380,23 @@ class OllamaAgent(GenericAgent):
             # If getting here the tool call is inevitable
             task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
             self._chat(local_history, task_outputting_prompt, medias=medias, json_output=True)  # !!Actual function calling
-            tool_output: str = self._tool_call(local_history, tool)  # !!Actual tool calling
+            tool_output: str | None = self._tool_call(local_history, tool)  # !!Actual tool calling
             logging.debug(f"Tool output: {tool_output}\n")
-
-            # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
-            #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
-
-            self._reconcile_history_solo_tool(local_history.get_last_message().content, tool_output, task, tool)
+            if tool_output is not None:  # If the tool outputted something then we can ask the LLM to reflect on it.
+                local_history.add_message(OllamaTextMessage(MessageRole.USER, f"The tool '{tool.tool_name}' gave the following output:\n{tool_output}", tags=self._tags))
+                local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, f"Thank you. I successfully called the tool and got the result. What should I do with it now ?", tags=self._tags))
+                # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
+                #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
+                self._chat(local_history, f"Based on the previous tool output. Solve the initial task. The task was: {task}.")
+                # Bellow is the final reconciliation of the main history composed of the initial task and the reflection from the LLM on the tool output.
+                self.history.add_message(OllamaTextMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG]))
+                self.history.add_message((OllamaTextMessage(MessageRole.ASSISTANT, local_history.get_last_message().content, tags=self._tags + [PROMPT_TAG])))
+            else:  # The tool didn't output anything so the LLM won't be asked to reflect on anything more.
+                self.history.add_message(OllamaTextMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG]))
+                self.history.add_message((OllamaTextMessage(MessageRole.ASSISTANT, "The task was solved successfully.", tags=self._tags + [PROMPT_TAG])))
 
         elif len(tools) > 1:
+            at_least_one_tool_has_outputted: bool = False
             if streaming_callback is not None:
                 raise (IllogicalConfiguration("Currently Yacana's custom function calling system doesn't allow streaming callbacks because there is no uniq final prompt given to the LLM that could be streamed."))
             local_history = copy.deepcopy(self.history)
@@ -432,7 +428,11 @@ class OllamaAgent(GenericAgent):
 
                     tool_use: str = "Now that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
                     self._chat(tool_training_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
-                    tool_output: str = self._tool_call(tool_training_history, tool)  # !!Actual tool calling
+                    tool_output: str | None = self._tool_call(tool_training_history, tool)  # !!Actual tool calling
+                    if tool_output is not None:
+                        at_least_one_tool_has_outputted = True
+                    else:
+                        tool_output = f"Tool was called successfully."
                     self._reconcile_history_multi_tools(tool_training_history, local_history, tool, tool_output)
                     use_other_tool: bool = self._use_other_tool(local_history)
                     if use_other_tool is True:
@@ -446,7 +446,8 @@ class OllamaAgent(GenericAgent):
                         "the default behavior is to not use any tools. If this warning persists you might need to rewrite your initial prompt.")
                 # Getting here means that no tools were selected by the LLM and we act like tools == 0
                 self._chat(self.history, task, medias=medias, json_output=json_output)
-
+            if at_least_one_tool_has_outputted is True:
+                self._chat(self.history, f"Based on the previous tools output. Solve the initial task. The task was: {task}.")
         return self.history.get_last_message()
 
     def _stream(self) -> None:
@@ -599,7 +600,9 @@ class OllamaAgent(GenericAgent):
         if task is not None:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
             history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
+            slot_ref = history.get_last_slot()
 
+        print("what his getting = ", history.get_messages_as_dict())
         history_slot = HistorySlot()
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
@@ -626,4 +629,6 @@ class OllamaAgent(GenericAgent):
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
         if save_to_history is True:
             history.add_slot(history_slot)
+        elif save_to_history is False and task is not None:
+            history.delete_slot(slot_ref)
         return history_slot.get_message()

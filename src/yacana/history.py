@@ -520,7 +520,7 @@ class OpenAIFunctionCallingMessage(GenericMessage):
         return {
             "role": self.role.value,
             "content": self.content,
-            **({'tool_calls': [tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls]} if self.tool_calls is not None else {})
+            **({"tool_calls": [tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls]} if self.tool_calls is not None else {})
         }
 
 
@@ -559,7 +559,7 @@ class OpenAIToolCallingMessage(GenericMessage):
         return {
             "role": self.role.value,
             "content": self.content,
-            ** ({'tool_call_id': self.tool_call_id} if self.tool_call_id is not None else {}),
+            ** ({"tool_call_id": self.tool_call_id} if self.tool_call_id is not None else {}),
         }
 
 
@@ -677,7 +677,7 @@ class OllamaUserMessage(GenericMessage):
         return {
             "role": self.role.value,
             "content": self.content,
-            **({'images': final_medias} if self.medias is not None else {}),
+            **({"images": final_medias} if self.medias is not None else {}),
         }
 
     def _structured_output_to_dict(self) -> Dict:
@@ -748,7 +748,7 @@ class OllamaTextMessage(GenericMessage):
         return {
             "role": self.role.value,
             "content": self.content,
-            **({'images': self.medias} if self.medias is not None else {}),
+            **({"images": self.medias} if self.medias is not None else {}),
         }
 
 
@@ -1116,17 +1116,6 @@ class History:
         else:
             self.slots.insert(position, history_slot)
 
-    def delete_slot(self, index: int) -> None:
-        """
-        Deletes a slot from the history.
-
-        Parameters
-        ----------
-        index : int
-            The index of the slot to delete.
-        """
-        self.slots.pop(index)
-
     def get_last_slot(self) -> HistorySlot:
         """
         Returns the last slot of the history. A good syntactic sugar to get the last item from the conversation.
@@ -1234,6 +1223,80 @@ class History:
             The message to add to the history.
         """
         self.slots.append(HistorySlot([message]))
+
+    def delete_slot(self, slot: HistorySlot) -> None:
+        """
+        Deletes a slot from the history.
+
+        Parameters
+        ----------
+        slot : HistorySlot
+            The slot to delete.
+
+        Raises
+        ------
+        ValueError
+            If the slot is not found in the history.
+        """
+        if slot not in self.slots:
+            raise ValueError("Slot not found in history.")
+
+        self.slots.remove(slot)
+        logging.debug(f"Slot {slot} deleted from history.")
+
+    def delete_slot_by_id(self, slot_id: str) -> None:
+        """
+        Deletes a slot from the history by its ID. If the ID does not exist, it logs a warning.
+
+        Parameters
+        ----------
+        slot_id : str
+            The ID of the slot to delete.
+        """
+        slot_to_delete = next((slot for slot in self.slots if slot.id == slot_id), None)
+        if not slot_to_delete:
+            logging.warning(f"No slot found with ID {slot_id}.")
+        else:
+            self.slots.remove(slot_to_delete)
+            logging.debug(f"Slot with ID {slot_id} deleted from history.")
+
+    def delete_message(self, message: Message) -> None:
+        """
+        Deletes a message from all slots in the history.
+
+        Parameters
+        ----------
+        message : Message
+            The message to delete.
+
+        Raises
+        ------
+        ValueError
+            If the message is not found in any slot.
+        """
+        for slot in self.slots:
+            if message in slot.messages:
+                slot.delete_message_by_id(message.id)
+                logging.debug(f"Message {message} deleted from slot {slot}.")
+                return
+        raise ValueError("Message not found in any slot.")
+
+    def delete_message_by_id(self, message_id: str) -> None:
+        """
+        Deletes a message from all slots in the history by its ID.
+
+        Parameters
+        ----------
+        message_id : str
+            The ID of the message to delete. If the ID does not exist, it logs a warning.
+        """
+        for slot in self.slots:
+            message_to_delete = next((message for message in slot.messages if message.id == message_id), None)
+            if message_to_delete:
+                slot.delete_message_by_id(message_to_delete.id)
+                logging.debug(f"Message with ID {message_id} deleted from slot {slot}.")
+                return
+        logging.warning(f"No message found with ID {message_id}.")
 
     def _export(self) -> Dict:
         """
