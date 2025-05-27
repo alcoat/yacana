@@ -37,11 +37,14 @@ If you like Yacana consider giving a star to the repo! Opensource projects need 
 ---
 
 ## Installation
+
 ```shell
 pip install yacana
 ```
 
 ---
+
+## Examples
 
 🧪 Simple task solving and chaining (Ollama 🦙)
 ```python
@@ -383,7 +386,8 @@ for invoice_file in files:
 
 ❗ Highest priority  
 * Making Enhanced Tool Calling available for the OpenAi compatible backends and OpenAi standard for Ollama backends  
-* Compatibility with **MCP**  
+* Compatibility with **MCP**
+* Support for thinking models like deepseek
 
 ❕ Lower priority  
 * Adding memory to agents  
