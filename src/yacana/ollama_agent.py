@@ -6,7 +6,6 @@ from ollama import Client
 from typing import List, Type, Any, T, Dict, Callable, Mapping, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
-from pydantic_core.core_schema import BoolSchema
 
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
@@ -249,32 +248,6 @@ class OllamaAgent(GenericAgent):
         #self.history.add_message(OllamaTextMessage(MessageRole.USER, tool_output, tags=self._tags + [RESPONSE_TAG]))
         self.history.add_message((OllamaUserMessage(MessageRole.ASSISTANT, final_response, tags=self._tags + [PROMPT_TAG])))
 
-    def _post_tool_output_reflection(self, tool: Tool, tool_output: str, history: History) -> str:
-        """
-        Reflects on the tool output and potentially formats it based on a post-tool prompt.
-
-        Parameters
-        ----------
-        tool : Tool
-            The tool containing the post-tool prompt.
-        tool_output : str
-            The raw output from the tool.
-        history : History
-            The conversation history.
-
-        Returns
-        -------
-        str
-            The formatted tool output or the raw output if no post-tool prompt is provided.
-
-        Notes
-        -----
-        This method is only called when wrapping up tool calls, and no more tools will be called after it.
-        """
-        raise NotImplemented
-        if tool.post_tool_prompt is not None:
-            return self._chat(history, f"I give you the tool output between the tags <tool_output></tool_output>: <tool_output>{tool_output}</tool_output>.\nUsing this new knowledge you have this task to solve: '{tool.post_tool_prompt}'").content
-
     def _use_other_tool(self, local_history: History) -> bool:
         """
         Determines if another tool call is needed.
@@ -351,8 +324,8 @@ class OllamaAgent(GenericAgent):
             self._chat(self.history, task, medias=medias, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
 
         elif len(tools) == 1:
-            if streaming_callback is not None: # @todo On pourrait streamer le dernier prompt mais actuellement il n'y en a pas. On fait pas comme OpenAI avec un message final qui reprend tout. Mais ca serait une idée... Et ce dernier call pourrait être streamé.
-                raise (IllogicalConfiguration("Currently Yacana's enhanced function calling system doesn't allow streaming with tools. It does work with the OpenAiAgent. This will be addressed in a future release."))
+            #if streaming_callback is not None: # @todo On pourrait streamer le dernier prompt mais actuellement il n'y en a pas. On fait pas comme OpenAI avec un message final qui reprend tout. Mais ca serait une idée... Et ce dernier call pourrait être streamé.
+            #    raise (IllogicalConfiguration("Currently Yacana's enhanced function calling system doesn't allow streaming with tools. It does work with the OpenAiAgent. This will be addressed in a future release."))
             local_history = copy.deepcopy(self.history)
             tool: Tool = tools[0]
 
@@ -385,9 +358,7 @@ class OllamaAgent(GenericAgent):
             if tool_output is not None:  # If the tool outputted something then we can ask the LLM to reflect on it.
                 local_history.add_message(OllamaTextMessage(MessageRole.USER, f"The tool '{tool.tool_name}' gave the following output:\n{tool_output}", tags=self._tags))
                 local_history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, f"Thank you. I successfully called the tool and got the result. What should I do with it now ?", tags=self._tags))
-                # Unused for now. Could replace the raw tool output that ends in the history with the result of this methods that reflects on a "post tool call prompt" + the tool output.
-                #post_rendered_tool_output: str = self.post_tool_output_reflection(tool, tool_output, local_history)
-                self._chat(local_history, f"Based on the previous tool output. Solve the initial task. The task was: {task}.")
+                self._chat(local_history, f"Based on the previous tool output. Solve the initial task. The task was: {task}.", streaming_callback=streaming_callback)
                 # Bellow is the final reconciliation of the main history composed of the initial task and the reflection from the LLM on the tool output.
                 self.history.add_message(OllamaTextMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG]))
                 self.history.add_message((OllamaTextMessage(MessageRole.ASSISTANT, local_history.get_last_message().content, tags=self._tags + [PROMPT_TAG])))
@@ -397,8 +368,8 @@ class OllamaAgent(GenericAgent):
 
         elif len(tools) > 1:
             at_least_one_tool_has_outputted: bool = False
-            if streaming_callback is not None:
-                raise (IllogicalConfiguration("Currently Yacana's custom function calling system doesn't allow streaming callbacks because there is no uniq final prompt given to the LLM that could be streamed."))
+            #if streaming_callback is not None:
+            #    raise (IllogicalConfiguration("Currently Yacana's custom function calling system doesn't allow streaming callbacks because it is composed of multiple steps. It does work with the OpenAiAgent or Tasks without tools."))
             local_history = copy.deepcopy(self.history)
 
             tools_presentation: str = "* " + "\n* ".join([
@@ -447,7 +418,7 @@ class OllamaAgent(GenericAgent):
                 # Getting here means that no tools were selected by the LLM and we act like tools == 0
                 self._chat(self.history, task, medias=medias, json_output=json_output)
             if at_least_one_tool_has_outputted is True:
-                self._chat(self.history, f"Based on the previous tools output. Solve the initial task. The task was: {task}.")
+                self._chat(self.history, f"Based on the previous tools output. Solve the initial task. The task was: {task}.", streaming_callback=streaming_callback)
         return self.history.get_last_message()
 
     def _stream(self) -> None:
@@ -597,13 +568,11 @@ class OllamaAgent(GenericAgent):
             The response content.
         """
 
-        if task is not None:
+        if task:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
-            slot_ref = history.get_last_slot()
+            question_slot = history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
 
         print("what his getting = ", history.get_messages_as_dict())
-        history_slot = HistorySlot()
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
             "model": self.model_name,
@@ -618,17 +587,19 @@ class OllamaAgent(GenericAgent):
         response = client.chat(**params)
         logging.debug("Inference output: %s", str(response))
         if structured_output is not None:
-            history_slot.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
+            answer_slot: HistorySlot = history.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
         else:
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
-            history_slot.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
+            answer_slot: HistorySlot = history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
 
         self.task_runtime_config = {}
-        history_slot.set_raw_llm_json(self._response_to_json(response))
+        answer_slot.set_raw_llm_json(self._response_to_json(response))
 
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
-        if save_to_history is True:
-            history.add_slot(history_slot)
-        elif save_to_history is False and task is not None:
-            history.delete_slot(slot_ref)
-        return history_slot.get_message()
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
+
+        last_message = history.get_last_message()
+        if save_to_history is False:
+            if task:
+                history.delete_slot(question_slot)
+            history.delete_slot(answer_slot)
+        return last_message

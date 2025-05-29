@@ -313,9 +313,9 @@ class OpenAiAgent(GenericAgent):
         TaskCompletionRefusal
             If the model refuses to complete the task.
         """
-        if task is not None:
+        if task:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
+            question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
@@ -340,7 +340,7 @@ class OpenAiAgent(GenericAgent):
         }
         logging.debug("Runtime parameters before inference: %s", str(params))
 
-        history_slot = HistorySlot()
+        answer_slot = HistorySlot()
         if structured_output is not None:
             response = client.beta.chat.completions.parse(**params)
         else:
@@ -348,7 +348,7 @@ class OpenAiAgent(GenericAgent):
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
 
         self.task_runtime_config = {}
-        history_slot.set_raw_llm_json(response.model_dump_json())
+        answer_slot.set_raw_llm_json(response.model_dump_json())
         logging.debug("Inference output: %s", response.model_dump_json(indent=2))
 
         for choice in response.choices:
@@ -357,7 +357,7 @@ class OpenAiAgent(GenericAgent):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
+                answer_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
 
             elif self._is_tool_calling(choice):
                 logging.debug("Response assessment is tool calling")
@@ -365,18 +365,21 @@ class OpenAiAgent(GenericAgent):
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
+                answer_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
 
             elif self._is_common_chat(choice):
                 logging.debug("Response assessment is classic chat answer")
-                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
+                answer_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
             else:
                 raise UnknownResponseFromLLM("Unknown response from OpenAI API")
 
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
-        if save_to_history is True:
-            history.add_slot(history_slot)
-        return history_slot.get_message()
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
+        last_message = history.get_last_message()
+        if save_to_history is False:
+            if task:
+                history.delete_slot(question_slot)
+            history.delete_slot(answer_slot)
+        return last_message
 
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:

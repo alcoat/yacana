@@ -102,6 +102,7 @@ class Tool:
     def _get_examples_as_history(self, tags: List[str]) -> History:
         """
         Convert the tool's usage examples into a conversation history format.
+        This is multi shot prompting based on examples given to the tool.
 
         Parameters
         ----------

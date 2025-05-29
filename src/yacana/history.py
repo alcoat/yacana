@@ -9,6 +9,7 @@ from typing_extensions import Self
 from abc import ABC, abstractmethod
 import logging
 
+from .exceptions import IllogicalConfiguration
 from .medias import Media
 
 
@@ -836,8 +837,8 @@ class HistorySlot:
     Parameters
     ----------
     messages : List[GenericMessage], optional
-        A list of messages. Each message is a variation of the main message defined by the
-        @main_message_index parameter.
+        A list of messages. Each message is a variation of the main message (defined by the
+        @main_message_index parameter).
     raw_llm_json : str, optional
         The raw LLM JSON response for the slot. This is the raw JSON from the inference server.
         When using OpenAI this may contain more than one message hence the slot system acts as a
@@ -929,6 +930,8 @@ class HistorySlot:
         ------
         IndexError
             If the message index is greater than the number of messages in the slot.
+        IllogicalConfiguration
+            An HistorySlot should not be empty (no messages).
         """
         if message_index is None:
             return self.messages[self.main_message_index]
@@ -960,9 +963,11 @@ class HistorySlot:
         """
         self.raw_llm_json = raw_llm_json
 
-    def delete_message_by_index(self, message_index: int) -> None:
+    def _delete_message_by_index(self, message_index: int) -> None:
         """
-        Deletes a message from the slot by index.
+        Deletes a message from the slot by index. An HistorySlot should NOT be empty (no messages). Use this method at your own risk.
+        To delete a message from a slot, delete it using the `delete_message` method from the History class instead.
+        This way, if the slot ends being empty it will be cleaned by the History class.
 
         Parameters
         ----------
@@ -987,9 +992,11 @@ class HistorySlot:
         self.main_message_index = 0
         logging.debug("Main message index reset to 0 after message deletion")
 
-    def delete_message_by_id(self, message_id: str) -> None:
+    def _delete_message_by_id(self, message_id: str) -> None:
         """
-        Deletes a message from the slot by id.
+        Deletes a message from the slot by id. An HistorySlot should NOT be empty (no messages). Use this method at your own risk.
+        To delete a message from a slot, delete it using the `delete_message` method from the History class instead.
+        This way, if the slot ends being empty it will be cleaned by the History class.
 
         Parameters
         ----------
@@ -1003,7 +1010,7 @@ class HistorySlot:
         """
         for i, message in enumerate(self.messages):
             if message.id == message_id:
-                self.delete_message_by_index(i)
+                self._delete_message_by_index(i)
                 break
 
     def keep_only_selected_message(self):
@@ -1017,10 +1024,10 @@ class HistorySlot:
             If there are no messages in the slot.
         """
         if len(self.messages) == 0:
-            raise IndexError("Cannot operate on an empty slot")
+            raise IndexError("Cannot operate on an empty slot.")
             
         if len(self.messages) == 1:
-            logging.debug("Only one message in slot, no need to keep only selected message")
+            logging.debug("Keeping only selected message: Only one message in slot. Nothing to do.")
             return
             
         # Store the main message
@@ -1032,7 +1039,7 @@ class HistorySlot:
         # Add back only the main message
         self.messages.append(main_message)
         self.main_message_index = 0
-        logging.debug("Main message index reset to 0 after keeping only selected message")
+        logging.debug("Main message index reset to 0 after keeping only the selected message.")
 
     @staticmethod
     def create_instance(members: Dict):
@@ -1213,7 +1220,7 @@ class History:
                 return slot
         raise ValueError(f"Message with id {message.id} not found in history.")
 
-    def add_message(self, message: GenericMessage) -> None:
+    def add_message(self, message: GenericMessage) -> HistorySlot:
         """
         Adds a new message to the history by creating a new slot.
 
@@ -1221,8 +1228,15 @@ class History:
         ----------
         message : GenericMessage
             The message to add to the history.
+
+        Returns
+        -------
+        HistorySlot
+            The new slot containing the message added to the history. Useful for chaining.
         """
-        self.slots.append(HistorySlot([message]))
+        slot = HistorySlot([message])
+        self.slots.append(slot)
+        return slot
 
     def delete_slot(self, slot: HistorySlot) -> None:
         """
@@ -1276,8 +1290,11 @@ class History:
         """
         for slot in self.slots:
             if message in slot.messages:
-                slot.delete_message_by_id(message.id)
+                slot._delete_message_by_id(message.id)
                 logging.debug(f"Message {message} deleted from slot {slot}.")
+                # Deleting slot from history if it has no messages left
+                if len(slot.messages) == 0:
+                    self.delete_slot(slot)
                 return
         raise ValueError("Message not found in any slot.")
 
@@ -1293,8 +1310,11 @@ class History:
         for slot in self.slots:
             message_to_delete = next((message for message in slot.messages if message.id == message_id), None)
             if message_to_delete:
-                slot.delete_message_by_id(message_to_delete.id)
+                slot._delete_message_by_id(message_to_delete.id)
                 logging.debug(f"Message with ID {message_id} deleted from slot {slot}.")
+                # Deleting slot from history if it has no messages left
+                if len(slot.messages) == 0:
+                    self.delete_slot(slot)
                 return
         logging.warning(f"No message found with ID {message_id}.")
 
