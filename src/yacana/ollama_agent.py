@@ -84,7 +84,14 @@ class OllamaAgent(GenericAgent):
         ------
         MaxToolErrorIter
             If the LLM fails to choose a tool after multiple attempts.
+        IllogicalConfiguration
+            If there are duplicate tool names.
         """
+        # Checking if all tool names are uniq
+        tool_names = [tool.tool_name.lower() for tool in tools]
+        if len(tool_names) != len(set(tool_names)):
+            raise IllogicalConfiguration("More than one tool have the same name. Tool names must be unique.")
+
         max_tool_name_use_iter: int = 0
         while max_tool_name_use_iter < 5:
 
@@ -324,20 +331,12 @@ class OllamaAgent(GenericAgent):
             self._chat(self.history, task, medias=medias, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
 
         elif len(tools) == 1:
-            #if streaming_callback is not None: # @todo On pourrait streamer le dernier prompt mais actuellement il n'y en a pas. On fait pas comme OpenAI avec un message final qui reprend tout. Mais ca serait une idée... Et ce dernier call pourrait être streamé.
-            #    raise (IllogicalConfiguration("Currently Yacana's enhanced function calling system doesn't allow streaming with tools. It does work with the OpenAiAgent. This will be addressed in a future release."))
             local_history = copy.deepcopy(self.history)
             tool: Tool = tools[0]
 
-            tmp = str(tool._function_prototype + " - " + tool.function_description)
-            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tmp}. Please acknowledge the given tool."
+            tool_definition = str(tool._function_prototype + " - " + tool.function_description)
+            tool_ack_prompt = f"I give you the following tool definition that you {'must' if tool.optional is False else 'may'} use to fulfill a future task: {tool_definition}. Please acknowledge the given tool."
             self._chat(local_history, tool_ack_prompt)
-
-            tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
-                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
-            self._chat(local_history, tool_examples_prompt)
-
-            local_history._concat_history(tool._get_examples_as_history(self._tags))
 
             # This section checks whether we need a tool or not. If not we call the LLM like if tools == 0 and exit the function.
             if tool.optional is True:
@@ -351,8 +350,10 @@ class OllamaAgent(GenericAgent):
                     return self.history.get_last_message()
 
             # If getting here the tool call is inevitable
-            task_outputting_prompt = f'You have a task to solve. Use the tool at your disposition to solve the task by outputting as JSON the correct arguments. In return you will get an answer from the tool. The task is:\n{task}'
-            self._chat(local_history, task_outputting_prompt, medias=medias, json_output=True)  # !!Actual function calling
+            local_history._concat_history(tool._get_examples_as_history(self._tags))
+            tool_use: str = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the argument type of each parameter. In our case, the tool call you must use must look like that: ' + str(
+                {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)}) + f"\nNow that I showed you examples on how the tool is used, you have a task to solve. The task is:\n<task>{task}</task>\nPlease output the tool call as valid JSON."
+            self._chat(local_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
             tool_output: str | None = self._tool_call(local_history, tool)  # !!Actual tool calling
             logging.debug(f"Tool output: {tool_output}\n")
             if tool_output is not None:  # If the tool outputted something then we can ask the LLM to reflect on it.
@@ -368,8 +369,6 @@ class OllamaAgent(GenericAgent):
 
         elif len(tools) > 1:
             at_least_one_tool_has_outputted: bool = False
-            #if streaming_callback is not None:
-            #    raise (IllogicalConfiguration("Currently Yacana's custom function calling system doesn't allow streaming callbacks because it is composed of multiple steps. It does work with the OpenAiAgent or Tasks without tools."))
             local_history = copy.deepcopy(self.history)
 
             tools_presentation: str = "* " + "\n* ".join([
@@ -391,13 +390,11 @@ class OllamaAgent(GenericAgent):
                 while True:
                     tool: Tool = self._choose_tool_by_name(local_history, tools)
                     tool_training_history = copy.deepcopy(local_history)
-                    tool_examples_prompt = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: ' + str(
-                        {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)})
-                    self._chat(tool_training_history, tool_examples_prompt)
 
                     tool_training_history._concat_history(tool._get_examples_as_history(self._tags))
 
-                    tool_use: str = "Now that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
+                    tool_use: str = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the argument type of each parameter. In our case, the tool call you must use must look like that: ' + str(
+                        {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)}) + "\nNow that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
                     self._chat(tool_training_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
                     tool_output: str | None = self._tool_call(tool_training_history, tool)  # !!Actual tool calling
                     if tool_output is not None:

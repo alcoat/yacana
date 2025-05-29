@@ -71,11 +71,28 @@ class Tool:
         optional : bool, optional
             Whether the tool is optional. Defaults to False.
         usage_examples : List[dict], optional
-            Examples of how to use the tool. Defaults to None.
+            A list of usage examples for the tool. The dict keys should match the function parameters.
         max_custom_error : int, optional
-            Maximum number of custom errors allowed. Defaults to 5.
+            Maximum number of custom errors (raised from the function) allowed. Defaults to 5.
         max_call_error : int, optional
-            Maximum number of call errors allowed. Defaults to 5.
+            Maximum number of call errors (eg: python can't find the function) allowed. Defaults to 5.
+
+        Attributes
+        ----------
+        tool_name : str
+            The name of the tool.
+        function_description : str
+            A description of the tool's functionality.
+        function_ref : Callable
+            Function reference that the tool will call.
+        optional : bool
+            Indicates if the tool is optional.
+        usage_examples : List[dict]
+            A list of usage examples for the tool. The dict keys should match the function parameters.
+        max_custom_error : int
+            Maximum number of custom errors (raised from the function) allowed before stopping the task.
+        max_call_error : int
+            Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
 
         Raises
         ------
