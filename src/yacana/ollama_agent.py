@@ -373,7 +373,7 @@ class OllamaAgent(GenericAgent):
             tool_use_decision: str = f"You have a task to solve. I will give it to you between these tags `<task></task>`. However, your actual job is to decide if you need to use any of the available tools to solve the task or not. If you do need tools then output their names. The task to solve is <task>{task}</task> So, would any tools be useful in relation to the given task ?"
             self._chat(local_history, tool_use_decision, medias=medias)
 
-            tool_router: str = "In order to summarize your previous answer: Did you chose to use any tools ?"
+            tool_router: str = "In order to summarize your previous answer: Did you chose to use any tools ? Answer as valid JSON."
             ai_may_use_tools: GenericMessage = self._chat(local_history, tool_router, save_to_history=False, structured_output=UseTool)
 
             if ai_may_use_tools.structured_output.useTool is True:  # "yes" in self._strip_thinking_tags(ai_may_use_tools.lower()):

@@ -374,11 +374,13 @@ class OpenAiAgent(GenericAgent):
                 raise UnknownResponseFromLLM("Unknown response from OpenAI API")
 
         logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
-        last_message = history.get_last_message()
+        last_message = answer_slot.get_message()
         if save_to_history is False:
             if task:
                 history.delete_slot(question_slot)
             history.delete_slot(answer_slot)
+        else:
+            history.add_slot(answer_slot)
         return last_message
 
 
