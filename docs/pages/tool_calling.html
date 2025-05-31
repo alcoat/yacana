@@ -85,17 +85,23 @@
                 <h4>Understanding the underlying mechanism of tool calling in LLMs</h4>
                 <p>A side note for those interested...</p>
                 <p>If you don't understand how a text-to-text neural network can call a Python function let me tell
-                    you: It doesn't.</p>
+                    you: It doesn't.
+                </p><br>
                 <p>When we refer to <em>tool calling</em> we also refer to <em>function calling</em> which is very
                     poorly named. Function calling is the ability of an inference server to make the LLM output the
                     text in a particular format. As of today, only JSON is supported but there is no doubt that more
-                    formats will be available soon.<br>
+                    formats will be available soon.
+                </p><br>
+                <p>
                     That said, now that we can control how the LLM answers, we can parse a JSON of which we know the
-                    structure. Therefore we can ask the LLM for a JSON that matches the prototype of a Python
-                    function. For instance the function name and some parameter values.</p>
-                <p>Some LLMs have been trained to output JSON in a particular way that matches a particular JSON
+                    structure. Therefore, we can ask the LLM for a JSON that matches the prototype of a Python
+                    function. For instance the function name and some parameter values.
+                </p><br>
+                <p>
+                    Some LLMs have been trained to output JSON in a particular way that matches a particular JSON
                     structure. This particular JSON structure has become a convention and was pushed by big AI
                     players like OpenAI.<br>
+                    <br>
                     Unfortunately, the size and complexity of this JSON doesn't work very well with our dumb 8B
                     LLMs. This is a problem that ChatGPT, Claude, Grok and other smart LLMs don't have.<br>
                     To overcome this particular issue, Yacana comes with its own JSON structure to call Python
@@ -111,108 +117,19 @@
                     The OllamaAgent uses an enhanced tool calling mechanism tailored for local open-source models. 
                     In contrast, the OpenAIAgent uses the standard OpenAI function calling approach, fully compatible with 
                     ChatGPT and any backend that follows OpenAI’s API (like vLLM).<br>
+                </p>
                     At the moment, each agent is stuck with its respective mechanism:
                     <ul>
                         <li>The <a href=classes.html#tech-doc-OllamaAgent>OllamaAgent</a> uses the Enhanced Tool Calling</li>
                         <li>The <a href=classes.html#tech-doc-openai-agent>OpenAiAgent</a> uses the OpenAI standard.</li>
-                     
                     </ul>
+                <p>
                     In the near future, Yacana will support both mechanisms on both agents. The Enhanced Tool Calling 
                     system will be made available to OpenAI-compatible backends, and the OllamaAgent will gain support for the 
-                    OpenAI standard via Ollama’s OpenAI-compatible endpoint.
+                    OpenAI standard via Ollama’s OpenAI-compatible endpoint.<br>
+                    Also, note that you can connect the OpenAIAgent to Ollama's OpenAI-compatible endpoint hence
+                    using the OpenAI tool calling standard with your Ollama instance.
                 </p>
-
-                <hr class="major"/>
-
-                <h2 id="writing-good-tool-prompts">Writing good tool prompts</h2>
-                <p>The title spoils one of the most important things about tool calling in Yacana.<br>
-                    <strong>The prompt is to guide the LLM on how to use the tool and not what to do with the tool
-                        result!</strong><br>
-                    It is of the utmost importance that you understand this concept. This implies that you will have
-                    to create a second Task to deal with the output of the first one.
-                </p>
-                <p>This is a step-by-step of the internal mechanism:</p>
-                <ol>
-                    <li>The Task is called upon to be solved: <code>.solve()</code> ;</li>
-                    <li>There is a Tool assigned, so the Agent must use it ;</li>
-                    <li>Yacana provides examples of how to use the tool ;</li>
-                    <li>Yacana gives the initial Task prompt to the Agent so it knows what to do with the tool ;
-                    </li>
-                    <li>The agent decides what values to send the Tool based on the prompt and previous History ;
-                    </li>
-                    <li>The Tool is called with the previously mentioned parameters ;</li>
-                    <li>The tool returns a value ;</li>
-                    <li><strong>The Task's final output is the tool's value</strong> ;</li>
-                </ol>
-                <p>
-                    As you can see, nothing was made with the tool result itself. This means the tool return value
-                    must carry all the necessary information and a second Task is needed to act upon the result of the tool call.<br>
-                    That said, not all tools return something useful. If the tool's only purpose is to send some data handed by
-                    the LLM to the outside world, it might not need to return anything. However, we recommand that you return a "success" string
-                    so that the LLM isn't left hanging.</p>
-                <p>Example of a <strong>bad</strong> prompt with a Tool that gets the current weather of a city:</p>
-                <pre><code class="language-python">
-Task(f"I give you the following city: '{city}'. Get the current weather there and output  'So much sun !'  if there is some sun else say  'So much rain !'", some_agent, tools=[get_weather_tool]).solve()
-                </code></pre>
-                <br>
-                <div>
-                    You'll never get the output <i>'So much sun !'</i> or <i>'So much rain !'</i>.<br>
-                    <strong>The result of this task will be the tool output and not something the LLM generated.</strong><br>
-                    The prompt is ONLY useful to the Agent to extract the city name that must be given to the tool.
-                </div>
-               <br>
-                <p>To actually use the result of the tool you can split the task in two:</p>
-                <pre><code class="language-python">
-Task(f"I give you the following city: '{city}'. Get the current weather there.", some_agent, tools=[get_weather_tool]).solve()
-
-Task(f"Output 'So much sun !' if there is some sun else say 'So much rain !'", some_agent).solve()
-                </code></pre>
-                <br>
-                Splitting the tasks into two allows the second Task to work on the output of the first one (the tool output).
-                <br>
-                
-                <p>⚠️⚠️The full example for those who wish to test IRL. However, we haven't even shown a real tool
-                    example yet, so this section should be optional!⚠️⚠️</p>
-                <p>You should read the next section <strong>"Calling a tool"</strong> below and come back to this
-                    later.</p>
-                <p><b>Bad prompt:</b></p>
-                <pre><code class="language-python">
-from yacana import OllamaAgent, Tool, Task
-
-agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
-
-def get_weather(city: str) -> str:
-    # Faking the weather API response
-    return "So much sun !"
-
-get_weather_tool = Tool("get_weather", "Returns the weather for a given city.", get_weather)
-
-Task(f"I give you the following city: LA. Get the current weather there and output 'So much sun !' if there is some sun else say 'So  much rain !'", agent1, tools=[get_weather_tool]).solve()
-
-print("\n--history--\n")
-agent1.history.pretty_print()
-					</code></pre>
-                <br>
-                <p><b>Good prompt:</b></p>
-                <pre><code class="language-python">
-from yacana import OllamaAgent, Tool, Task
-
-agent1 = OllamaAgent("AI assistant", "llama3.1:8b")
-
-def get_weather(city: str) -> str:
-    # Faking the weather API response
-    return "So much sun !"
-
-
-get_weather_tool = Tool("get_weather", "Returns the weather for a given city.", get_weather)
-
-Task(f"I give you the following city: LA. Get the current weather there.", agent1, tools=[get_weather_tool]).solve()
-Task(f"Output 'So much sun !' if there is some sun else say 'So  much rain !'", agent1).solve()
-
-print("\n--history--\n")
-agent1.history.pretty_print()
-					</code></pre>
-                <br>
 
                 <hr class="major"/>
 
@@ -696,21 +613,13 @@ The sky appears blue because of a phenomenon called Rayleigh scattering, named a
 5. **Sky appears blue**: The combined effect of all these scattered blue and violet photons is what makes the sky appear blue to our eyes! The more direct sunlight that reaches our eyes, the whiter it will appear.
 
 So, to summarize: the sky appears blue because of the selective scattering of shorter wavelengths (like blue and violet) by tiny molecules in the atmosphere, which dominates the colors we see when looking up at the sky.
-					</code></pre>
+                </code></pre>
                 <br>
                 <p>As you can see it chose to ignore the tool when Yacana proposed it. It said:</p>
                 <pre><code class="text-output">
 						In my opinion, using the `get_temperature` tool is NOT relevant to solving this task. The task asks about why the sky is blue, and temperature doesn't seem to be directly related to that.
 					</code></pre>
                 <br>
-                <h4>Tools that don't return anything</h4>
-                <p>If you write a tool that doesn't have a reason to answer anything to the LLM, you could be
-                    tempted to let it return <code>None</code>.<br>
-                    We wouldn't encourage this behavior as LLMs generally expect some kind of answer to guide them.
-                    You should preferably return a success message. It will act as positive reinforcement.<br>
-                    However, if your tool doesn't return anything, a default message will be added automatically:
-                    <i>"Tool {tool.tool_name} was called successfully. It didn't return anything."</i>.
-                </p>
 
                 <hr class="major"/>
 

@@ -337,6 +337,47 @@ class TestBasicInference(BaseAgentTest):
         if self.run_ollama:
             test_agent_forget(self.ollama_agent)
 
+    def test_history_deletion_methods(self):
+        """Test the ability to delete messages and slots from the history."""
+        history = History()
+
+        # Ajouter 3 messages dans 3 slots différents
+        msg1 = Message(MessageRole.USER, "Message 1")
+        msg2 = Message(MessageRole.ASSISTANT, "Message 2")
+        msg3 = Message(MessageRole.USER, "Message 3")
+        slot1 = history.add_message(msg1)
+        slot2 = history.add_message(msg2)
+        slot3 = history.add_message(msg3)
+
+        # Vérifier que les 3 slots sont présents
+        self.assertEqual(len(history.slots), 3)
+
+        # Supprimer le message 2 via delete_message
+        history.delete_message(msg2)
+        self.assertEqual(len(history.slots), 2)
+        self.assertNotIn(slot2, history.slots)
+        self.assertNotIn(msg2, [slot.get_message() for slot in history.slots])
+
+        # Supprimer le message 1 via delete_message_by_id
+        history.delete_message_by_id(msg1.id)
+        self.assertEqual(len(history.slots), 1)
+        self.assertNotIn(slot1, history.slots)
+        self.assertNotIn(msg1, [slot.get_message() for slot in history.slots])
+
+        # Ajouter un slot supplémentaire pour tester delete_slot et delete_slot_by_id
+        msg4 = Message(MessageRole.ASSISTANT, "Message 4")
+        slot4 = history.add_message(msg4)
+        self.assertEqual(len(history.slots), 2)
+
+        # Supprimer le slot via delete_slot
+        history.delete_slot(slot3)
+        self.assertEqual(len(history.slots), 1)
+        self.assertNotIn(slot3, history.slots)
+
+        # Supprimer le slot restant via delete_slot_by_id
+        history.delete_slot_by_id(slot4.id)
+        self.assertEqual(len(history.slots), 0)
+
     @classmethod
     def setUpClass(cls):
         """Set up test fixtures before running tests."""

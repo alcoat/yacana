@@ -101,9 +101,7 @@ class OllamaAgent(GenericAgent):
 
             found_tools: List[Tool] = []
 
-            print(f"Alors... Le raisonnement final est {ai_tool_choice}")
-
-            for tool in tools: #@todo Pk ici on a plusieurs print alors qu'un seul tool a été print
+            for tool in tools:
                 # If tool name is present somewhere in AI response
                 if tool.tool_name.lower() in ai_tool_choice:
                     # If tool name is not an exact match in AI response
@@ -558,7 +556,7 @@ class OllamaAgent(GenericAgent):
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
             question_slot = history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
 
-        print("what his getting = ", history.get_messages_as_dict())
+        #print("what his getting = ", history.get_messages_as_dict())
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
             "model": self.model_name,

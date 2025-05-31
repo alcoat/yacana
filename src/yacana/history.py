@@ -1290,11 +1290,12 @@ class History:
         """
         for slot in self.slots:
             if message in slot.messages:
-                slot._delete_message_by_id(message.id)
-                logging.debug(f"Message {message} deleted from slot {slot}.")
-                # Deleting slot from history if it has no messages left
-                if len(slot.messages) == 0:
+                if len(slot.messages) == 1:
                     self.delete_slot(slot)
+                    logging.debug(f"Slot {slot} deleted from history because it contained only the message to delete.")
+                else:
+                    slot._delete_message_by_id(message.id)
+                    logging.debug(f"Message {message} deleted from slot {slot}.")
                 return
         raise ValueError("Message not found in any slot.")
 
@@ -1310,11 +1311,12 @@ class History:
         for slot in self.slots:
             message_to_delete = next((message for message in slot.messages if message.id == message_id), None)
             if message_to_delete:
-                slot._delete_message_by_id(message_to_delete.id)
-                logging.debug(f"Message with ID {message_id} deleted from slot {slot}.")
-                # Deleting slot from history if it has no messages left
-                if len(slot.messages) == 0:
+                if len(slot.messages) == 1:
                     self.delete_slot(slot)
+                    logging.debug(f"Slot {slot} deleted from history because it contained only the message to delete.")
+                else:
+                    slot._delete_message_by_id(message_to_delete.id)
+                    logging.debug(f"Message with ID {message_id} deleted from slot {slot}.")
                 return
         logging.warning(f"No message found with ID {message_id}.")
 
