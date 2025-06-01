@@ -9,7 +9,6 @@ from typing_extensions import Self
 from abc import ABC, abstractmethod
 import logging
 
-from .exceptions import IllogicalConfiguration
 from .medias import Media
 
 
@@ -1079,12 +1078,13 @@ class HistorySlot:
 class History:
     """
     Container for an alternation of Messages representing a conversation between the user and an LLM.
-    To be precise, the history is a list of slots and not actual message. Each slot contains one or more messages.
-    The main message of the slot is the one that will be sent to the LLM.
+    To be precise, the history is a list of slots and not actual messages. Each slot contains at least one or more messages.
+    This class does its best to hide the HistorySlot implementation. Meaning that many methods allows you to deal with the
+    messages directly, but under the hood it always manages the slot wrapper.
 
     Parameters
     ----------
-    **kwargs
+    **kwargs: Any
         Additional keyword arguments including:
         slots : List[HistorySlot], optional
             List of history slots.

@@ -379,6 +379,22 @@ for invoice_file in files:
 
 ---
 
+## Releases
+
+**0.2.1**  
++ Ollama Enhanced Tool Calling is now better (70% accuracy upgrade!).
++ More history features.
++ Support for thinking models like deepseek-R1
+
+**0.2.0**  
++ Streaming.
++ Structured output.
++ OpenAI compatible agents.
++ Tags for history messages.
+
+**0.1.3**  
++ The initial release of Yacana.
+
 ## Roadmap
 
 ❗ Highest priority  
