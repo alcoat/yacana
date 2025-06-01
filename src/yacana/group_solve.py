@@ -65,11 +65,6 @@ class EndChat:
         If max_iterations is less than or equal to 0.
     """
     def __init__(self, mode: EndChatMode, max_iterations: int = 5):
-        """
-        Defines the modality of how and when LLMs stop chatting.
-        :param mode: EndChatMode: The modality to end a chat with multiple agents
-        :param max_iterations: int: The max number of iterations in a conversation. An iteration is complete when we get back to the first speaker
-        """
         if not isinstance(mode, EndChatMode):
             raise ValueError(
                 "@mode must be an instance of EndChatMode. For instance: EndChatMode.ALL_TASK_MUST_COMPLETE")
@@ -111,7 +106,7 @@ class GroupSolve:
     shift_message_content : str, optional
         A custom message instead of using the opposite agent response as shift message content. Defaults to None.
 
-    Properties
+    Attributes
     ----------
     tasks : List[Task]
         All tasks that must be solved during group chat.
@@ -119,10 +114,11 @@ class GroupSolve:
         The modality to end a chat with multiple agents.
     reconcile_first_message : bool
         Should the first message from both LLMs be available to one another. Only useful in dual chat.
-    shift_message_owner : Task
+    max_iter : int
+        The max number of iterations in a conversation. An iteration is complete when we get back to the first speaker.
+    shift_owner : Task
         The Task to which the shift message should be assigned to. In the end it's rather the corresponding Agent
-        than the Task that is involved here.
-    shift_message_content : str
+    shift_content : str | None
         A custom message instead of using the opposite agent response as shift message content.
 
     Raises
@@ -133,13 +129,6 @@ class GroupSolve:
     """
 
     def __init__(self, tasks: List[Task], end_chat: EndChat, reconcile_first_message: bool = False, shift_message_owner: Task = None, shift_message_content: str | None = None) -> None:
-        """
-        :param tasks: list[task] : All tasks that must be solved during group chat
-        :param end_chat: EndChat : Defines the modality of how and when LLMs stop chatting.
-        :param reconcile_first_message: bool : Should the first message from both LLMs be available to one another. Only useful in dual chat.
-        :param shift_message_owner: Task : The Task to which the shift message should be assigned to. In the end it's rather the corresponding Agent than the Task that is involved here.
-        :param shift_message_content: str : A custom message instead of using the opposite agent response as shift message content.
-        """
         if tasks is None:
             raise ValueError("@tasks cannot be None. Must be a List of Task")
         if not isinstance(end_chat, EndChat):

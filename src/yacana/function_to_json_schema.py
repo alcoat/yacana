@@ -2,6 +2,8 @@ from typing import Callable
 from pydantic import create_model
 import inspect
 
+from .exceptions import IllogicalConfiguration
+
 
 def function_to_json_with_pydantic(tool_name: str, description: str, func: Callable) -> dict:
     """Convert a Python function to a JSON description with an exact match format."""
@@ -12,6 +14,14 @@ def function_to_json_with_pydantic(tool_name: str, description: str, func: Calla
     # Extract parameters and annotations
     signature = inspect.signature(func)
     annotations = {name: param.annotation for name, param in signature.parameters.items()}
+
+    # Checking annotations existence
+    for name, annotation in annotations.items():
+        if annotation == inspect._empty:
+            raise IllogicalConfiguration(
+                "A function used as a Tool must have all its parameters being duck typed in its prototype."
+            )
+
     required_params = [
         name
         for name, param in signature.parameters.items()

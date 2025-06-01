@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ from .history import History, GenericMessage, MessageRole, Message
 from .logging_config import LoggerManager
 from .model_settings import ModelSettings
 from .tool import Tool
+from .exceptions import IllogicalConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,14 @@ class GenericAgent(ABC):
         The conversation history. If None, a new History instance will be created.
     task_runtime_config : Dict | None, optional
         Runtime configuration for tasks.
+    thinking_tokens : Tuple[str, str] | None, optional
+        A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
+        Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
+
+    Raises
+    ------
+    ValueError
+        If model_settings is None.
 
     Attributes
     ----------
@@ -67,53 +77,24 @@ class GenericAgent(ABC):
         The conversation history.
     _tags : List[str]
         Internal list of tags.
+    thinking_tokens : Tuple[str, str] | None
+        A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
+        Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
     """
 
     _registry = {}
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "", headers=None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None) -> None:
-        """
-        Initialize a new GenericAgent instance.
-
-        Parameters
-        ----------
-        name : str
-            Name of the agent. Can be used during conversations. Use something short and meaningful
-            that doesn't contradict the system prompt.
-        model_name : str
-            Name of the LLM model that will be sent to the inference server. For instance
-            'llama:3.1' or 'mistral:latest' etc.
-        model_settings : ModelSettings
-            All settings that Ollama currently supports as model configuration. This needs to be
-            tested with other inference servers. This allows modifying deep behavioral patterns
-            of the LLM.
-        system_prompt : str | None, optional
-            Defines the way the LLM will behave. For instance set the SP to "You are a pirate"
-            to have it talk like a pirate. Defaults to None.
-        endpoint : str | None, optional
-            By default will look for Ollama endpoint on your localhost. If you are using a VM
-            with GPU then update this to the remote URL + port. Defaults to None.
-        api_token : str, optional
-            The API token used for authentication with the inference server. Defaults to "".
-        headers : dict, optional
-            Custom headers to be sent with the inference request. If None, an empty dictionary
-            will be used. Defaults to None.
-        runtime_config : Dict | None, optional
-            Runtime configuration for the agent. Defaults to None.
-        history : History | None, optional
-            The conversation history. If None, a new History instance will be created.
-            Defaults to None.
-        task_runtime_config : Dict | None, optional
-            Runtime configuration for tasks. Defaults to None.
-
-        Raises
-        ------
-        ValueError
-            If model_settings is None.
-        """
+                 api_token: str = "", headers=None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None,
+                 thinking_tokens: tuple[str, str] | None = None) -> None:
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
+
+        # Vérification de la validité de thinking_tokens
+        if thinking_tokens is not None:
+            if (not isinstance(thinking_tokens, tuple) or len(thinking_tokens) != 2 or
+                    not all(isinstance(t, str) and t.strip() for t in thinking_tokens)):
+                raise IllogicalConfiguration("Thinking tokens must be a tuple of two strings representing the start and end tags outputted by the LLM when thinking.")
 
         self.name: str = name
         self.model_name: str = model_name
@@ -125,6 +106,7 @@ class GenericAgent(ABC):
         self.runtime_config = runtime_config if runtime_config is not None else {}
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
         self._tags: List[str] = []
+        self.thinking_tokens: tuple[str, str] | None = thinking_tokens
 
         self.history: History = history if history is not None else History()
         if self.system_prompt is not None and history is None:
@@ -141,6 +123,25 @@ class GenericAgent(ABC):
         """
         super().__init_subclass__(**kwargs)
         GenericAgent._registry[cls.__name__] = cls
+
+    def _strip_thinking_tags(self, message: str) -> str:
+        """
+        Strips tags from a string.
+
+        Parameters
+        ----------
+        message : str
+            The message to strip tags from.
+
+        Returns
+        -------
+        str
+            The string without tags.
+        """
+        if self.thinking_tokens is None or len(self.thinking_tokens) != 2:
+            return message
+        pattern = fr'{self.thinking_tokens[0]}.*?{self.thinking_tokens[1]}'
+        return re.sub(pattern, '', message, flags=re.DOTALL)
 
     def export_to_file(self, file_path: str, strip_api_token=False, strip_headers=False) -> None:
         """
@@ -243,4 +244,3 @@ class GenericAgent(ABC):
             This method must be implemented by subclasses.
         """
         raise NotImplemented(f"This method must be subclassed by the child class. It starts the inference using given parameters.")
-

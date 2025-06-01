@@ -98,7 +98,7 @@ class TestStatePersistence(BaseAgentTest):
         """Test state persistence with structured output history."""
         def test_structured_state(agent):
             # Create state with structured output
-            message1 = Task("Tell me 1 facts about Canada.", agent, structured_output=Facts).solve()
+            message1 = Task("Tell me 2 facts about Canada.", agent, structured_output=Facts).solve()
             message1.add_tags(["structured_output_version"])
             
             # Export state

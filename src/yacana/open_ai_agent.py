@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 from json import JSONDecodeError
@@ -49,6 +48,9 @@ class OpenAiAgent(GenericAgent):
         All settings that OpenAI currently supports as model configuration. Defaults to None.
     runtime_config : Dict | None, optional
         Runtime configuration for the agent. Defaults to None.
+    thinking_tokens : Tuple[str, str] | None, optional
+        A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
+        Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
 
     Raises
     ------
@@ -57,48 +59,15 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "cant_be_empty", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, **kwargs) -> None:
+                 api_token: str = "cant_be_empty", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: tuple[str, str] | None = None, **kwargs) -> None:
         if api_token == "":
             logging.warning(f"Empty api_token provided. This will most likely clash with the underlying inference library. You should probably set this to any non empty string.")
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None))
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens)
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")
-
-
-    def _use_other_tool(self, local_history: History) -> bool:
-        """
-        Determines if another tool call is needed.
-
-        Parameters
-        ----------
-        local_history : History
-            The conversation history.
-
-        Returns
-        -------
-        bool
-            True if another tool call is needed, False otherwise.
-        """
-        tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
-        ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt)
-
-        # Syncing with global history
-        self.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=self._tags))
-        self.history.add_message(OllamaUserMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, tags=self._tags))
-
-        tool_confirmation_prompt = "To summarize your previous answer in one word. Do you need to make another tool call ? Answer ONLY by 'yes' or 'no'."
-        ai_tool_continue_answer: str = self._chat(local_history, tool_confirmation_prompt,
-                                                  save_to_history=False)
-
-        if "yes" in ai_tool_continue_answer.lower():
-            logging.info("Continuing tool calls loop\n")
-            return True
-        else:
-            logging.info("Exiting tool calls loop\n")
-            return False
 
     def _call_openai_tool(self, tool: Tool, function_args: Dict) -> str:
         """
@@ -219,7 +188,7 @@ class OpenAiAgent(GenericAgent):
                 self._chat(self.history, None, medias=images, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         return self.history.get_last_message()
 
-    def is_structured_output(self, choice: Choice) -> bool:
+    def _is_structured_output(self, choice: Choice) -> bool:
         """
         Checks if the choice contains structured output.
 
@@ -235,7 +204,7 @@ class OpenAiAgent(GenericAgent):
         """
         return hasattr(choice.message, "parsed") and choice.message.parsed is not None
 
-    def is_tool_calling(self, choice: Choice) -> bool:
+    def _is_tool_calling(self, choice: Choice) -> bool:
         """
         Checks if the choice contains tool calls.
 
@@ -251,7 +220,7 @@ class OpenAiAgent(GenericAgent):
         """
         return hasattr(choice.message, "tool_calls") and choice.message.tool_calls is not None and len(choice.message.tool_calls) > 0
 
-    def is_common_chat(self, choice: Choice) -> bool:
+    def _is_common_chat(self, choice: Choice) -> bool:
         """
         Checks if the choice contains a common chat message.
 
@@ -309,7 +278,7 @@ class OpenAiAgent(GenericAgent):
         })
 
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
-                  streaming_callback: Callable | None = None) -> str | Iterator:
+                  streaming_callback: Callable | None = None) -> GenericMessage:
         """
         Main chat method that handles communication with the OpenAI API.
 
@@ -334,8 +303,8 @@ class OpenAiAgent(GenericAgent):
 
         Returns
         -------
-        str | Iterator
-            The response content or an iterator for streaming responses.
+        GenericMessage
+            The response message
 
         Raises
         ------
@@ -344,9 +313,9 @@ class OpenAiAgent(GenericAgent):
         TaskCompletionRefusal
             If the model refuses to complete the task.
         """
-        if task is not None:
+        if task:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
+            question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
         # Extracting all json schema from tools, so it can be passed to the OpenAI API
         all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
@@ -371,7 +340,7 @@ class OpenAiAgent(GenericAgent):
         }
         logging.debug("Runtime parameters before inference: %s", str(params))
 
-        history_slot = HistorySlot()
+        answer_slot = HistorySlot()
         if structured_output is not None:
             response = client.beta.chat.completions.parse(**params)
         else:
@@ -379,35 +348,40 @@ class OpenAiAgent(GenericAgent):
             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
 
         self.task_runtime_config = {}
-        history_slot.set_raw_llm_json(response.model_dump_json())
+        answer_slot.set_raw_llm_json(response.model_dump_json())
         logging.debug("Inference output: %s", response.model_dump_json(indent=2))
 
         for choice in response.choices:
 
-            if self.is_structured_output(choice):
+            if self._is_structured_output(choice):
                 logging.debug("Response assessment is structured output")
                 if choice.message.refusal is not None:
                     raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                history_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
+                answer_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
 
-            elif self.is_tool_calling(choice):
+            elif self._is_tool_calling(choice):
                 logging.debug("Response assessment is tool calling")
                 tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
                     logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                history_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
+                answer_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
 
-            elif self.is_common_chat(choice):
+            elif self._is_common_chat(choice):
                 logging.debug("Response assessment is classic chat answer")
-                history_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
+                answer_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
             else:
                 raise UnknownResponseFromLLM("Unknown response from OpenAI API")
 
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {history_slot.get_message().get_as_pretty()}")
-        if save_to_history is True:
-            history.add_slot(history_slot)
-        return history_slot.get_message().content
+        logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
+        last_message = answer_slot.get_message()
+        if save_to_history is False:
+            if task:
+                history.delete_slot(question_slot)
+            history.delete_slot(answer_slot)
+        else:
+            history.add_slot(answer_slot)
+        return last_message
 
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
