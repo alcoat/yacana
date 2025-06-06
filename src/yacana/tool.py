@@ -24,28 +24,41 @@ class Tool:
         A description for the tool. Should be concise and related to what the tool does.
         May contain an example of how to use. Refer to the documentation.
     function_ref : Callable
-        The reference to a python function that will be called with parameters provided
-        by the LLM.
+        The reference to a python function that will be called with parameters provided by the LLM.
     optional : bool, optional
-        Allows to a certain extent the LLM to choose to use the given tool or not
-        depending on the task to solve. Defaults to False.
+        Allows to a certain extent the LLM to choose to use the given tool or not depending on the task to solve.
+        Defaults to False.
     usage_examples : List[dict], optional
-        A list of python dictionary examples of how the tool should be called. The
-        examples will be given to the LLM to help it call the tool correctly. Use if
-        the LLM struggles to call the tool successfully. Defaults to an empty list.
+        A list of python dictionary examples of how the tool should be called.
+        The examples will be given to the LLM to help it call the tool correctly.
+        Use if the LLM struggles to call the tool successfully. Defaults to an empty list.
     max_custom_error : int, optional
-        The max errors a tool can raise. A tool should raise a ToolError(...) exception
-        with a detailed explanation of why it failed. The LLM will get the exception
-        message and try again, taking into account the new knowledge it gained from the
-        error. When reaching the max iteration the MaxToolErrorIter() exception is
-        thrown and the task is stopped. Defaults to 5.
+        The max errors a tool can raise.
+        A tool should raise a ToolError(...) exception with a detailed explanation of why it failed.
+        The LLM will get the exception message and try again, taking into account the new knowledge it gained from the error.
+        When reaching the max iteration the MaxToolErrorIter() exception is thrown and the task is stopped. Defaults to 5.
     max_call_error : int, optional
-        The max number of times Yacana can fail to call a tool correctly. Note that
-        Yacana uses the parameters given to the LLM to call the tool so if they are
-        invalid then Yacana will have a hard time to fix the situation. You should try
-        to give examples to the LLM on how to call the tool either in the tool
-        description or when using the @usage_examples attribute to help the model.
+        The max number of times Yacana can fail to call a tool correctly.
+        Note that Yacana uses the parameters given to the LLM to call the tool so if they are invalid then Yacana will have a hard time to fix the situation.
+        You should try to give examples to the LLM on how to call the tool either in the tool description or when using the @usage_examples attribute to help the model.
         Defaults to 5.
+
+    Attributes
+    ----------
+    tool_name : str
+        The name of the tool.
+    function_description : str
+        A description of the tool's functionality.
+    function_ref : Callable
+        Function reference that the tool will call.
+    optional : bool
+        Indicates if the tool is optional.
+    usage_examples : List[dict]
+        A list of usage examples for the tool. The dict keys should match the function parameters.
+    max_custom_error : int
+        Maximum number of custom errors (raised from the function) allowed before stopping the task.
+    max_call_error : int
+        Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
 
     Raises
     ------
@@ -55,50 +68,6 @@ class Tool:
 
     def __init__(self, tool_name: str, function_description: str, function_ref: Callable, optional: bool = False,
                  usage_examples: List[dict] | None = None, max_custom_error: int = 5, max_call_error: int = 5) -> None:
-        """
-        Initialize a new Tool instance.
-
-        Parameters
-        ----------
-        tool_name : str
-            A name for the tool. Should be concise and related to what the tool does.
-        function_description : str
-            A description for the tool. Should be concise and related to what the tool does.
-            May contain an example of how to use.
-        function_ref : Callable
-            The reference to a python function that will be called with parameters provided
-            by the LLM.
-        optional : bool, optional
-            Whether the tool is optional. Defaults to False.
-        usage_examples : List[dict], optional
-            A list of usage examples for the tool. The dict keys should match the function parameters.
-        max_custom_error : int, optional
-            Maximum number of custom errors (raised from the function) allowed. Defaults to 5.
-        max_call_error : int, optional
-            Maximum number of call errors (eg: python can't find the function) allowed. Defaults to 5.
-
-        Attributes
-        ----------
-        tool_name : str
-            The name of the tool.
-        function_description : str
-            A description of the tool's functionality.
-        function_ref : Callable
-            Function reference that the tool will call.
-        optional : bool
-            Indicates if the tool is optional.
-        usage_examples : List[dict]
-            A list of usage examples for the tool. The dict keys should match the function parameters.
-        max_custom_error : int
-            Maximum number of custom errors (raised from the function) allowed before stopping the task.
-        max_call_error : int
-            Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
-
-        Raises
-        ------
-        IllogicalConfiguration
-            If max_custom_error or max_call_error is less than 0.
-        """
         self.tool_name: str = tool_name
         self.function_description: str = function_description
         self.function_ref: Callable = function_ref

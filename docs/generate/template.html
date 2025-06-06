@@ -1,0 +1,250 @@
+<!DOCTYPE HTML>
+<!--
+	Editorial by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+
+<head>
+    <title>Yacana - Classes</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+    <link rel="stylesheet" href="../assets/css/main.css"/>
+    <link rel="stylesheet" href="../assets/css/codemirror.min.css">
+    <link rel="stylesheet" href="../assets/css/monokai.min.css">
+    <link rel="stylesheet" href="../assets/css/foldgutter.min.css">
+    <link rel="stylesheet" href="../assets/css/codemirror-custom.css">
+    <link rel="stylesheet" href="../assets/css/zenburn.min.css">
+    <link rel="stylesheet" href="../assets/css/fontawesome-all.min.css">
+
+    <script src="../assets/js/codemirror.min.js"></script>
+    <script src="../assets/js/python.min.js"></script>
+    <script src="../assets/js/foldcode.min.js"></script>
+    <script src="../assets/js/foldgutter.min.js"></script>
+    <script src="../assets/js/brace-fold.min.js"></script>
+    <script src="../assets/js/codemirror-custom.js"></script>
+</head>
+
+<body class="is-preload">
+
+<!-- Wrapper -->
+<div id="wrapper">
+
+    <!-- Main -->
+    <div id="main">
+        <div class="inner">
+
+            <!-- Header -->
+            <header id="header">
+                <a href="../index.html" class="logo"><strong>Yacana</strong>, powering open source LLMs</a>
+                <ul class="icons">
+                    <li><a href="https://x.com/RSoftwares_ofc" class="icon brands fa-twitter"><span class="label">Twitter</span></a>
+                    </li>
+                    <li><a href="https://medium.com/@docteur_rs" class="icon brands fa-medium-m"><span class="label">Medium</span></a>
+                    </li>
+                    <li><a href="https://www.youtube.com/channel/UCvi7R0CRmtxhWOVw62XteTw"
+                           class="icon brands fa-youtube"><span class="label">Medium</span></a></li>
+                    <li><a href="https://github.com/rememberSoftwares/yacana" class="icon brands fa-github"><span
+                            class="label">Github</span></a></li>
+                </ul>
+            </header>
+
+            <!-- Content -->
+
+            <section>
+                <header class="main">
+                    <h1 id="tech-doc">Technical documentation - Yacana 0.2.1</h1>
+                </header>
+                <span class="image main"><img src="../images/tech_doc.jpg" alt="Roadmap"/></span>
+
+                {% for class_data in classes %}
+                    <h2 id="tech-doc-{{class_data.class_name.lower()}}"><a><u>{{class_data.class_name}}</u></a></h2>
+                    <p>
+                        {{class_data.class_description}}
+                    </p>
+                    <br>
+
+                    <h3>▶️ Member variables</h3>
+
+                    {% if class_data.class_attributes and class_data.class_attributes|length > 0 %}
+                    <div class="table-wrapper">
+                        <table class="alt">
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th style="text-align:center">Type</th>
+                                <th style="text-align:center">Description</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for attribute in class_data.class_attributes %}
+                            <tr>
+                                <td><code>{{attribute.name}}</code></td>
+                                <td style="text-align:center">
+                                    <a href="#tech-doc-{{ strip_useless_types(attribute.type) }}">
+                                        {{get_type_without_optional(attribute.type)}}
+                                    </a>&nbsp
+                                    <span>{{get_optional_type(attribute.type)}}</span>
+                                </td>
+                                <td style="text-align:center">
+                                    {{attribute.description}}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    <h3>▶️ Methods</h3>
+
+                    {% for method in class_data.methods %}
+                        <h4><span style="color: green;">➤</span> {{method.method_name}}({{ '...' if
+                            len(method.method_parameters) > 0 else '' }})</h4>
+                        {% if method.is_static_method %}
+                        <i>
+                            <span
+                                    style="background-color: orange; color: white; border-radius: 3px; padding: 1px 5px;">@</span>&nbsp static method
+                        </i>
+                        {% endif %}
+                        {% if method.is_class_method %}
+                        <i>
+                            <span
+                                    style="background-color: orange; color: white; border-radius: 3px; padding: 1px 5px;">@</span>&nbsp class method
+                        </i>
+                        {% endif %}
+                        <div>
+                            {{method.method_description}}
+                        </div>
+
+                        {% if method.method_parameters and method.method_parameters|length > 0 %}
+                        <br>
+                        <div class="table-wrapper">
+                            <table class="alt no-table-margin">
+                                <thead>
+                                <tr>
+                                    <th>Parameter name</th>
+                                    <th style="text-align:center">Parameter type</th>
+                                    <th style="text-align:center">Parameter description</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for parameter in method.method_parameters %}
+                                <tr>
+                                    <td><code>{{parameter.name}}</code></td>
+                                    <td style="text-align:center">
+                                        <a
+                                                href="#tech-doc-{{ strip_useless_types(parameter.type) }}">{{
+                                            get_type_without_optional(parameter.type)}}
+                                        </a>&nbsp
+                                        <span>{{get_optional_type(parameter.type)}}</span>
+                                    </td>
+                                    <td style="text-align:center">
+                                        {{parameter.description}}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+
+                        <i>Return type:
+                            {% if method.method_name == "__init__" %}
+                                <a href="#tech-doc-{{ strip_useless_types(class_data.class_name) }}">
+                                    {{ get_type_without_optional(class_data.class_name) }}
+                                </a>
+                                <span>{{ get_optional_type(class_data.class_name) }}</span>
+                            {% elif '|' in method.method_return_type %}
+
+                                {% for t in method.method_return_type.split('|') %}
+                                    <a href="#tech-doc-{{ strip_useless_types(t) }}">
+                                        {{ get_type_without_optional(t.strip()) }}
+                                        <span>{{ get_type_without_optional(t.strip()) }}</span>
+                                    </a>
+                                    {% if not loop.last %} | {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <a href="#tech-doc-{{ strip_useless_types(method.method_return_type) }}">{{
+                                    get_type_without_optional(method.method_return_type)
+                                    }}
+                                </a>
+                                <span>
+                                    {{ get_optional_type(method.method_return_type) }}
+                                </span>
+                                {% endif %}
+                                </i>
+                                <br>
+                                <br>
+                    {% endfor %}
+                    <br>
+                {% endfor %}
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <div class="inner">
+
+            <!-- Search -->
+            <section id="search" class="alt">
+                <form method="post" action="#">
+                    <input type="text" name="query" id="query" placeholder="Search"/>
+                </form>
+            </section>
+
+            <!-- Menu Container -->
+            <div id="menu-container"></div>
+
+            <!-- Section -->
+            <section>
+                <header class="major">
+                    <h2>Related Youtube video</h2>
+                </header>
+                <div class="mini-posts">
+                    <article>
+                        <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
+                        <p>Youtube video for this section is still under creation. Please be patient ^^</p>
+                    </article>
+                </div>
+            </section>
+
+            <!-- Section -->
+            <section>
+                <div class="page-nav-container">
+                    <!-- Dynamic page navigation will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer id="footer">
+                <p class="copyright">&copy; Emilien Lancelot. All rights reserved.<br>
+                    Design: <a href="https://html5up.net">HTML5UP</a>.</p>
+            </footer>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/jquery.min.js"></script>
+<script src="../assets/js/browser.min.js"></script>
+<script src="../assets/js/breakpoints.min.js"></script>
+<script src="../assets/js/util.js"></script>
+<script src="../assets/js/main.js"></script>
+<script src="../assets/js/menu.js"></script>
+<script>
+    // Initialize both menus when the document is ready
+    $(document).ready(function() {
+        initializeMainNavMenu();
+        initializePageNavMenu();
+    });
+</script>
+
+</body>
+
+</html>
