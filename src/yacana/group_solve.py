@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class EndChatMode(Enum):
     """
-    All types of group chat completion.
+    <b>ENUM:</b> All types of group chat completion.
 
     The difficulty in making agents talk to each other is not to have them talk but to have them stop talking.
     Note that only tasks that have the @llm_stops_by_itself=True are actually impacted by the mode set here.

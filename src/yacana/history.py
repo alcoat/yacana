@@ -14,11 +14,22 @@ from .medias import Media
 
 class MessageRole(Enum):
     """
-    The available types of message creators.
+    <b>ENUM:</b>  The available types of message creators.
     User messages are the ones that are sent by the user to the LLM.
     Assistant messages are the ones that are sent by the LLM to the user.
     System messages are the ones that defines the behavior of the LLM.
-    Tool messages are the ones containing the result of a tool call and then sent to the LLM.
+    Tool messages are the ones containing the result of a tool call and then sent to the LLM. Not all LLMs support this type of message.
+
+    Attributes
+    ----------
+    USER : str
+        User messages are the ones that are sent by the user to the LLM.
+    ASSISTANT : str
+        Assistant messages are the ones that are sent by the LLM to the user.
+    SYSTEM : str
+        System messages are the ones that defines the behavior of the LLM.
+    TOOL : str
+        Tool messages are the ones containing the result of a tool call and then sent to the LLM.
     """
     USER = "user"
     ASSISTANT = "assistant"
@@ -28,7 +39,14 @@ class MessageRole(Enum):
 
 class SlotPosition(Enum):
     """
-    The position of a slot in the history. This is only a syntactic sugar to make the code more readable.
+    <b>ENUM:</b> The position of a slot in the history. This is only a syntactic sugar to make the code more readable.
+
+    Attributes
+    ----------
+    BOTTOM : int
+        The slot is at the bottom of the history.
+    TOP : int
+        The slot is at the top of the history.
     """
     BOTTOM = -1
     TOP = -2
@@ -117,8 +135,9 @@ class ToolCallFromLLM:
 
 class GenericMessage(ABC):
     """
+    Use for duck typing only.
     The smallest entity representing an interaction with the LLM.
-    Use child class type to determine what type of message this is and the role member to know from whom the message is from.
+    Use child class type to determine what type of message this is and the .role member to know from whom the message is from.
 
     Parameters
     ----------
@@ -336,6 +355,7 @@ class GenericMessage(ABC):
 class Message(GenericMessage):
     """
     For Yacana users or simple text based interactions.
+    The smallest entity representing an interaction with the LLM. Can be manually added to the history.
 
     Parameters
     ----------
@@ -365,6 +385,7 @@ class Message(GenericMessage):
             "role": self.role.value,
             "content": self.content
         }
+
 
 class OpenAIUserMessage(GenericMessage):
     """
@@ -638,7 +659,6 @@ class OpenAIStructuredOutputMessage(GenericMessage):
         return cls(**data["data"])
 
 
-
 class OllamaUserMessage(GenericMessage):
     """
     A message from the user to the LLM containing all features requested by the user (tools, medias, etc).
@@ -830,8 +850,7 @@ class OllamaStructuredOutputMessage(GenericMessage):
 class HistorySlot:
     """
     A slot is a container for messages. It can contain one or more messages.
-    Most of the time it will only contain one message but when using `n=2` or`n=x` in the OpenAI API,
-    it will contain multiple variations hence multiple messages.
+    Most of the time it will only contain one message but when using `n=2` or`n=x` in the OpenAI API, it will contain multiple variations hence multiple messages.
 
     Parameters
     ----------
@@ -872,7 +891,7 @@ class HistorySlot:
 
     def set_main_message_index(self, message_index: int) -> None:
         """
-        A slot can contain any number of concurent message. But only one can be the main slot message and actually be part of the Hystory.
+        A slot can contain any number of concurrent message. But only one can be the main slot message and actually be part of the History.
         This method sets the index of the main message within the list of available messages in the slot.
 
         Parameters
@@ -1079,8 +1098,7 @@ class History:
     """
     Container for an alternation of Messages representing a conversation between the user and an LLM.
     To be precise, the history is a list of slots and not actual messages. Each slot contains at least one or more messages.
-    This class does its best to hide the HistorySlot implementation. Meaning that many methods allows you to deal with the
-    messages directly, but under the hood it always manages the slot wrapper.
+    This class does its best to hide the HistorySlot implementation. Meaning that many methods allows you to deal with the messages directly, but under the hood it always manages the slot wrapper.
 
     Parameters
     ----------

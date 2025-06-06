@@ -47,6 +47,23 @@ class Tool:
         description or when using the @usage_examples attribute to help the model.
         Defaults to 5.
 
+    Attributes
+    ----------
+    tool_name : str
+        The name of the tool.
+    function_description : str
+        A description of the tool's functionality.
+    function_ref : Callable
+        Function reference that the tool will call.
+    optional : bool
+        Indicates if the tool is optional.
+    usage_examples : List[dict]
+        A list of usage examples for the tool. The dict keys should match the function parameters.
+    max_custom_error : int
+        Maximum number of custom errors (raised from the function) allowed before stopping the task.
+    max_call_error : int
+        Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
+
     Raises
     ------
     IllogicalConfiguration
@@ -55,50 +72,6 @@ class Tool:
 
     def __init__(self, tool_name: str, function_description: str, function_ref: Callable, optional: bool = False,
                  usage_examples: List[dict] | None = None, max_custom_error: int = 5, max_call_error: int = 5) -> None:
-        """
-        Initialize a new Tool instance.
-
-        Parameters
-        ----------
-        tool_name : str
-            A name for the tool. Should be concise and related to what the tool does.
-        function_description : str
-            A description for the tool. Should be concise and related to what the tool does.
-            May contain an example of how to use.
-        function_ref : Callable
-            The reference to a python function that will be called with parameters provided
-            by the LLM.
-        optional : bool, optional
-            Whether the tool is optional. Defaults to False.
-        usage_examples : List[dict], optional
-            A list of usage examples for the tool. The dict keys should match the function parameters.
-        max_custom_error : int, optional
-            Maximum number of custom errors (raised from the function) allowed. Defaults to 5.
-        max_call_error : int, optional
-            Maximum number of call errors (eg: python can't find the function) allowed. Defaults to 5.
-
-        Attributes
-        ----------
-        tool_name : str
-            The name of the tool.
-        function_description : str
-            A description of the tool's functionality.
-        function_ref : Callable
-            Function reference that the tool will call.
-        optional : bool
-            Indicates if the tool is optional.
-        usage_examples : List[dict]
-            A list of usage examples for the tool. The dict keys should match the function parameters.
-        max_custom_error : int
-            Maximum number of custom errors (raised from the function) allowed before stopping the task.
-        max_call_error : int
-            Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
-
-        Raises
-        ------
-        IllogicalConfiguration
-            If max_custom_error or max_call_error is less than 0.
-        """
         self.tool_name: str = tool_name
         self.function_description: str = function_description
         self.function_ref: Callable = function_ref

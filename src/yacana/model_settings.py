@@ -10,17 +10,13 @@ class ModelSettings(ABC):
 
     This class provides a base implementation for model settings with functionality
     for exporting settings, creating instances, and managing initial values.
+    The constructor initializes the internal state for tracking initial values of settings. This means that you can update
+    any setting and use .reset() to restore the initial values of all settings.
     """
 
     _registry = {}
 
     def __init__(self):
-        """
-        Initialize a new ModelSettings instance.
-
-        This constructor initializes the internal state for tracking initial values
-        of settings.
-        """
         self._initial_values = {}
 
     def __init_subclass__(cls, **kwargs):
@@ -146,6 +142,41 @@ class OllamaModelSettings(ModelSettings):
         Controls token selection probability (e.g., 0.9).
     **kwargs
         Additional settings passed to the parent class.
+
+    Attributes
+    ----------
+    mirostat : int, optional
+        Controls the model's creativity level (0: off, 1: on, 2: extra on).
+    mirostat_eta : float, optional
+        Adjusts how quickly the model learns from context (e.g., 0.1).
+    mirostat_tau : float, optional
+        Controls topic adherence (e.g., 5.0).
+    num_ctx : int, optional
+        Determines context window size (e.g., 4096).
+    num_gqa : int, optional
+        Controls parallel task handling (e.g., 8).
+    num_gpu : int, optional
+        Sets GPU utilization (e.g., 50).
+    num_thread : int, optional
+        Controls parallel processing (e.g., 8).
+    repeat_last_n : int, optional
+        Controls repetition prevention window (e.g., 64).
+    repeat_penalty : float, optional
+        Penalty for repeated content (e.g., 1.1).
+    temperature : float, optional
+        Controls response randomness (e.g., 0.7).
+    seed : int, optional
+        Random seed for reproducibility (e.g., 42).
+    stop : List[str], optional
+        Stop sequences for generation.
+    tfs_z : float, optional
+        Controls response randomness reduction (e.g., 2.0).
+    num_predict : int, optional
+        Maximum tokens to generate (e.g., 128).
+    top_k : int, optional
+        Limits token selection (e.g., 40).
+    top_p : float, optional
+        Controls token selection probability (e.g., 0.9).
     """
 
     def __init__(self,
@@ -187,8 +218,6 @@ class OllamaModelSettings(ModelSettings):
 
         # Store the initial values for resetting
         self._initial_values = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
-
-
 
 
 class OpenAiModelSettings(ModelSettings):
@@ -244,6 +273,51 @@ class OpenAiModelSettings(ModelSettings):
         Web search configuration.
     **kwargs
         Additional settings passed to the parent class.
+
+    Attributes
+    ----------
+    audio : Any, optional
+        Parameters for audio output when using audio modality.
+    frequency_penalty : float, optional
+        Penalty for token frequency (-2.0 to 2.0).
+    logit_bias : Dict, optional
+        Token bias adjustments (-100 to 100).
+    logprobs : bool, optional
+        Whether to return token log probabilities.
+    max_completion_tokens : int, optional
+        Maximum tokens to generate.
+    metadata : Dict, optional
+        Additional metadata (max 16 key-value pairs).
+    modalities : List[str], optional
+        Output types to generate (e.g., ["text", "audio"]).
+    n : int, optional
+        Number of completion choices to generate.
+    prediction : Any, optional
+        Configuration for predicted output.
+    presence_penalty : float, optional
+        Penalty for token presence (-2.0 to 2.0).
+    reasoning_effort : str, optional
+        Reasoning effort level ("low", "medium", "high").
+    seed : int, optional
+        Random seed for reproducibility.
+    service_tier : str, optional
+        Latency tier for processing ("auto" or "default").
+    stop : str | List, optional
+        Stop sequences for generation.
+    store : bool, optional
+        Whether to store completion output.
+    stream_options : Any, optional
+        Options for streaming response.
+    temperature : float, optional
+        Sampling temperature (0 to 2).
+    top_logprobs : int, optional
+        Number of top tokens to return (0 to 20).
+    top_p : float, optional
+        Nucleus sampling parameter.
+    user : str, optional
+        End-user identifier.
+    web_search_options : Any, optional
+        Web search configuration.
     """
 
     def __init__(self,
