@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="../assets/css/foldgutter.min.css">
     <link rel="stylesheet" href="../assets/css/codemirror-custom.css">
     <link rel="stylesheet" href="../assets/css/zenburn.min.css">
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
     <script src="../assets/js/codemirror.min.js"></script>
     <script src="../assets/js/python.min.js"></script>
     <script src="../assets/js/json-lint.min.js"></script>
@@ -414,7 +416,7 @@ This tool takes two integer inputs `first_number` and `second_number`, and retur
 
 I'm ready to use this tool for any future tasks that require addition!
 
-INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "&lt;value1&gt;", "arg2": "&lt;value2&gt;"}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'first_number': 'arg 0', 'second_number': 'arg 1'}
 
 INFO: [AI_RESPONSE][From: Ai assistant]: I understand now!
 
@@ -510,7 +512,7 @@ However, I notice that the tool definition says "Adds two numbers and returns th
 
 I'll make sure to keep this in mind for any future tasks that require using this tool!
 
-INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'city': 'arg 0'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "&ltvalue1&gt", "arg2": "&ltvalue2&gt"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'city': 'arg 0'}
 
 INFO: [AI_RESPONSE][From: Ai assistant]: So I understand now. Thank you for the clarification!
 
@@ -546,7 +548,7 @@ You've provided me with a tool definition for `get_temperature(city: str) -> int
 
 I'm ready to use this tool whenever I need it in future tasks!
 
-INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'city': 'arg 0'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "&ltvalue1&gt", "arg2": "&ltvalue2&gt"}. You must respect the arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'city': 'arg 0'}
 
 INFO: [AI_RESPONSE][From: Ai assistant]: For the `get_temperature( city: str ) -> int` tool, I understand that I need to extract each parameter and use it as a JSON key.
 
@@ -580,7 +582,7 @@ INFO: [AI_RESPONSE][From: Ai assistant]: Acknowledged!
 
 I have taken note of the `get_temperature` tool, which takes a city name as input (`city: str`) and returns the Celsius temperature of that city (`-> int`). I'm ready to use this tool whenever you'd like me to fulfill a task in the future!
 
-INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'city': 'arg 0'}
+INFO: [PROMPT][To: Ai assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "&ltvalue1&gt", "arg2": "&ltvalue2&gt"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'city': 'arg 0'}
 
 INFO: [AI_RESPONSE][From: Ai assistant]: So for the `get_temperature( city: str )` tool, I would extract the single parameter as:
 

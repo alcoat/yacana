@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="../assets/css/foldgutter.min.css">
     <link rel="stylesheet" href="../assets/css/codemirror-custom.css">
     <link rel="stylesheet" href="../assets/css/zenburn.min.css">
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
     <script src="../assets/js/codemirror.min.js"></script>
     <script src="../assets/js/python.min.js"></script>
     <script src="../assets/js/foldcode.min.js"></script>
@@ -274,7 +276,7 @@ This function takes a string representing a color name as input and returns a st
 
 I'm ready to use this tool for any future task that requires converting color names to their hexadecimal representations. What's the next step?
 
-INFO: [PROMPT][To: AI assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'color_name': 'arg 0'}
+INFO: [PROMPT][To: AI assistant]: To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "&ltvalue1&gt", "arg2": "&ltvalue2&gt"}. You must respect arguments type. For instance, the tool `getWeather(city: str, lat: int, long: int)` would be structured like this {"city": "new-york", "lat": 10, "lon": 20}. In our case, the tool call you must use must look like that: {'color_name': 'arg 0'}
 
 INFO: [AI_RESPONSE][From: AI assistant]: I understand the requirement now. To use the `color_name_to_hexa(color_name: str) -> str` tool, I will extract each parameter and create a JSON object with the extracted parameters as keys.
 
