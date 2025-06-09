@@ -8,6 +8,13 @@ Task-driven multi-agents framework for developers to create open source LLM-powe
 
 ---
 
+<img src="http://ForTheBadge.com/images/badges/built-with-love.svg"/>  
+
+<img src="https://img.shields.io/github/license/rememberSoftwares/yacana.svg"/> <img src="https://img.shields.io/badge/Maintained%3F-yes-green.svg">  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/rememberSoftwares/yacana)
+
+
+
+
 ## What is Yacana
 
 Yacana is designed for both *beginners* and *advanced* AI users.  
@@ -53,16 +60,16 @@ from yacana import Task, OllamaAgent
 ollama_agent = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 # Create a task to tell a joke
-message = Task("Tell me joke but in reverse.", ollama_agent).solve()
+message = Task("Tell me a joke. But do NOT tell me the answer.", ollama_agent).solve()
 
+# "Why was the math book sad?"
 print(message.content)
-# ? SAD BOOK MATH THE WAS WHY
 
-# Chain a second task to tell the same joke but in uppercase
-message = Task("Tell it again but ALL CAPS LIKE YOU ARE SCREAMING !", ollama_agent).solve()
+# Chain a second task to get the answer from the previous joke
+message = Task("Now, give me the answer.", ollama_agent).solve()
 
+# "Because it had too many problems!"
 print(message.content)
-# !PROBLEMS MANY TOO HAD IT BECAUSE
 ```
 
 <br />
@@ -72,8 +79,8 @@ A calculator using tools called by the LLM to solve an equation. It makes use of
 ```python
 from yacana import Task, OllamaAgent, ToolError, Tool, OllamaModelSettings
 
-# Simple type validation
-def _validate_and_log(first_number, second_number):
+# Basic type validation to make sure the LLM gave correct values to the tools
+def _validate_LLM_inputs(first_number, second_number):
     if not isinstance(first_number, int):
         raise ToolError("Parameter 'first_number' expected a type integer")
     if not isinstance(second_number, int):
@@ -82,15 +89,15 @@ def _validate_and_log(first_number, second_number):
 
 # Simple math operations functions
 def add(first_number: int, second_number: int) -> int:
-    _validate_and_log(first_number, second_number)
+    _validate_LLM_inputs(first_number, second_number)
     return first_number + second_number
 
 def multiply(first_number: int, second_number: int) -> int:
-    _validate_and_log(first_number, second_number)
+    _validate_LLM_inputs(first_number, second_number)
     return first_number * second_number
 
 def subtract(first_number: int, second_number: int) -> int:
-    _validate_and_log(first_number, second_number)
+    _validate_LLM_inputs(first_number, second_number)
     return first_number - second_number
 
 
@@ -185,7 +192,7 @@ chunk = |6|
 
 🦙🤖💬  
 * *All of this works with Ollama and **any OpenAI-compatible servers!** (ChatGPT, VLLM, etc)  
-Just replace the OllamaAgent by an [OpenAiAgent](https://remembersoftwares.github.io/yacana/pages/other_inference_servers.html) and your good to go!*  
+Just replace the OllamaAgent by an [OpenAiAgent](https://remembersoftwares.github.io/yacana/pages/other_inference_servers.html) and you're good to go!*  
 * Many other features to discover like medias (images, sound, ...) or managing the history by tags, etc!  
 
 ## Quick demo
