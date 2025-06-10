@@ -99,6 +99,8 @@ class OllamaAgent(GenericAgent):
             ai_tool_choice: str = self._chat(local_history, tool_choose).content
             ai_tool_choice = self._strip_thinking_tags(ai_tool_choice).strip(" \n").lower()
 
+            print("ai tool choice = ", ai_tool_choice)
+
             found_tools: List[Tool] = []
 
             for tool in tools:
@@ -263,7 +265,7 @@ class OllamaAgent(GenericAgent):
         bool
             True if another tool call is needed, False otherwise.
         """
-        tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what are the remaining steps are if any."
+        tool_continue_prompt = "Now that the tool responded do you need to make another tool call ? Explain why and what the remaining steps are if any. DO NOT make the tool call now. Just think."
         ai_tool_continue_answer: str = self._chat(local_history, tool_continue_prompt).content
 
         # Syncing with global history
