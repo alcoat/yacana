@@ -297,14 +297,16 @@ INFO: [TOOL_RESPONSE][ColorNameToHexa]: #0000FF
                 The answer to the question was indeed blue. And the tool returned the hexadecimal code for blue!
                 <br>
 
-                <h2 id="using-medias">Thinking LLMs (ie: Deepseek)</h2>
+                <hr class="major">
+
+                <h2 id="thinking-llms">Thinking LLMs (ie: Deepseek)</h2>
                 <p>
                     Thinking LLMs are a new breed of LLMs that can reason and think step by step to solve complex problems.<br>
                     They work in a similar way to Yacana's tool calling feature as the LLM makes it own reasoning loop before giving the final answer.<br>
-                    The most famous opensource thinking LLM is [Deepseek](https://ollama.com/library/deepseek-r1).<br>
+                    The most famous opensource thinking LLM is <a href="https://ollama.com/library/deepseek-r1">Deepseek</a>.<br>
                     <br>
                     However, the result of a <code>Task(...)</code> with a thinking LLM returns the complete reasoning process, not just the final answer.<br>
-                    This means that the <code>message.content</code> will have the tokens <code><think></think></code> followed by the final response.<br>
+                    This means that the <code>message.content</code> will have the tokens <code>&lt;think&gt;&lt;/think&gt;</code> followed by the final response.<br>
                     The content in between these tokens can disrupt Yacana so you should provide the framework's Agent class the correct delimiters to use.<br>
                 </p>
                 <pre><code class="language-python">
@@ -318,7 +320,7 @@ def send_weather(city: str, weather: str) -> None:
     print(f"Sending weather for {city}: {weather}")
 
 # Creating a Deepseek agent and specifying the thinking tokens for this LLM
-agent = OllamaAgent("Ai assistant", "deepseek-r1:8b-llama-distill-q8_0", thinking_tokens=("<think>", "</think>"))
+agent = OllamaAgent("Ai assistant", "deepseek-r1:latest", thinking_tokens=("&lt;think&gt;", "&lt;/think&gt;"))
 
 # Defining 2 tools
 get_weather_tool = Tool("get_weather", "Returns the weather for a given city.", get_weather)
@@ -329,8 +331,10 @@ Task(f"Send the current weather in L.A to the weather service. Use the tools in 
 print("\n--history--\n")
 agent.history.pretty_print()
                 </code></pre>
+                <br>
                 <p>
-                    In the above snippet we use the <code>thinking_tokens=("start_token", "end_token")</code> to tell Yacana how deepseek think. This way it will not disrupt the output.<br>
+                    In the above snippet we used the <code>thinking_tokens=("start_token", "end_token")</code> to tell Yacana what is Deepseek's self reasonning process and what's the actual answer.<br>
+                    This way it will not disrupt Yacana's features anymore and you can use this LLM as any normal LLM.<br>
                 </p>
 
 
