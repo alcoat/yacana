@@ -233,6 +233,7 @@ class GenericAgent(ABC):
             Optional runtime configuration for the task.
         tags : List[str] | None
             Optional list of tags.
+
         Returns
         -------
         GenericMessage

@@ -1,7 +1,7 @@
 # Flight checker 👨🏻‍✈️
 
-This agent is designed to tell you where a flight is currently by its call sign/flight number.
-Via a Yacana Tool, it calls an external HTTP API called OpenSkyNet to get flight information.
+This agent is designed to tell you where a flight is currently located by its call sign/flight number.  
+Via a Yacana Tool, it calls an external HTTP API called OpenSkyNet to get flight information.  
 
 ## Prerequisites
 
@@ -21,6 +21,10 @@ Finally, use the below to set your token:
 ```bash
 export TOKEN_OPENSKY={your_token_value}
 ```
+
+### Defining the LLM to use
+
+In `agent.py`, you can define which LLM to use by changing the model_name from the Agent class.
 
 ## Usage
 Then, you can kickstart a conversation with an agent by:
