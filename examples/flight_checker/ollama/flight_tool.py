@@ -7,16 +7,15 @@ retrieves flight data from the OpenSky Network API based on flight number.
 
 import os
 import json
-from operator import call
 from typing import Dict, Any
 from datetime import datetime, timedelta
 import requests
-import re
-from yacana import ToolError
-
 from relative_location_tool import get_location_with_type
 
+from yacana import ToolError
+
 time_window_hours = 48
+
 
 def get_flight_data_by_callsign(
     flight_number: str
@@ -27,13 +26,15 @@ def get_flight_data_by_callsign(
     This function searches for flights matching the provided flight number or callsign and returns
     detailed information including current position, altitude, velocity, and route information.
 
-    Args:
-        flight_number (str): The flight number or callsign to search for (e.g., "DLH441", "UAL123")
-        username (str, optional): OpenSky Network username for authenticated requests (higher rate limits)
-        password (str, optional): OpenSky Network password for authenticated requests
+    Parameters
+    ----------
+    flight_number: str
+        The flight number or callsign to search for (e.g., "DLH441", "UAL123")
 
-    Returns:
-        Dict[str, Any]: A dictionary containing flight information with the following structure:
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing flight information with the following structure:
         {
             "flight_found": bool,
             "callsign": str,
@@ -62,11 +63,15 @@ def get_flight_data_by_callsign(
             "error": str or None
         }
 
-    Raises:
-        requests.RequestException: If API request fails
-        ValueError: If flight_number is empty or invalid
+    Raises
+    ------
+    requests.RequestException
+        If API request fails
+    ValueError
+        If flight_number is empty or invalid
 
-    Example:
+    Examples
+    --------
         >>> flight_data = get_flight_data_by_callsign("DLH441")
         >>> print(f"Flight {flight_data['callsign']} is at altitude {flight_data['current_position']['altitude_meters']}m")
     """
@@ -228,6 +233,7 @@ def get_flight_data_by_callsign(
             "error": f"Unexpected error: {str(e)}",
             "error_type": "general_error"
         }
+
 
 # JSON Schema for AI Function Calling
 FLIGHT_DATA_FUNCTION_SCHEMA = {

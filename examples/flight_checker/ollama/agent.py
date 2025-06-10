@@ -4,7 +4,7 @@ from flight_tool import get_flight_data_by_callsign
 
 ms = OllamaModelSettings(temperature=0.7)
 
-agent = OllamaAgent("Flight assistant", "llama3.2:latest", system_prompt=
+agent = OllamaAgent("Flight assistant", "llama3.1:8b", system_prompt=
 """
 You are a flight specialist. 
 - Only respond to questions about flights or aviation; politely refuse all others.
@@ -25,18 +25,18 @@ call sign to get flight data from that method.
 Before calling this tool, ask yourself if you got a call sign or a flight number. 
 If you don't have a flight call sign or a flight number,
 there's no valid reason to call this tool.
-""", get_flight_data_by_callsign, optional=True, usage_examples= [{"flight_number": "AA101"},
-                                                                  {"flight_number": "BA234"},
-                                                                  {"flight_number": "VS20"},
-                                                                  {"flight_number": "UA4567"}, 
-                                                                  {"flight_number": "QR7890"},
-                                                                  {"flight_number": "EM1201"},
-                                                                  {"flight_number": "CX3214"}])
+""", get_flight_data_by_callsign, optional=True, usage_examples=[{"flight_number": "AA101"},
+                                                                {"flight_number": "BA234"},
+                                                                {"flight_number": "VS20"},
+                                                                {"flight_number": "UA4567"},
+                                                                {"flight_number": "QR7890"},
+                                                                {"flight_number": "EM1201"},
+                                                                {"flight_number": "CX3214"}])
 
 while True:
     prompt = input(">")
 
-    result = Task(prompt, agent, tools=[flight_t]).solve().content
+    Task(prompt, agent, tools=[flight_t]).solve()
 
     result = Task("""Now, re-write about that result into a comprehensive summary that's comprehensible for a customer
     that doesn't care about how you work technically, but that only
