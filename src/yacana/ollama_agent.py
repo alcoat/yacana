@@ -168,8 +168,11 @@ class OllamaAgent(GenericAgent):
         while True:
             additional_prompt_help: str = ""
             try:
-                args: dict = json.loads(self._strip_thinking_tags(tool_training_history.get_last_message().content))
-                tool_output: str = tool.function_ref(**args)
+                function_args: dict = json.loads(self._strip_thinking_tags(tool_training_history.get_last_message().content))
+                if tool.is_mcp:
+                    tool_output: str = tool.function_ref(tool_name=tool.tool_name, arguments=function_args)
+                else:
+                    tool_output: str = tool.function_ref(**function_args)
                 if tool_output is None:
                     logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: None -> LLM won't be asked to reflect on the tool result.")
                     #tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."

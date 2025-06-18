@@ -96,7 +96,10 @@ class OpenAiAgent(GenericAgent):
 
         while True:
             try:
-                tool_output: str = tool.function_ref(**function_args)
+                if tool.is_mcp:
+                    tool_output: str = tool.function_ref(tool_name=tool.tool_name, arguments=function_args)
+                else:
+                    tool_output: str = tool.function_ref(**function_args)
                 if tool_output is None:
                     tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
                 else:
@@ -122,19 +125,19 @@ class OpenAiAgent(GenericAgent):
                 self._chat(self.history, f"The tool returned an error: `{tool_output}`\nUsing this error message, fix the JSON you generated.")
         return tool_output
 
-    def _update_tool_definition(self, tools: List[Tool]) -> None:
-        """
-        Updates the OpenAI function schema for each tool.
-
-        Parameters
-        ----------
-        tools : List[Tool]
-            List of tools to update.
-        """
-        tools: List[Tool] = [] if tools is None else tools
-        for tool in tools:
-            if tool._openai_function_schema is None:
-                tool._function_to_json_with_pydantic()
+    #def _update_tool_definition(self, tools: List[Tool]) -> None:
+    #    """
+    #    Updates the OpenAI function schema for each tool.
+    #
+    #    Parameters
+    #    ----------
+    #    tools : List[Tool]
+    #        List of tools to update.
+    #    """
+    #    tools: List[Tool] = [] if tools is None else tools
+    #    for tool in tools:
+    #        if tool._openai_function_schema is None:
+    #            tool._function_to_json_with_pydantic()
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, images: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
@@ -169,7 +172,7 @@ class OpenAiAgent(GenericAgent):
             If a requested tool is not found in the tools list.
         """
         self._tags = tags if tags is not None else []
-        self._update_tool_definition(tools)
+        #self._update_tool_definition(tools)
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
         if len(tools) == 0:

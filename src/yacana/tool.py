@@ -1,12 +1,29 @@
 import inspect
 import json
 import logging
-from typing import List, Callable
+from abc import abstractmethod, ABC
+from enum import Enum
+from typing import List, Callable, Dict, Any
 
 from .exceptions import IllogicalConfiguration
 from .function_to_json_schema import function_to_json_with_pydantic
 from .history import History, MessageRole, OllamaUserMessage
 
+class ToolType(Enum):
+    """
+    <b>ENUM:</b> XX
+
+    XX
+
+    Attributes
+    ----------
+    OPENAI : str
+        XXXX
+    YACANA : str
+        XXXX
+    """
+    OPENAI = "OPENAI"
+    YACANA = "YACANA"
 
 class Tool:
     """
@@ -67,21 +84,34 @@ class Tool:
     """
 
     def __init__(self, tool_name: str, function_description: str, function_ref: Callable, optional: bool = False,
-                 usage_examples: List[dict] | None = None, max_custom_error: int = 5, max_call_error: int = 5) -> None:
+                 usage_examples: List[dict] | None = None, max_custom_error: int = 5, max_call_error: int = 5,
+                 tool_type: ToolType = ToolType.YACANA, mcp_input_schema: dict = None, **kwargs) -> None:
         self.tool_name: str = tool_name
         self.function_description: str = function_description
         self.function_ref: Callable = function_ref
+        self.is_mcp: bool = mcp_input_schema is not None
         self.optional: bool = optional
         self.usage_examples: List[dict] = usage_examples if usage_examples is not None else []
-        self._function_prototype: str = Tool._extract_prototype(function_ref)
-        self._function_args: List[str] = Tool._extract_parameters(function_ref)
-        self._openai_function_schema: dict | None = None
+
+
+        if mcp_input_schema is not None:
+            self._openai_function_schema: dict = self._function_to_json_with_mcp(mcp_input_schema)
+            self._function_prototype: str = Tool._extract_prototype(function_ref).replace("call_tool(", self.tool_name + "(")
+            self._function_args: List[str] = mcp_input_schema
+            print("function args = ", self._function_args)
+            print("bah alors = ", self._function_prototype)
+        else:
+            self._openai_function_schema: dict = self._function_to_json_with_pydantic()
+            self._function_prototype: str = Tool._extract_prototype(function_ref)
+            self._function_args: List[str] = Tool._extract_parameters(function_ref)
         self.max_custom_error: int = max_custom_error
         self.max_call_error: int = max_call_error
+        self.tool_type: ToolType = tool_type
+
         if max_custom_error < 0 or max_call_error < 0:
             raise IllogicalConfiguration("@max_custom_error and @max_call_error must be > 0")
         if " " in self.tool_name:
-            logging.warning(f"Tool name {self.tool_name} contains spaces. Some inference servers may not support it. We recommand you use CamelCase instead.")
+            logging.warning(f"Tool name {self.tool_name} contains spaces. Some inference servers may not support it. We recommend you use CamelCase instead.")
         # Unused for now as it poses pb when there are multiple tools. We lack of a tool parent object that could store this information.
         #self.post_tool_prompt: str | None = post_tool_prompt_reflection
 
@@ -154,7 +184,7 @@ class Tool:
         # Extract the parameter names into a list
         return [param_name for param_name in parameters]
 
-    def _function_to_json_with_pydantic(self) -> None:
+    def _function_to_json_with_pydantic(self) -> Dict:
         """
         Convert the function to a JSON schema using Pydantic.
 
@@ -162,4 +192,16 @@ class Tool:
         OpenAI's function calling API. The schema is stored in the
         _openai_function_schema attribute.
         """
-        self._openai_function_schema = function_to_json_with_pydantic(self.tool_name, self.function_description, self.function_ref)
+        return function_to_json_with_pydantic(self.tool_name, self.function_description, self.function_ref)
+
+    def _function_to_json_with_mcp(self, input_shema: dict) -> Dict:
+        input_shema["required"] = False
+        return {
+            "type": "function",
+            "function": {
+                "name": self.tool_name,
+                "description": self.function_description,
+                "parameters": input_shema,
+                "strict": True
+            }
+        }
