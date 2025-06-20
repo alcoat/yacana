@@ -9,6 +9,7 @@ from .exceptions import IllogicalConfiguration, McpBadToolConfig
 from .function_to_json_schema import function_to_json_with_pydantic
 from .history import History, MessageRole, OllamaUserMessage
 
+
 class ToolType(Enum):
     """
     <b>ENUM:</b> XX
@@ -24,6 +25,7 @@ class ToolType(Enum):
     """
     OPENAI = "OPENAI"
     YACANA = "YACANA"
+
 
 class Tool:
     """
@@ -95,18 +97,13 @@ class Tool:
 
         if mcp_input_schema is not None:
             self._openai_function_schema: dict = self._function_to_json_with_mcp(mcp_input_schema)
-            #self._function_prototype: str = Tool._extract_prototype(function_ref).replace("call_tool(", self.tool_name + "(")
             params: List[Tuple[str, str]] = self.input_shema_to_prototype(mcp_input_schema)
-            #self._function_prototype: str = self.tool_name + "(" + ", ".join(params) + ")"
             self._function_prototype: str = self.tool_name + "(" + ", ".join([f"{name}: {type_}" for name, type_ in params]) + ")"
             self._function_args: List[str] = [param[0] for param in params]
-            print("function args = ", self._function_args)
-            print("bah alors = ", self._function_prototype)
         else:
             self._openai_function_schema: dict = self._function_to_json_with_pydantic()
             self._function_prototype: str = Tool._extract_prototype(function_ref)
             self._function_args: List[str] = Tool._extract_parameters(function_ref)
-            print("original function args = ", self._function_args)
         self.max_custom_error: int = max_custom_error
         self.max_call_error: int = max_call_error
         self.tool_type: ToolType = tool_type

@@ -1,20 +1,13 @@
 import copy
 import json
 import logging
-
 import requests
 import uuid
 from typing import Dict, List, Any, Optional
 
-from .exceptions import McpBadToolConfig
+from .exceptions import McpBadToolConfig, McpBadTransport, McpResponseError, McpServerNotYetInitialized
 from .tool import Tool, ToolType
 
-
-#@dataclass
-#class Tool:
-#    name: str
-#    description: str
-#    input_schema: Dict[str, Any]
 
 class Mcp:
 
@@ -27,9 +20,23 @@ class Mcp:
         self.session_id: Optional[str] = None
 
     def _make_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Make a JSON-RPC request to the MCP server using Streamable HTTP transport"""
+        """
+        Makes a JSON-RPC request to the MCP server and parses the response as JSON or SSE (Server-Sent Events).
+
+        Parameters
+        ----------
+        method : str
+            The JSON-RPC method to call.
+        params : Dict[str, Any], optional
+            The parameters to pass to the method. Defaults to None.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The result of the method call.
+        """
         request_id = str(uuid.uuid4())
-        payload = {
+        payload: Dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": request_id,
             "method": method
@@ -39,7 +46,8 @@ class Mcp:
 
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream"
+            "Accept": "application/json, text/event-stream",
+            **self.headers
         }
 
         # Add session ID header if we have one
@@ -58,84 +66,90 @@ class Mcp:
             # Check if server returned a session ID during initialization
             if method == "initialize" and "Mcp-Session-Id" in response.headers:
                 self.session_id = response.headers["Mcp-Session-Id"]
-                print(f"Server assigned session ID: {self.session_id}")
+                logging.debug(f"Server assigned session ID: {self.session_id}")
 
             # Handle different response types
             content_type = response.headers.get('content-type', '').lower()
 
             if 'application/json' in content_type:
                 result = response.json()
-                print("result en application/json", result)
+                logging.debug("Getting result from MCP server with protocol: application/json", result)
                 if "error" in result:
-                    raise Exception(f"MCP Error: {result['error']}")
+                    raise McpResponseError(f"MCP Error: {result['error']}")
                 return result.get("result", {})
 
             elif 'text/event-stream' in content_type:
                 # Handle SSE response - for simplicity, we'll read the first JSON response
                 # In a production client, you'd want to properly handle the SSE stream
-                print("Received SSE response", response)
+                logging.debug("Getting result from MCP server with protocol: SSE", response)
                 return self._handle_sse_response(response)
 
             else:
                 # If no specific content type, try to parse as JSON
                 try:
+                    logging.warning("Received unexpected content type, trying to parse as JSON")
                     result = response.json()
-                    print("On sait pas c'est quoi alors on parse en json", result)
+                    logging.debug("Getting result from MCP server with unknown protocol", result)
                     if "error" in result:
-                        raise Exception(f"MCP Error: {result['error']}")
+                        logging.error(f"MCP Error: {result['error']}")
+                        raise McpResponseError(f"MCP Error: {result['error']}")
                     return result.get("result", {})
                 except:
-                    raise Exception(f"Unexpected response format: {response.text}")
+                    raise McpBadTransport(f"Unexpected response format: {response.text}")
 
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code in [404, 405]:
-                # Try fallback to old HTTP+SSE transport
-                print("Attempting fallback to legacy HTTP+SSE transport...")
-                return self._try_legacy_transport(method, params)
-            raise Exception(f"HTTP Error {e.response.status_code}: {e.response.text}")
+            raise McpBadTransport(f"HTTP Error {e.response.status_code}: {e.response.text}")
 
     def _handle_sse_response(self, response) -> Dict[str, Any]:
-        """Handle Server-Sent Events response (simplified implementation)"""
-        # This is a simplified SSE parser - in production you'd want a proper SSE client
-        lines = response.text.split('\n')
-        for line in lines:
-            print("line = ", line)
-            print("----")
+        """
+        Handle Server-Sent Events (SSE) response.
+        Reads the streamed response line by line and reconstructs SSE events properly.
+
+        Parameters
+        ----------
+        response : requests.Response
+            Streamed response from the server (with text/event-stream content-type).
+
+        Returns
+        -------
+        Dict[str, Any]
+            The first valid 'result' found in the SSE stream.
+        """
+        event_data_lines = []
+
+        for line in response.iter_lines(decode_unicode=True):
+            if line is None:
+                continue
+
             line = line.strip()
-            if line.startswith('data: '):
-                try:
-                    data = json.loads(line[6:])  # Remove 'data: ' prefix
-                    if "result" in data:
-                        return data["result"]
-                    elif "error" in data:
-                        raise Exception(f"MCP Error: {data['error']}")
-                except json.JSONDecodeError:
-                    continue
+            # Comment line or empty
+            if line == '':
+                # End of one event
+                if event_data_lines:
+                    full_data = '\n'.join(event_data_lines)
+                    try:
+                        data = json.loads(full_data)
+                        if "result" in data:
+                            print("=> ", data["result"])
+                            return data["result"]
+                        elif "error" in data:
+                            raise Exception(f"MCP Error: {data['error']}")
+                    except json.JSONDecodeError:
+                        pass  # Ignore and continue
+                    event_data_lines = []  # Reset buffer for next event
+                continue
 
-        raise Exception("No valid JSON-RPC response found in SSE stream")
+            if line.startswith('data:'):
+                # Could be just 'data:' (empty), so use slicing carefully
+                event_data_lines.append(line[5:].lstrip())
 
-    def _try_legacy_transport(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Fallback to legacy HTTP+SSE transport for older servers"""
-        print("Note: This server appears to use the legacy HTTP+SSE transport")
-        print("For full compatibility with legacy servers, consider implementing proper SSE handling")
-
-        # For now, just attempt a GET request to see if we get an SSE endpoint event
-        try:
-            headers = {"Accept": "text/event-stream"}
-            response = self.session.get(self.server_url, headers=headers, timeout=10)
-
-            if response.headers.get('content-type', '').startswith('text/event-stream'):
-                print("Server supports SSE - but full legacy support not implemented in this example")
-                # You would need to implement the full legacy HTTP+SSE protocol here
-                raise Exception("Legacy HTTP+SSE transport detected but not fully supported in this example")
-
-        except Exception as e:
-            print(f"Legacy transport attempt failed: {e}")
-
-        raise Exception("Could not connect using either new or legacy MCP transport")
+        raise Exception("No valid 'result' found in SSE stream.")
 
     def connect(self) -> bool:
-        """Initialize connection with the MCP server"""
+        """
+        Initializes connection with the MCP server
+        """
+        logging.info("[MCP] Connecting to MCP server...")
         # Initialize the protocol
         init_result = self._make_request("initialize", {
             "protocolVersion": "2025-03-26",
@@ -149,7 +163,7 @@ class Mcp:
         })
 
         server_info = init_result.get('serverInfo', {})
-        print(f"Connected to MCP server: {server_info.get('name', 'Unknown')} v{server_info.get('version', 'Unknown')}")
+        logging.info(f"[MCP] Connected to MCP server: {server_info.get('name', 'Unknown')} v{server_info.get('version', 'Unknown')}")
 
         # List available tools
         tools_result = self._make_request("tools/list")
@@ -158,30 +172,39 @@ class Mcp:
         for tool_info in tools:
             try:
                 tool = Tool(tool_info.get("name"),
-                        tool_info.get("description"),
-                        function_ref=self.call_tool,
-                        mcp_input_schema=tool_info["inputSchema"],
-                        optional=True)
+                            tool_info.get("description"),
+                            function_ref=self._call_tool,
+                            mcp_input_schema=tool_info["inputSchema"],
+                            optional=True)
                 self.tools.append(tool)
-                print(f"Available tool: {tool.tool_name} - {tool.function_description}")
+                logging.info(f"[MCP] Available tool: {tool.tool_name} - {tool.function_description}")
             except McpBadToolConfig as e:
-                logging.warning(f"MCp tool will be excluded due to : {e.message}")
+                logging.warning(f"[MCP] Tool will be excluded due to : {e.message}")
 
         if not tools:
-            print("No tools available on this server")
+            logging.info("[MCP] No tools available on this server")
 
         self.initialized = True
         return True
 
-    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Call a tool on the MCP server"""
+    def _call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calls a tool on the MCP server using request.
+
+        Parameters
+        ----------
+        tool_name : str
+            The name of the tool to call.
+        arguments : Dict[str, Any]
+            The arguments to pass to the tool.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The result of the tool call.
+        """
         if not self.initialized:
-            raise Exception("Client not initialized")
-        print("calling tool:", tool_name, "with arguments: ", arguments)
-
-        #if tool_name not in [tool.tool_name for tool in self.tools]:
-        #    raise Exception(f"Tool '{tool_name}' not available. Available tools: {[tool.tool_name for tool in self.tools]}")
-
+            raise McpServerNotYetInitialized("Cannot call tool on server. Client not initialized")
         result = self._make_request("tools/call", {
             "name": tool_name,
             "arguments": arguments
@@ -189,28 +212,51 @@ class Mcp:
 
         return result
 
-    def get_tools_as(self, tools_type: ToolType = ToolType.YACANA):
+    def get_tools_as(self, tools_type: ToolType = ToolType.YACANA) -> List[Tool]:
+        """
+        Returns the tools from the remote MCP server as a list of Tool objects. You choose how these tools will be called
+        by specifying the tools_type parameter. This list of tools must be given to a Task() object.
+
+        Parameters
+        ----------
+        tools_type : ToolType
+            The type of tools to return. Default is ToolType.YACANA, which means the tools will be callable using the Yacana framework.
+
+        Returns
+        -------
+        List[Tool]
+            A list of Tool objects of the specified type.
+        """
+        if not self.initialized:
+            raise McpServerNotYetInitialized("Cannot get tools from server. Client not initialized")
         tools_copy = copy.deepcopy(self.tools)
         for tool in tools_copy:
             tool.tool_type = tools_type
         return tools_copy
 
-    def get_available_tools(self) -> List[str]:
-        """Get list of available tool names"""
-        return [tool.tool_name for tool in self.tools]
+    def forget_tool(self, tool_name: str) -> None:
+        """
+        Forgets about a tool from the MCP server. Note that using a tool leaves a trace in the history, hence it is not
+        possible to completely forget about a tool. However, the tool won't be proposed for future tasks. Call this method
+        right after connecting to the MCP server.
 
-    def get_tool_info(self, tool_name: str) -> Optional[Tool]:
-        """Get information about a specific tool"""
-        for tool in self.tools:
-            if tool.tool_name == tool_name:
-                return tool
-        return None
+        Parameters
+        ----------
+        tool_name : str
+            The name of the tool to delete.
+        """
+        if not self.initialized:
+            raise McpServerNotYetInitialized("Cannot forget tool. Client not initialized")
+        self.tools = [tool for tool in self.tools if tool.tool_name != tool_name]
+        logging.info(f"Tool '{tool_name}' deleted from MCP client.")
 
     def disconnect(self):
-        """Explicitly disconnect from the server"""
+        """
+        Explicitly disconnects from the server
+        """
         if self.session_id:
             try:
-                headers = {"Mcp-Session-Id": self.session_id}
+                headers = {"Mcp-Session-Id": self.session_id, **self.headers}
                 self.session.delete(self.server_url, headers=headers, timeout=5)
             except:
                 pass  # Ignore errors during cleanup

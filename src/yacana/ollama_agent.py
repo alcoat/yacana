@@ -175,7 +175,6 @@ class OllamaAgent(GenericAgent):
                     tool_output: str = tool.function_ref(**function_args)
                 if tool_output is None:
                     logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: None -> LLM won't be asked to reflect on the tool result.")
-                    #tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
                 else:
                     tool_output = str(tool_output)
                     logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")
