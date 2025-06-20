@@ -108,3 +108,13 @@ class UnknownResponseFromLLM(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+
+class McpBadToolConfig(Exception):
+    """
+    Exception raised when the input shema from the MCP server is not valid.
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)

@@ -1,9 +1,12 @@
 import copy
 import json
+import logging
+
 import requests
 import uuid
 from typing import Dict, List, Any, Optional
 
+from .exceptions import McpBadToolConfig
 from .tool import Tool, ToolType
 
 
@@ -153,12 +156,16 @@ class Mcp:
         tools = tools_result.get("tools", [])
 
         for tool_info in tools:
-            tool = Tool(tool_info.get("name"),
+            try:
+                tool = Tool(tool_info.get("name"),
                         tool_info.get("description"),
                         function_ref=self.call_tool,
-                        mcp_input_schema=tool_info["inputSchema"])
-            self.tools.append(tool)
-            print(f"Available tool: {tool.tool_name} - {tool.function_description}")
+                        mcp_input_schema=tool_info["inputSchema"],
+                        optional=True)
+                self.tools.append(tool)
+                print(f"Available tool: {tool.tool_name} - {tool.function_description}")
+            except McpBadToolConfig as e:
+                logging.warning(f"MCp tool will be excluded due to : {e.message}")
 
         if not tools:
             print("No tools available on this server")

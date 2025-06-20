@@ -3,9 +3,9 @@ import json
 import logging
 from abc import abstractmethod, ABC
 from enum import Enum
-from typing import List, Callable, Dict, Any
+from typing import List, Callable, Dict, Any, Tuple
 
-from .exceptions import IllogicalConfiguration
+from .exceptions import IllogicalConfiguration, McpBadToolConfig
 from .function_to_json_schema import function_to_json_with_pydantic
 from .history import History, MessageRole, OllamaUserMessage
 
@@ -93,17 +93,20 @@ class Tool:
         self.optional: bool = optional
         self.usage_examples: List[dict] = usage_examples if usage_examples is not None else []
 
-
         if mcp_input_schema is not None:
             self._openai_function_schema: dict = self._function_to_json_with_mcp(mcp_input_schema)
-            self._function_prototype: str = Tool._extract_prototype(function_ref).replace("call_tool(", self.tool_name + "(")
-            self._function_args: List[str] = mcp_input_schema
+            #self._function_prototype: str = Tool._extract_prototype(function_ref).replace("call_tool(", self.tool_name + "(")
+            params: List[Tuple[str, str]] = self.input_shema_to_prototype(mcp_input_schema)
+            #self._function_prototype: str = self.tool_name + "(" + ", ".join(params) + ")"
+            self._function_prototype: str = self.tool_name + "(" + ", ".join([f"{name}: {type_}" for name, type_ in params]) + ")"
+            self._function_args: List[str] = [param[0] for param in params]
             print("function args = ", self._function_args)
             print("bah alors = ", self._function_prototype)
         else:
             self._openai_function_schema: dict = self._function_to_json_with_pydantic()
             self._function_prototype: str = Tool._extract_prototype(function_ref)
             self._function_args: List[str] = Tool._extract_parameters(function_ref)
+            print("original function args = ", self._function_args)
         self.max_custom_error: int = max_custom_error
         self.max_call_error: int = max_call_error
         self.tool_type: ToolType = tool_type
@@ -114,6 +117,30 @@ class Tool:
             logging.warning(f"Tool name {self.tool_name} contains spaces. Some inference servers may not support it. We recommend you use CamelCase instead.")
         # Unused for now as it poses pb when there are multiple tools. We lack of a tool parent object that could store this information.
         #self.post_tool_prompt: str | None = post_tool_prompt_reflection
+
+    def input_shema_to_prototype(self, input_shema: dict) -> List[Tuple[str, str]]:
+        """
+        Convert the input schema to a function prototype string.
+
+        Parameters
+        ----------
+        input_shema : dict
+            The input schema to convert.
+
+        Returns
+        -------
+         List[(str, str)]
+            tuple[0] is the param name and tuple[1] is the param type.
+        """
+        if input_shema.get("type") != "object" or "properties" not in input_shema:
+            raise McpBadToolConfig(f"For tool '{self.tool_name}' from source MCP : Input schema must be an object with properties.")
+
+        result: List[Tuple[str, str]] = []
+        for param_name, param_info in input_shema["properties"].items():
+            param_type = param_info.get("type", "Any")
+            result.append((param_name, param_type))
+
+        return result
 
     def _get_examples_as_history(self, tags: List[str]) -> History:
         """
