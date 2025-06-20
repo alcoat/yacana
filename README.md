@@ -25,6 +25,8 @@ The real strength of the framework lies in its ability to deliver impressive res
 
 Yacana offers a **guided workflow** approach or **multi-turn chat** for production-grade capabilities, leveraging what we typically call '*Agents*'. However, Yacana takes a different approach to Agents compared to other frameworks, focusing more on chaining Tasks together rather than on the Agents themselves.
 
+[Take this 1-minute survey to tell us what you think!](https://docs.google.com/forms/d/e/1FAIpQLSeaDaHgYagJWsQ97EkZTGRvpvq6tWzz7U9H7lojCsCI3fw9EQ/viewform?usp=dialog)
+
 ---
 
 ## Key Features
