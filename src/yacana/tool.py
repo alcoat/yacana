@@ -87,7 +87,7 @@ class Tool:
 
     def __init__(self, tool_name: str, function_description: str, function_ref: Callable, optional: bool = False,
                  usage_examples: List[dict] | None = None, max_custom_error: int = 5, max_call_error: int = 5,
-                 tool_type: ToolType = ToolType.YACANA, mcp_input_schema: dict = None, **kwargs) -> None:
+                 tool_type: ToolType = ToolType.YACANA, mcp_input_schema: dict = None) -> None:
         self.tool_name: str = tool_name
         self.function_description: str = function_description
         self.function_ref: Callable = function_ref
@@ -219,7 +219,6 @@ class Tool:
         return function_to_json_with_pydantic(self.tool_name, self.function_description, self.function_ref)
 
     def _function_to_json_with_mcp(self, input_shema: dict) -> Dict:
-        input_shema["required"] = False
         return {
             "type": "function",
             "function": {
