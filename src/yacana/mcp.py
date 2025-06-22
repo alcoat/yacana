@@ -73,7 +73,7 @@ class Mcp:
 
             if 'application/json' in content_type:
                 result = response.json()
-                logging.debug("Getting result from MCP server with protocol: application/json", result)
+                logging.debug(f"Getting result from MCP server with protocol: application/json. Response = {result}")
                 if "error" in result:
                     raise McpResponseError(f"MCP Error: {result['error']}")
                 return result.get("result", {})
@@ -81,7 +81,7 @@ class Mcp:
             elif 'text/event-stream' in content_type:
                 # Handle SSE response - for simplicity, we'll read the first JSON response
                 # In a production client, you'd want to properly handle the SSE stream
-                logging.debug("Getting result from MCP server with protocol: SSE", response)
+                logging.debug(f"Getting result from MCP server with protocol: SSE. Response = {response}")
                 return self._handle_sse_response(response)
 
             else:
@@ -89,7 +89,7 @@ class Mcp:
                 try:
                     logging.warning("Received unexpected content type, trying to parse as JSON")
                     result = response.json()
-                    logging.debug("Getting result from MCP server with unknown protocol", result)
+                    logging.debug(f"Getting result from MCP server with unknown protocol. Response = {result}")
                     if "error" in result:
                         logging.error(f"MCP Error: {result['error']}")
                         raise McpResponseError(f"MCP Error: {result['error']}")
