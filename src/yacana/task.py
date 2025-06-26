@@ -115,6 +115,8 @@ class Task:
         if self.streaming_callback is not None and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have streaming_callback and structured_output at the same time. Having incomplete JSON is useless.")
 
+        self._check_tools_are_identical()
+
         # Only used when @forget is True
         self._initial_history: History | None = None
 
@@ -131,6 +133,16 @@ class Task:
             A unique task identifier.
         """
         return self._uuid
+
+    def _check_tools_are_identical(self):
+        """
+        All tools must be of the same type. We can't mix tools because they are not proposed in the same way to the LLM.
+        """
+        if len(self.tools) > 0:
+            first_tool_type = self.tools[0].tool_type
+            for tool in self.tools:
+                if tool.tool_type != first_tool_type:
+                    raise IllogicalConfiguration("All tools must be of the same type. Mixing tool types is not allowed.")
 
     def add_tool(self, tool: Tool) -> None:
         """

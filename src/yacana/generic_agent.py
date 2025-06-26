@@ -5,10 +5,11 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
+from .yacana_tool_calling import YacanaToolCaller
 from .history import History, GenericMessage, MessageRole, Message
-from .logging_config import LoggerManager
 from .model_settings import ModelSettings
-from .tool import Tool
+from .open_ai_tool_calling import OpenAiToolCaller
+from .tool import Tool, ToolType
 from .exceptions import IllogicalConfiguration
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,8 @@ class GenericAgent(ABC):
         self._tags: List[str] = []
         self.thinking_tokens: tuple[str, str] | None = thinking_tokens
 
+        self.tool_caller: YacanaToolCaller | OpenAiToolCaller | None = None
+
         self.history: History = history if history is not None else History()
         if self.system_prompt is not None and history is None:
             self.history.add_message(Message(MessageRole.SYSTEM, system_prompt))
@@ -123,6 +126,25 @@ class GenericAgent(ABC):
         """
         super().__init_subclass__(**kwargs)
         GenericAgent._registry[cls.__name__] = cls
+
+    def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None, streaming_callback: Callable | None = None) -> GenericMessage:
+        raise NotImplemented(f"This method must be subclassed by the child class. It allows to interact with the LLM server using the correct client library.")
+
+    def _set_correct_tool_caller(self, tools: List[Tool]) -> None:
+        """
+        Based on the first tool type in the list, sets the appropriate tool caller.
+        All tools have the same type so checking the first one is enough.
+
+        Parameters
+        ----------
+        tools : List[Tool]
+            List of tools to determine the tool caller type.
+        """
+        if len(tools) > 0:
+            if tools[0].tool_type == ToolType.YACANA:
+                self.tool_caller = YacanaToolCaller(self)
+            elif tools[0].tool_type == ToolType.OPENAI:
+                self.tool_caller = OpenAiToolCaller(self)
 
     def _strip_thinking_tags(self, message: str) -> str:
         """

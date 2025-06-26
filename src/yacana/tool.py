@@ -104,6 +104,7 @@ class Tool:
             self._openai_function_schema: dict = self._function_to_json_with_pydantic()
             self._function_prototype: str = Tool._extract_prototype(function_ref)
             self._function_args: List[str] = Tool._extract_parameters(function_ref)
+
         self.max_custom_error: int = max_custom_error
         self.max_call_error: int = max_call_error
         self.tool_type: ToolType = tool_type
@@ -117,7 +118,7 @@ class Tool:
 
     def input_shema_to_prototype(self, input_shema: dict) -> List[Tuple[str, str]]:
         """
-        Convert the input schema to a function prototype string.
+        Converts the input schema to a function prototype string.
 
         Parameters
         ----------

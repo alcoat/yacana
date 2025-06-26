@@ -102,7 +102,7 @@ class ToolCallFromLLM:
             "type": "function",
             "function": {
                 "name": self.name,
-                "arguments": json.dumps(self.arguments)
+                "arguments": self.arguments
             }
         }
 
@@ -523,7 +523,7 @@ class OpenAIFunctionCallingMessage(GenericMessage):
 
     def __init__(self, tool_calls: List[ToolCallFromLLM], tags: List[str] = None, **kwargs):
         role = MessageRole.ASSISTANT
-        content = None
+        content = ""  # !!!!!!!!!!!!!!!!!!!!!!!!!!@todo c'était None avant
         medias = None
         structured_output = None
         tool_call_id = None
@@ -580,6 +580,7 @@ class OpenAIToolCallingMessage(GenericMessage):
         return {
             "role": self.role.value,
             "content": self.content,
+            "name": "get_temperature", # !!!!!!!!!!!!!!!!!!!!@todo hardcoded
             ** ({"tool_call_id": self.tool_call_id} if self.tool_call_id is not None else {}),
         }
 
