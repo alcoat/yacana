@@ -10,7 +10,7 @@ from yacana.open_ai_tool_calling import OpenAiToolCaller
 
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
-from .utils import Dotdict
+from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
 from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage, OpenAIUserMessage, ToolCallFromLLM, OpenAIFunctionCallingMessage
 from .tool import Tool, ToolType
@@ -48,9 +48,13 @@ class OllamaAgent(GenericAgent):
     thinking_tokens : Tuple[str, str] | None, optional
         A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
         Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
-
     **kwargs
         Additional keyword arguments passed to the parent class.
+
+    Attributes
+    ----------
+    agent_type : AgentType
+        Type of the Agent to circumvent partial import when determining agent's type at runtime.
 
     Raises
     ------
@@ -62,6 +66,7 @@ class OllamaAgent(GenericAgent):
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
+        self.agent_type: AgentType = AgentType.OLLAMA
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens)
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
@@ -297,7 +302,7 @@ class OllamaAgent(GenericAgent):
 
         print("je suis paumé")
 
-        #print("what his getting = ", history.get_messages_as_dict())
+        print("what his getting = ", history.get_messages_as_dict())
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
             "model": self.model_name,

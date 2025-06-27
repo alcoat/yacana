@@ -12,7 +12,7 @@ from openai.types.chat import ChatCompletionChunk
 
 from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
-from .utils import Dotdict
+from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
 from .history import HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
@@ -53,6 +53,11 @@ class OpenAiAgent(GenericAgent):
         A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
         Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
 
+    Attributes
+    ----------
+    agent_type : AgentType
+        Type of the Agent to circumvent partial import when determining agent's type at runtime.
+
     Raises
     ------
     IllogicalConfiguration
@@ -66,6 +71,7 @@ class OpenAiAgent(GenericAgent):
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
+        self.agent_type: AgentType = AgentType.OPENAI
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens)
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")

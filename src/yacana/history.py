@@ -151,8 +151,6 @@ class GenericMessage(ABC):
         An optional list of path pointing to images or audio on the filesystem.
     structured_output : Type[T] | None, optional
         An optional pydantic model that can be used to store the result of a JSON response by the LLM.
-    tool_call_id : str | None, optional
-        The ID of the tool call this message is associated with.
     tags : List[str] | None, optional
         Optional list of tags associated with the message.
     id : uuid.UUID | None, optional
@@ -172,22 +170,19 @@ class GenericMessage(ABC):
         List of media file paths.
     structured_output : Type[T] | None
         Pydantic model for structured output.
-    tool_call_id : str | None
-        ID of the associated tool call.
     tags : List[str]
         List of tags associated with the message.
     """
 
     _registry = {}
 
-    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCallFromLLM] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tool_call_id: str = None, tags: List[str] | None = None, id: uuid.UUID | None = None) -> None:
+    def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCallFromLLM] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tags: List[str] | None = None, id: uuid.UUID | None = None) -> None:
         self.id = str(uuid.uuid4()) if id is None else str(id)
         self.role: MessageRole = role
         self.content: str | None = content
         self.tool_calls: List[ToolCallFromLLM] | None = tool_calls
         self.medias: List[str] = medias if medias is not None else []
         self.structured_output: Type[T] | None = structured_output
-        self.tool_call_id: str | None = tool_call_id
         self.tags: List[str] = list(tags) if tags is not None else []
 
         # Checking that both @message and @tool_calls are neither None nor empty at the same time
@@ -489,8 +484,7 @@ class OpenAITextMessage(GenericMessage):
     def __init__(self, role: MessageRole, content: str, tags: List[str] = None, **kwargs):
         tool_calls = None
         structured_output = None
-        tool_call_id = None
-        super().__init__(role, content, tool_calls, None, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
+        super().__init__(role, content, tool_calls, None, structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         """
@@ -523,11 +517,10 @@ class OpenAIFunctionCallingMessage(GenericMessage):
 
     def __init__(self, tool_calls: List[ToolCallFromLLM], tags: List[str] = None, **kwargs):
         role = MessageRole.ASSISTANT
-        content = ""  # !!!!!!!!!!!!!!!!!!!!!!!!!!@todo c'était None avant
+        content = None
         medias = None
         structured_output = None
-        tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
+        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         """
@@ -545,7 +538,7 @@ class OpenAIFunctionCallingMessage(GenericMessage):
         }
 
 
-class OpenAIToolCallingMessage(GenericMessage):
+class OpenAiToolCallingMessage(GenericMessage):
     """
     Response from the LLM when a tool is called.
 
@@ -559,6 +552,11 @@ class OpenAIToolCallingMessage(GenericMessage):
         Optional list of tags associated with the message.
     **kwargs
         Additional keyword arguments passed to the parent class.
+
+    Attributes
+    ----------
+    tool_call_id : str
+        The ID of the tool call.
     """
 
     def __init__(self, content: str, tool_call_id: str, tags: List[str] = None, **kwargs):
@@ -566,7 +564,8 @@ class OpenAIToolCallingMessage(GenericMessage):
         tool_calls = None
         medias = None
         structured_output = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
+        self.tool_call_id = tool_call_id
+        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         """
@@ -580,8 +579,52 @@ class OpenAIToolCallingMessage(GenericMessage):
         return {
             "role": self.role.value,
             "content": self.content,
-            "name": "get_temperature", # !!!!!!!!!!!!!!!!!!!!@todo hardcoded
-            ** ({"tool_call_id": self.tool_call_id} if self.tool_call_id is not None else {}),
+            ** ({"tool_call_id": self.tool_call_id} if self.tool_call_id is not None else {})
+        }
+
+
+class OllamaToolCallingMessage(GenericMessage):
+    """
+    Response from the LLM when a tool is called.
+
+    Parameters
+    ----------
+    content : str
+        The output of the tool.
+    tool_call_name : str
+        The ID of the tool call.
+    tags : List[str], optional
+        Optional list of tags associated with the message.
+    **kwargs
+        Additional keyword arguments passed to the parent class.
+
+    Attributes
+    ----------
+    tool_call_name : str
+        The name of the tool call.
+    """
+
+    def __init__(self, content: str, tool_call_name: str, tags: List[str] = None, **kwargs):
+        role = MessageRole.TOOL
+        tool_calls = None
+        medias = None
+        structured_output = None
+        self.tool_call_name = tool_call_name
+        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
+
+    def get_message_as_dict(self):
+        """
+        Convert the message to a dictionary format.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the role, content, and tool call ID.
+        """
+        return {
+            "role": self.role.value,
+            "content": self.content,
+            "name": self.tool_call_name
         }
 
 
@@ -606,8 +649,7 @@ class OpenAIStructuredOutputMessage(GenericMessage):
     def __init__(self, role: MessageRole, content: str, structured_output: Type[T], tags: List[str] = None, **kwargs):
         tool_calls = None
         medias = None
-        tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
+        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         """
@@ -794,8 +836,7 @@ class OllamaStructuredOutputMessage(GenericMessage):
     def __init__(self, role: MessageRole, content: str, structured_output: Type[T], tags: List[str] = None, **kwargs):
         tool_calls = None
         medias = None
-        tool_call_id = None
-        super().__init__(role, content, tool_calls, medias, structured_output, tool_call_id, tags=tags, id=kwargs.get('id', None))
+        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
 
     def get_message_as_dict(self):
         """

@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
+from .utils import AgentType
 from .yacana_tool_calling import YacanaToolCaller
 from .history import History, GenericMessage, MessageRole, Message
 from .model_settings import ModelSettings
@@ -91,7 +92,7 @@ class GenericAgent(ABC):
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
 
-        # Vérification de la validité de thinking_tokens
+        # Checking if user used the right format for thinking tokens (aka tuple)
         if thinking_tokens is not None:
             if (not isinstance(thinking_tokens, tuple) or len(thinking_tokens) != 2 or
                     not all(isinstance(t, str) and t.strip() for t in thinking_tokens)):

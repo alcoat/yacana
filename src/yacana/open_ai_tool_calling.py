@@ -3,11 +3,11 @@ from json import JSONDecodeError
 from typing import List, Type, T, Dict, Callable
 from pydantic import BaseModel
 
-
 from .exceptions import MaxToolErrorIter, ToolError
-from .history import OpenAIToolCallingMessage, OpenAIFunctionCallingMessage
+from .history import OpenAiToolCallingMessage, OpenAIFunctionCallingMessage, OllamaToolCallingMessage
 from .tool import Tool
 from .base_tool_caller import BaseToolCaller
+from .utils import AgentType
 
 
 class OpenAiToolCaller(BaseToolCaller):
@@ -20,12 +20,19 @@ class OpenAiToolCaller(BaseToolCaller):
         self.agent._chat(self.agent.history, task, medias=medias, json_output=json_output, structured_output=structured_output, tools=tools)
         if isinstance(self.agent.history.get_last_message(), OpenAIFunctionCallingMessage):
             for tool_call in self.agent.history.get_last_message().tool_calls:
+                print("y a name la dedans ?", tool_call.name)
                 tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
                 if tool is None:
                     raise ValueError(f"Tool {tool_call.name} not found in tools list")
                 logging.debug("Found tool: %s", tool.tool_name)
                 tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
-                self.agent.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=self.agent._tags))
+                if self.agent.agent_type == AgentType.OPENAI:
+                    self.agent.history.add_message(OpenAiToolCallingMessage(tool_output, tool_call.call_id, tags=self.agent._tags))
+                elif self.agent.agent_type == AgentType.OLLAMA:
+                    self.agent.history.add_message(OllamaToolCallingMessage(tool_output, tool_call.name, tags=self.agent._tags))
+
+            plop = OllamaToolCallingMessage(tool_output, tool_call.name, tags=self.agent._tags)
+            print("dinguerie = ", self.agent.history.get_messages_as_dict())
             logging.info(f"[PROMPT][To: {self.agent.name}]: Retrying with original task and tools answer: '{task}'")
             self.agent._chat(self.agent.history, None, medias=medias, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
 

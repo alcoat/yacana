@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from .base_tool_caller import BaseToolCaller
 from .structured_outputs import UseTool, MakeAnotherToolCall
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration
-from .history import GenericMessage, MessageRole, History, OllamaUserMessage, OllamaTextMessage
+from .history import GenericMessage, MessageRole, History, OllamaUserMessage, OllamaTextMessage, OpenAIFunctionCallingMessage, OpenAiToolCallingMessage
 from .tool import Tool
 from .constants import PROMPT_TAG
 
@@ -97,21 +97,6 @@ class YacanaToolCaller(BaseToolCaller):
             self.agent._chat(self.agent.history, task, medias=medias, json_output=json_output)
         if at_least_one_tool_has_outputted is True:
             self.agent._chat(self.agent.history, f"Based on the previous tools output. Solve the initial task. The task was: {task}.", streaming_callback=streaming_callback)
-
-    def _call_openai_tools(self):
-        if isinstance(self.agent.history.get_last_message(), OpenAIFunctionCallingMessage):
-            for tool_call in self.agent.history.get_last_message().tool_calls:
-                tool = next((tool for tool in tools if tool.tool_name == tool_call.name), None)
-                if tool is None:
-                    raise ValueError(f"Tool {tool_call.name} not found in tools list")
-                logging.debug("Found tool: %s", tool.tool_name)
-                tool_output: str = self._call_openai_tool(tool, tool_call.arguments)
-                self.agent.history.add_message(OpenAIToolCallingMessage(tool_output, tool_call.call_id, tags=self.agent._tags))
-            logging.info(f"[PROMPT][To: {self.agent.name}]: Retrying with original task and tools answer: '{task}'")
-            self.agent._chat(self.agent.history, None, medias=medias, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
-
-
-
 
     def _choose_tool_by_name(self, local_history: History, tools: List[Tool]) -> Tool:
         """
