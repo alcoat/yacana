@@ -109,7 +109,6 @@ class OllamaAgent(GenericAgent):
         if len(tools) == 0:
             self._chat(self.history, task, medias=medias, json_output=json_output, structured_output=structured_output, streaming_callback=streaming_callback)
         elif len(tools) == 1:
-            print("the fuck")
             self.tool_caller.propose_tool(task, tools, json_output, structured_output, medias, streaming_callback, task_runtime_config, tags)
         elif len(tools) > 1:
             self.tool_caller.propose_tools(task, tools, json_output, structured_output, medias, streaming_callback, task_runtime_config, tags)
@@ -300,8 +299,6 @@ class OllamaAgent(GenericAgent):
             #else:
             question_slot = history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
 
-        print("je suis paumé")
-
         print("what his getting = ", history.get_messages_as_dict())
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
@@ -310,7 +307,7 @@ class OllamaAgent(GenericAgent):
             "format": self._get_expected_output_format(json_output, structured_output),
             "stream": True if streaming_callback is not None else False,
             "options": self.model_settings.get_settings(),
-            **({"tools": [tool.function_ref for tool in tools]} if tools is not None else {}),
+            **({"tools": [tool._openai_function_schema for tool in tools]} if tools is not None else {}),
             **self.runtime_config,
             **self.task_runtime_config
         }
@@ -324,8 +321,6 @@ class OllamaAgent(GenericAgent):
             logging.debug("Response assessment is tool calling")
             tool_calls: List[ToolCallFromLLM] = []
             for tool_call in response.message.tool_calls:
-                print("OLLAMA voyons voir le type de ce truc = ", tool_call.function.arguments)
-                print("type= ", type(tool_call.function.arguments))
                 tool_calls.append(ToolCallFromLLM(str(uuid.uuid4()), tool_call.function.name, tool_call.function.arguments))
                 logging.debug("Tool info : Name= %s, Arguments= %s", tool_call.function.name, tool_call.function.arguments)
             answer_slot: HistorySlot = history.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
