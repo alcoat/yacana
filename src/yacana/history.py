@@ -71,14 +71,14 @@ class ToolCallFromLLM:
         The unique identifier for the tool call.
     name : str
         The name of the tool being called.
-    arguments : dict
-        The arguments to be passed to the tool.
+    arguments : str | dict
+        The arguments to be passed to the tool. The Ollama agent wants a dict, while the OpenAI agent wants a string (JSON encoded).
     """
 
-    def __init__(self, call_id, name, arguments):
+    def __init__(self, call_id: str, name: str, arguments: str | dict):
         self.call_id: str = call_id
         self.name: str = name
-        self.arguments: dict = arguments
+        self.arguments: str | dict = arguments
 
     def get_tool_call_as_dict(self):
         """

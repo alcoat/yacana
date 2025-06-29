@@ -309,7 +309,9 @@ class OpenAiAgent(GenericAgent):
                 logging.debug("Response assessment is tool calling")
                 tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
-                    tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
+                    print("OPENAI voyons voir le type de ce truc = ", tool_call.function.arguments)
+                    print("type= ", type(tool_call.function.arguments))
+                    tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, tool_call.function.arguments))
                     logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
                 answer_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
 

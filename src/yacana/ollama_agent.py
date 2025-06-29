@@ -324,6 +324,8 @@ class OllamaAgent(GenericAgent):
             logging.debug("Response assessment is tool calling")
             tool_calls: List[ToolCallFromLLM] = []
             for tool_call in response.message.tool_calls:
+                print("OLLAMA voyons voir le type de ce truc = ", tool_call.function.arguments)
+                print("type= ", type(tool_call.function.arguments))
                 tool_calls.append(ToolCallFromLLM(str(uuid.uuid4()), tool_call.function.name, tool_call.function.arguments))
                 logging.debug("Tool info : Name= %s, Arguments= %s", tool_call.function.name, tool_call.function.arguments)
             answer_slot: HistorySlot = history.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
