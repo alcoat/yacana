@@ -119,6 +119,7 @@ class Mcp:
 
         for line in response.iter_lines(decode_unicode=True):
             if line is None:
+                print("line is None")
                 continue
 
             line = line.strip()
@@ -140,6 +141,7 @@ class Mcp:
                 continue
 
             if line.startswith('data:'):
+                print("strip => ", line[5:].lstrip())
                 # Could be just 'data:' (empty), so use slicing carefully
                 event_data_lines.append(line[5:].lstrip())
 
@@ -149,7 +151,7 @@ class Mcp:
         """
         Initializes connection with the MCP server
         """
-        logging.info("[MCP] Connecting to MCP server...")
+        logging.info(f"[MCP] Connecting to MCP server ({self.server_url})...")
         # Initialize the protocol
         init_result = self._make_request("initialize", {
             "protocolVersion": "2025-03-26",
@@ -212,7 +214,7 @@ class Mcp:
 
         return result
 
-    def get_tools_as(self, tools_type: ToolType = ToolType.YACANA) -> List[Tool]:
+    def get_tools_as(self, tools_type: ToolType) -> List[Tool]:
         """
         Returns the tools from the remote MCP server as a list of Tool objects. You choose how these tools will be called
         by specifying the tools_type parameter. This list of tools must be given to a Task() object.
@@ -220,7 +222,7 @@ class Mcp:
         Parameters
         ----------
         tools_type : ToolType
-            The type of tools to return. Default is ToolType.YACANA, which means the tools will be callable using the Yacana framework.
+            The type of tools to return.
 
         Returns
         -------

@@ -117,9 +117,11 @@ class OllamaAgent(GenericAgent):
 
     def _ollama_tool_names_conversion(self, tools: List[Tool]) -> List[Tool]:
         for tool in tools:
-            if tool.function_ref.__name__ != tool.tool_name:
-                logging.warning("Ollama expects the tool name to be the same as the function name. It will be renamed automatically.")
-                tool.tool_name = tool.function_ref.__name__
+            if not tool.is_mcp and tool.tool_type == ToolType.OPENAI:
+                if tool.function_ref.__name__ != tool.tool_name:
+                    logging.warning(f"Ollama expects the tool name to be the same as the function name. Tool '{tool.tool_name}' will be renamed automatically to '{tool.function_ref.__name__}'.")
+                    tool.update_tool_name_to_match_function_name()
+
         return tools
 
     def _stream(self) -> None:
