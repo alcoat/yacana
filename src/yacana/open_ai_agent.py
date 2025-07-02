@@ -326,7 +326,6 @@ class OpenAiAgent(GenericAgent):
         if save_to_history is False:
             if task:
                 history.delete_slot(question_slot)
-            #history.delete_slot(answer_slot)
         else:
             history.add_slot(answer_slot)
         return last_message
@@ -365,7 +364,7 @@ class OpenAiAgent(GenericAgent):
         elif all_required:
             return "required"
         else:
-            raise IllogicalConfiguration("OpenAI does not allow mixing required and optional tools.")
+            raise IllogicalConfiguration("OpenAI does not allow mixing required and optional tools. If you are mixing MCP and local tools, remember that local tools are NOT optional by default. On the other hand, MCP tools ARE optional by default. You can set optional status on the local tools definition or when requesting the tools from MCp with mcpClient.get_tools_as(ToolType.XX, optional=True | False).")
 
     def _get_expected_output_format(self, structured_output: Type[T] | None, json_output: bool) -> Any:
         """

@@ -27,6 +27,7 @@ class BaseAgentTest(unittest.TestCase):
         cls.run_ollama = os.getenv('TEST_OLLAMA', 'true').lower() == 'true'
         cls.run_openai = os.getenv('TEST_OPENAI', 'true').lower() == 'true'
         cls.run_vllm = os.getenv('TEST_VLLM', 'true').lower() == 'true'
+        cls.run_lmstudio = os.getenv('TEST_LMSTUDIO', 'true').lower() == 'true'
         
         # Initialize agents based on which ones are enabled
         if cls.run_ollama:
@@ -67,6 +68,16 @@ class BaseAgentTest(unittest.TestCase):
                 model_settings=cls.openai_settings,
                 system_prompt="You are a helpful AI assistant",
                 api_token=openai_api_token
+            )
+
+        if cls.run_lmstudio:
+            cls.lmstudio_agent = OpenAiAgent(
+                name="LMstudio AI Assistant",
+                model_name="google/gemma-2-9b",
+                model_settings=cls.openai_settings,
+                system_prompt="You are a helpful AI assistant",
+                endpoint="http://localhost:8000/v1",
+                api_token="empty"
             )
             
 

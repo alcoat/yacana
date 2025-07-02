@@ -103,7 +103,7 @@ class OllamaAgent(GenericAgent):
         """
         self._set_correct_tool_caller(tools)
         self._tags = tags if tags is not None else []
-        tools: List[Tool] = [] if tools is None else self._ollama_tool_names_conversion(tools)
+        tools: List[Tool] = [] if tools is None else tools
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
 
         if len(tools) == 0:
@@ -115,14 +115,14 @@ class OllamaAgent(GenericAgent):
 
         return self.history.get_last_message()
 
-    def _ollama_tool_names_conversion(self, tools: List[Tool]) -> List[Tool]:
+    """def _ollama_tool_names_conversion(self, tools: List[Tool]) -> List[Tool]:
         for tool in tools:
             if not tool.is_mcp and tool.tool_type == ToolType.OPENAI:
                 if tool.function_ref.__name__ != tool.tool_name:
                     logging.warning(f"Ollama expects the tool name to be the same as the function name. Tool '{tool.tool_name}' will be renamed automatically to '{tool.function_ref.__name__}'.")
                     tool.update_tool_name_to_match_function_name()
 
-        return tools
+        return tools"""
 
     def _stream(self) -> None:
         """

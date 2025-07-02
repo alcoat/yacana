@@ -134,7 +134,7 @@ class Mcp:
                             print("=> ", data["result"])
                             return data["result"]
                         elif "error" in data:
-                            raise Exception(f"MCP Error: {data['error']}")
+                            raise McpResponseError(f"MCP Error: {data['error']}")
                     except json.JSONDecodeError:
                         pass  # Ignore and continue
                     event_data_lines = []  # Reset buffer for next event
@@ -145,7 +145,7 @@ class Mcp:
                 # Could be just 'data:' (empty), so use slicing carefully
                 event_data_lines.append(line[5:].lstrip())
 
-        raise Exception("No valid 'result' found in SSE stream.")
+        raise McpBadTransport("Invalid SSE stream format")
 
     def connect(self) -> bool:
         """
@@ -214,7 +214,7 @@ class Mcp:
 
         return result
 
-    def get_tools_as(self, tools_type: ToolType) -> List[Tool]:
+    def get_tools_as(self, tools_type: ToolType, optional=None) -> List[Tool]:
         """
         Returns the tools from the remote MCP server as a list of Tool objects. You choose how these tools will be called
         by specifying the tools_type parameter. This list of tools must be given to a Task() object.
@@ -223,18 +223,38 @@ class Mcp:
         ----------
         tools_type : ToolType
             The type of tools to return.
+        optional : bool, optional
+            Changes the optional status of all tools in the MCP client. !WARNING! The status will remain for the next Tasks!
 
         Returns
         -------
         List[Tool]
             A list of Tool objects of the specified type.
         """
+        if optional is not None:
+            self.set_all_tools_optional_status(optional)
+            logging.debug("Careful! The optional status of all tools has been changed. This will remain for the next Tasks!")
         if not self.initialized:
             raise McpServerNotYetInitialized("Cannot get tools from server. Client not initialized")
         tools_copy = copy.deepcopy(self.tools)
         for tool in tools_copy:
             tool.tool_type = tools_type
         return tools_copy
+
+    def set_all_tools_optional_status(self, optional: bool) -> None:
+        """
+        Sets the optional status of all tools in the MCP client.
+
+        Parameters
+        ----------
+        optional : bool
+            If True, all tools will be set as optional. If False, all tools will be set as required.
+        """
+        if not self.initialized:
+            raise McpServerNotYetInitialized("Cannot set tool optional status. Client not initialized")
+        for tool in self.tools:
+            tool.optional = optional
+        logging.info(f"All tools set to {'optional' if optional else 'required'} status.")
 
     def forget_tool(self, tool_name: str) -> None:
         """

@@ -94,6 +94,7 @@ class Tool:
         self.is_mcp: bool = mcp_input_schema is not None
         self.optional: bool = optional
         self.usage_examples: List[dict] = usage_examples if usage_examples is not None else []
+        self.mcp_input_schema: dict = mcp_input_schema
 
         if mcp_input_schema is not None:
             self._openai_function_schema: dict = self._function_to_json_with_mcp(mcp_input_schema)
@@ -116,23 +117,22 @@ class Tool:
         # Unused for now as it poses pb when there are multiple tools. We lack of a tool parent object that could store this information.
         #self.post_tool_prompt: str | None = post_tool_prompt_reflection
 
-    def update_tool_name_to_match_function_name(self) -> None:
-        """
-        Updates the tool name to match the function name.
-        Useful for ollama which expects the tool name to match the function name.
-        """
-        self.tool_name = self.function_ref.__name__
-
-        if self.is_mcp:
-            self._openai_function_schema: dict = self._function_to_json_with_mcp(mcp_input_schema)
-            params: List[Tuple[str, str]] = self.input_shema_to_prototype(mcp_input_schema)
-            self._function_prototype: str = self.tool_name + "(" + ", ".join([f"{name}: {type_}" for name, type_ in params]) + ")"
-            self._function_args: List[str] = [param[0] for param in params]
-        else:
-            self._openai_function_schema: dict = self._function_to_json_with_pydantic()
-            self._function_prototype: str = Tool._extract_prototype(self.function_ref)
-            self._function_args: List[str] = Tool._extract_parameters(self.function_ref)
-
+    #def update_tool_name_to_match_function_name(self) -> None:
+    #    """
+    #    Updates the tool name to match the function name.
+    #    Useful for ollama which expects the tool name to match the function name.
+    #    """
+    #    self.tool_name = self.function_ref.__name__
+    #
+    #    if self.is_mcp:
+    #        self._openai_function_schema: dict = self._function_to_json_with_mcp(self.mcp_input_schema)
+    #        params: List[Tuple[str, str]] = self.input_shema_to_prototype(self.mcp_input_schema)
+    #        self._function_prototype: str = self.tool_name + "(" + ", ".join([f"{name}: {type_}" for name, type_ in params]) + ")"
+    #        self._function_args: List[str] = [param[0] for param in params]
+    #    else:
+    #        self._openai_function_schema: dict = self._function_to_json_with_pydantic()
+    #        self._function_prototype: str = Tool._extract_prototype(self.function_ref)
+    #        self._function_args: List[str] = Tool._extract_parameters(self.function_ref)
 
     def input_shema_to_prototype(self, input_shema: dict) -> List[Tuple[str, str]]:
         """
