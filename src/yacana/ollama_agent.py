@@ -296,11 +296,12 @@ class OllamaAgent(GenericAgent):
 
         if task:
             logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            #if isinstance(self.tool_caller, OpenAiToolCaller):
-            #    question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
-            #else:
             question_slot = history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
 
+        if tools is not None and len(tools) > 0:
+            for tool in tools:
+                if tool.tool_type == ToolType.OPENAI and tool.optional is False:
+                    logging.warning(f"You chose to use the OpenAI style tool calling with the Ollama agent for the tool '{tool.tool_name}' and set as NOT optional. Note that Ollama does NOT support setting tools optional status on tools! They are all optional by default and this cannot be changed. Yacana may in the future mitigate this issue. If this is important for you please open an issue on the Yacana Github.")
         print("what his getting = ", history.get_messages_as_dict())
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
