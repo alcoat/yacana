@@ -167,7 +167,8 @@ class Task:
             if mcp_tool.tool_name not in local_tool_names:
                 unique_mcp_tools.append(mcp_tool)
             else:
-                logging.warning("Tool '%s' is a MCP tool but its name '%s' is already used by a tool defined at Task level. Local task tools take precedence upon remote MCP tools for security reasons. You should either change you local tool name or use the .forget_tool() method from the Mcp class. For now the tool will no be available.", mcp_tool.tool_name, mcp_tool.tool_name)
+                logging.warning("Tool '%s' is a MCP tool but its name '%s' is already used by a tool defined at Task "
+                                "level. Local task tools take precedence upon remote MCP tools for security reasons. You should either change your local tool name or use the .forget_tool() method from the Mcp class. For now the remote tool will no be available.", mcp_tool.tool_name, mcp_tool.tool_name)
         self.tools = [tool for tool in self.tools if not tool.is_mcp] + unique_mcp_tools
 
     def add_tool(self, tool: Tool) -> None:
