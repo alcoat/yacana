@@ -28,11 +28,17 @@ class YacanaToolCaller(BaseToolCaller):
             task_outputting_prompt = f'You have a task to solve. In your opinion, is using the tool "{tool.tool_name}" relevant to solve the task or not ? The task is:\n{task}'
             self.agent._chat(local_history, task_outputting_prompt, medias=medias)
 
-            tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
-            tool_use_ai_confirmation: GenericMessage = self.agent._chat(local_history, tool_use_router_prompt, save_to_history=False, structured_output=UseTool)
-            if tool_use_ai_confirmation.structured_output.useTool is False:
-                self.agent._chat(self.agent.history, task, medias=medias, json_output=json_output, structured_output=structured_output)  # Classic LLM call without tool usage
-                return self.agent.history.get_last_message()
+            if self.agent.structured_thinking is True:
+                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond by true or false using valid JSON."
+                tool_use_ai_confirmation: GenericMessage = self.agent._chat(local_history, tool_use_router_prompt, save_to_history=False, structured_output=UseTool)
+                if tool_use_ai_confirmation.structured_output.useTool is False:
+                    return self.agent._chat(self.agent.history, task, medias=medias, json_output=json_output, structured_output=structured_output)
+            else:
+                tool_use_router_prompt: str = "To summarize in one word your previous answer. Do you wish to use the tool or not ? Respond ONLY by 'yes' or 'no'."
+                tool_use_ai_confirmation: GenericMessage = self.agent._chat(local_history, tool_use_router_prompt, save_to_history=False)
+                if "yes" in self.agent._strip_thinking_tags(tool_use_ai_confirmation.content.lower()):
+                    return self.agent._chat(self.agent.history, task, medias=medias, json_output=json_output, structured_output=structured_output)
+
 
         # If getting here the tool call is inevitable
         local_history._concat_history(tool._get_examples_as_history(self.agent._tags))
@@ -65,10 +71,16 @@ class YacanaToolCaller(BaseToolCaller):
         tool_use_decision: str = f"You have a task to solve. I will give it to you between these tags `<task></task>`. However, your actual job is to decide if you need to use any of the available tools to solve the task or not. If you do need tools then output their names. The task to solve is <task>{task}</task> So, would any tools be useful in relation to the given task ?"
         self.agent._chat(local_history, tool_use_decision, medias=medias)
 
-        tool_router: str = "In order to summarize your previous answer: Did you chose to use any tools ? Answer as valid JSON."
-        ai_may_use_tools: GenericMessage = self.agent._chat(local_history, tool_router, save_to_history=False, structured_output=UseTool)
+        if self.agent.structured_thinking is True:
+            tool_router: str = "In order to summarize your previous answer: Did you chose to use any tools ? Answer as valid JSON."
+            ai_may_use_tools: GenericMessage = self.agent._chat(local_history, tool_router, save_to_history=False, structured_output=UseTool)
+            use_tool = ai_may_use_tools.structured_output.useTool is True
+        else:
+            tool_router: str = "In order to summarize your previous answer: Did you chose to use any tools ? Respond ONLY by 'yes' or 'no'."
+            ai_may_use_tools: GenericMessage = self.agent._chat(local_history, tool_router, save_to_history=False)
+            use_tool = "yes" in self.agent._strip_thinking_tags(ai_may_use_tools.content.lower())
 
-        if ai_may_use_tools.structured_output.useTool is True:  # "yes" in self._strip_thinking_tags(ai_may_use_tools.lower()):
+        if use_tool:
             self.agent.history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self.agent._tags))
             self.agent.history.add_message(
                 OllamaTextMessage(MessageRole.ASSISTANT, "I should use tools related to the task to solve it correctly.", tags=self.agent._tags))
@@ -311,11 +323,16 @@ class YacanaToolCaller(BaseToolCaller):
         self.agent.history.add_message(OllamaUserMessage(MessageRole.USER, tool_continue_prompt, tags=self.agent._tags))
         self.agent.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, ai_tool_continue_answer, tags=self.agent._tags))
 
-        tool_confirmation_prompt = "To summarize your previous answer: Do you need to make another tool call ? Output your answer as valid JSON."
-        ai_tool_continue_confirmation: GenericMessage = self.agent._chat(local_history, tool_confirmation_prompt,
-                                                                   save_to_history=False, structured_output=MakeAnotherToolCall)
+        if self.agent.structured_thinking is True:
+            tool_confirmation_prompt = "To summarize your previous answer: Do you need to make another tool call ? Output your answer as valid JSON."
+            ai_tool_continue_confirmation: GenericMessage = self.agent._chat(local_history, tool_confirmation_prompt, save_to_history=False, structured_output=MakeAnotherToolCall)
+            tool_continuation = ai_tool_continue_confirmation.structured_output.makeAnotherToolCall is True
+        else:
+            tool_confirmation_prompt = "To summarize your previous answer: Do you need to make another tool call ? Respond ONLY by 'yes' or 'no'."
+            ai_tool_continue_confirmation: GenericMessage = self.agent._chat(local_history, tool_confirmation_prompt, save_to_history=False)
+            tool_continuation = "yes" in self.agent._strip_thinking_tags(ai_tool_continue_confirmation.content.lower())
 
-        if ai_tool_continue_confirmation.structured_output.makeAnotherToolCall is True:  # "yes" in self._strip_thinking_tags(ai_tool_continue_answer.lower()):
+        if tool_continuation:
             logging.info("Continuing tool calls loop")
             return True
         else:

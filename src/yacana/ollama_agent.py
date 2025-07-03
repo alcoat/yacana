@@ -48,6 +48,9 @@ class OllamaAgent(GenericAgent):
     thinking_tokens : Tuple[str, str] | None, optional
         A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
         Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
+    structured_thinking : bool, optional
+        If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
+        Defaults to True.
     **kwargs
         Additional keyword arguments passed to the parent class.
 
@@ -62,12 +65,12 @@ class OllamaAgent(GenericAgent):
         If model_settings is not an instance of OllamaModelSettings.
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: Tuple[str, str] | None = None, **kwargs) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: Tuple[str, str] | None = None, structured_thinking=True, **kwargs) -> None:
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
         self.agent_type: AgentType = AgentType.OLLAMA
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens)
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking)
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """

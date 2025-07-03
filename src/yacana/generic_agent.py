@@ -49,6 +49,9 @@ class GenericAgent(ABC):
     thinking_tokens : Tuple[str, str] | None, optional
         A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
         Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
+    structured_thinking : bool, optional
+        If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
+        Defaults to True.
 
     Raises
     ------
@@ -82,13 +85,16 @@ class GenericAgent(ABC):
     thinking_tokens : Tuple[str, str] | None
         A tuple containing the start and end tokens of a thinking LLM. For instance, "<think>" and "</think>" for Deepseek-R1.
         Setting this prevents the framework from getting sidetracked during the thinking steps and helps maintain focus on the final result.
+    structured_thinking : bool, optional
+        If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
+        Defaults to True.
     """
 
     _registry = {}
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
                  api_token: str = "", headers=None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None,
-                 thinking_tokens: tuple[str, str] | None = None) -> None:
+                 thinking_tokens: tuple[str, str] | None = None, structured_thinking=True) -> None:
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
 
@@ -109,6 +115,7 @@ class GenericAgent(ABC):
         self.task_runtime_config = task_runtime_config if task_runtime_config is not None else {}
         self._tags: List[str] = []
         self.thinking_tokens: tuple[str, str] | None = thinking_tokens
+        self.structured_thinking: bool = structured_thinking
 
         self.tool_caller: YacanaToolCaller | OpenAiToolCaller | None = None
 
