@@ -87,7 +87,7 @@ class Tool:
 
     def __init__(self, tool_name: str, function_description: str, function_ref: Callable, optional: bool = False,
                  usage_examples: List[dict] | None = None, max_custom_error: int = 5, max_call_error: int = 5,
-                 tool_type: ToolType = ToolType.YACANA, mcp_input_schema: dict = None) -> None:
+                 tool_type: ToolType = ToolType.YACANA, mcp_input_schema: dict = None, shush=False) -> None:
         self.tool_name: str = tool_name
         self.function_description: str = function_description
         self.function_ref: Callable = function_ref
@@ -109,6 +109,7 @@ class Tool:
         self.max_custom_error: int = max_custom_error
         self.max_call_error: int = max_call_error
         self.tool_type: ToolType = tool_type
+        self.shush = shush
 
         if max_custom_error < 0 or max_call_error < 0:
             raise IllogicalConfiguration("@max_custom_error and @max_call_error must be > 0")
@@ -116,23 +117,6 @@ class Tool:
             logging.warning(f"Tool name {self.tool_name} contains spaces. Some inference servers may not support it. We recommend you use CamelCase instead.")
         # Unused for now as it poses pb when there are multiple tools. We lack of a tool parent object that could store this information.
         #self.post_tool_prompt: str | None = post_tool_prompt_reflection
-
-    #def update_tool_name_to_match_function_name(self) -> None:
-    #    """
-    #    Updates the tool name to match the function name.
-    #    Useful for ollama which expects the tool name to match the function name.
-    #    """
-    #    self.tool_name = self.function_ref.__name__
-    #
-    #    if self.is_mcp:
-    #        self._openai_function_schema: dict = self._function_to_json_with_mcp(self.mcp_input_schema)
-    #        params: List[Tuple[str, str]] = self.input_shema_to_prototype(self.mcp_input_schema)
-    #        self._function_prototype: str = self.tool_name + "(" + ", ".join([f"{name}: {type_}" for name, type_ in params]) + ")"
-    #        self._function_args: List[str] = [param[0] for param in params]
-    #    else:
-    #        self._openai_function_schema: dict = self._function_to_json_with_pydantic()
-    #        self._function_prototype: str = Tool._extract_prototype(self.function_ref)
-    #        self._function_args: List[str] = Tool._extract_parameters(self.function_ref)
 
     def input_shema_to_prototype(self, input_shema: dict) -> List[Tuple[str, str]]:
         """
@@ -247,3 +231,20 @@ class Tool:
                 "strict": True
             }
         }
+
+    @staticmethod
+    def bulk_tool_type_update(tools: List['Tool'], tool_type: ToolType) -> None:
+        """
+        Update the tool type for a list of tools.
+        !Warning!: the tool type will remain the same until it is changed otherwise.
+        This is different from mcp.get_tools_as(<tool_type>) which returns a copy of the tools.
+
+        Parameters
+        ----------
+        tools : List[Tool]
+            The list of tools to update.
+        tool_type : ToolType
+            The new tool type to set for all tools in the list.
+        """
+        for tool in tools:
+            tool.tool_type = tool_type
