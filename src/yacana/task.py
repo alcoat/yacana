@@ -112,9 +112,6 @@ class Task:
         self.runtime_config = runtime_config if runtime_config is not None else {}
         self.tags: List[str] = tags if tags is not None else []
 
-        for tool in tools:
-            print("chelou = ", tool.optional)
-
         if len(self.tools) > 0 and self.structured_output is not None:
             raise IllogicalConfiguration("You can't have tools and structured_output at the same time. The tool output will be considered the LLM output hence not using the structured output.")
 
@@ -126,8 +123,6 @@ class Task:
 
         # Only used when @forget is True
         self._initial_history: History | None = None
-
-        #self._update_tool_schema_if_openai()
 
     @property
     def uuid(self) -> str:

@@ -1,20 +1,17 @@
-import json
 import logging
-
 import openai
 from openai import OpenAI, Stream
 from typing import List, Mapping, Type, Any, Literal, T, Dict, Callable
 from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice, ChatCompletion
 from pydantic import BaseModel
-
 from openai.types.chat import ChatCompletionChunk
 
 from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
-from .history import HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OllamaUserMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
+from .history import HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
 from .constants import PROMPT_TAG, RESPONSE_TAG
 

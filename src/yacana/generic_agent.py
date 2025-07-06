@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
-from .utils import AgentType
 from .yacana_tool_calling import YacanaToolCaller
 from .history import History, GenericMessage, MessageRole, Message
 from .model_settings import ModelSettings

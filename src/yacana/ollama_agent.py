@@ -6,13 +6,12 @@ from ollama import Client
 from typing import List, Type, Any, T, Dict, Callable, Mapping, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
-from yacana.open_ai_tool_calling import OpenAiToolCaller
 
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
 from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
-from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage, OpenAIUserMessage, ToolCallFromLLM, OpenAIFunctionCallingMessage
+from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage, ToolCallFromLLM, OpenAIFunctionCallingMessage
 from .tool import Tool, ToolType
 from .constants import PROMPT_TAG, RESPONSE_TAG
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from .base_tool_caller import BaseToolCaller
 from .structured_outputs import UseTool, MakeAnotherToolCall
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration
-from .history import GenericMessage, MessageRole, History, OllamaUserMessage, OllamaTextMessage, OpenAIFunctionCallingMessage, OpenAiToolCallingMessage, Message, HistorySlot
+from .history import GenericMessage, MessageRole, History, OllamaUserMessage, OllamaTextMessage, Message, HistorySlot
 from .tool import Tool
 from .constants import PROMPT_TAG
 

@@ -4,14 +4,17 @@ from tests.test_base import BaseAgentTest
 from yacana import Task, Agent
 from pydantic import BaseModel
 
+
 class CountryFact(BaseModel):
     """A fact about a country."""
     name: str
     fact: str
 
+
 class Facts(BaseModel):
     """Collection of country facts."""
     countryFacts: list[CountryFact]
+
 
 class TestStatePersistence(BaseAgentTest):
     """Test agent state persistence and restoration."""
@@ -57,6 +60,10 @@ class TestStatePersistence(BaseAgentTest):
         # Test VLLM agent
         if self.run_vllm:
             test_state_persistence(self.vllm_agent)
+
+        # Test LMSTUDIO agent
+        if self.run_lmstudio:
+            test_state_persistence(self.lmstudio_agent)
 
     def test_state_with_media(self):
         """Test state persistence with media history."""
@@ -132,6 +139,10 @@ class TestStatePersistence(BaseAgentTest):
         if self.run_vllm:
             test_structured_state(self.vllm_agent)
 
+        # Test LMSTUDIO agent
+        if self.run_lmstudio:
+            test_structured_state(self.lmstudio_agent)
+
     @classmethod
     def setUpClass(cls):
         """Set up test fixtures before running tests."""
@@ -141,6 +152,7 @@ class TestStatePersistence(BaseAgentTest):
         cls.run_ollama = os.getenv('TEST_OLLAMA', 'true').lower() == 'true'
         cls.run_openai = os.getenv('TEST_OPENAI', 'true').lower() == 'true'
         cls.run_vllm = os.getenv('TEST_VLLM', 'true').lower() == 'true'
+        cls.run_lmstudio = os.getenv('TEST_LMSTUDIO', 'true').lower() == 'true'
 
 if __name__ == '__main__':
     unittest.main() 

@@ -1,7 +1,6 @@
 import inspect
 import json
 import logging
-from abc import abstractmethod, ABC
 from enum import Enum
 from typing import List, Callable, Dict, Any, Tuple
 
@@ -12,16 +11,16 @@ from .history import History, MessageRole, OllamaUserMessage
 
 class ToolType(Enum):
     """
-    <b>ENUM:</b> XX
+    <b>ENUM:</b> ToolType
 
-    XX
+    How a tool must be presented to the LLM so it can be called.
 
     Attributes
     ----------
     OPENAI : str
-        XXXX
+        Tool calling will follow the OpenAi function calling format.
     YACANA : str
-        XXXX
+        Tool calling will follow the Yacana function calling format available to all LLMs.
     """
     OPENAI = "OPENAI"
     YACANA = "YACANA"
@@ -61,6 +60,9 @@ class Tool:
         Note that Yacana uses the parameters given to the LLM to call the tool so if they are invalid then Yacana will have a hard time to fix the situation.
         You should try to give examples to the LLM on how to call the tool either in the tool description or when using the @usage_examples attribute to help the model.
         Defaults to 5.
+    shush : bool, optional
+        If True, the tool won't warn anymore about the unsupported tool setting optional=True and using Ollama + OpenAi style tool calling.
+        Defaults to False.
 
     Attributes
     ----------
@@ -78,6 +80,8 @@ class Tool:
         Maximum number of custom errors (raised from the function) allowed before stopping the task.
     max_call_error : int
         Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
+    shush : bool
+        If True, suppresses warnings about unsupported optional tool configurations.
 
     Raises
     ------
@@ -115,8 +119,6 @@ class Tool:
             raise IllogicalConfiguration("@max_custom_error and @max_call_error must be > 0")
         if " " in self.tool_name:
             logging.warning(f"Tool name {self.tool_name} contains spaces. Some inference servers may not support it. We recommend you use CamelCase instead.")
-        # Unused for now as it poses pb when there are multiple tools. We lack of a tool parent object that could store this information.
-        #self.post_tool_prompt: str | None = post_tool_prompt_reflection
 
     def input_shema_to_prototype(self, input_shema: dict) -> List[Tuple[str, str]]:
         """
