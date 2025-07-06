@@ -75,7 +75,7 @@ class OpenAiToolCaller(BaseToolCaller):
                 else:
                     tool_output: str = tool.function_ref(**function_args)
                 if tool_output is None:
-                    tool_output = f"Tool {tool.tool_name} was called successfully. It didn't return anything."
+                    tool_output = f"Tool returned 'None' so LLM won't be asked to reflect on the tool result."
                 else:
                     tool_output = str(tool_output)
                 logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from .base_tool_caller import BaseToolCaller
 from .structured_outputs import UseTool, MakeAnotherToolCall
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration
-from .history import GenericMessage, MessageRole, History, OllamaUserMessage, OllamaTextMessage, OpenAIFunctionCallingMessage, OpenAiToolCallingMessage
+from .history import GenericMessage, MessageRole, History, OllamaUserMessage, OllamaTextMessage, OpenAIFunctionCallingMessage, OpenAiToolCallingMessage, Message, HistorySlot
 from .tool import Tool
 from .constants import PROMPT_TAG
 
@@ -16,7 +16,7 @@ from .constants import PROMPT_TAG
 class YacanaToolCaller(BaseToolCaller):
 
     def propose_tool(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None):
-        local_history = copy.deepcopy(self.agent.history)
+        local_history: History = copy.deepcopy(self.agent.history)
         tool: Tool = tools[0]
 
         tool_definition = str(tool._function_prototype + " - " + tool.function_description)
@@ -39,12 +39,18 @@ class YacanaToolCaller(BaseToolCaller):
                 if "yes" in self.agent._strip_thinking_tags(tool_use_ai_confirmation.content.lower()):
                     return self.agent._chat(self.agent.history, task, medias=medias, json_output=json_output, structured_output=structured_output)
 
-
         # If getting here the tool call is inevitable
         local_history._concat_history(tool._get_examples_as_history(self.agent._tags))
         tool_use: str = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the argument type of each parameter. In our case, the tool call you must use must look like that: ' + json.dumps(
-            {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)}) + f"\nNow that I showed you examples on how the tool is used, you have a task to solve. The task is:\n<task>{task}</task>\nPlease output the tool call as valid JSON."
-        self.agent._chat(local_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
+            {key: ("arg " + str(index)) for index, key in enumerate(tool._function_args)}) + f"\nNow that I showed you examples on how the tool is used, you have a task to solve. The task is:\n<task>{task}</task>\nPlease output the tool call as valid JSON."
+
+        if len(tool._function_args) <= 0:
+            logging.info(f"[PROMPT][To: {self.agent.name}]: {tool_use}")
+            local_history.add_message(Message(MessageRole.USER, tool_use, tags=self.agent._tags))
+            answer_slot: HistorySlot = local_history.add_message(Message(MessageRole.ASSISTANT, "{}", tags=self.agent._tags))  # Empty function calling because no function arguments are needed.
+            logging.info(f"[AI_RESPONSE][From: {self.agent.name}]: {answer_slot.get_message().get_as_pretty()}")
+        else:
+            self.agent._chat(local_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
         tool_output: str | None = self._tool_call(local_history, tool)  # !!Actual tool calling
         logging.debug(f"Tool output: {tool_output}\n")
         if tool_output is not None:  # If the tool outputted something then we can ask the LLM to reflect on it.
@@ -92,7 +98,13 @@ class YacanaToolCaller(BaseToolCaller):
 
                 tool_use: str = 'To use the tool you MUST extract each parameter and use it as a JSON key like this: {"arg1": "<value1>", "arg2": "<value2>"}. You must respect the argument type of each parameter. In our case, the tool call you must use must look like that: ' + json.dumps(
                     {key: ("arg " + str(i)) for i, key in enumerate(tool._function_args)}) + "\nNow that I showed you examples on how the tool is used it's your turn. Output the tool as valid JSON."
-                self.agent._chat(tool_training_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
+                if len(tool._function_args) <= 0:
+                    logging.info(f"[PROMPT][To: {self.agent.name}]: {tool_use}")
+                    tool_training_history.add_message(Message(MessageRole.USER, tool_use, tags=self.agent._tags))
+                    answer_slot: HistorySlot = tool_training_history.add_message(Message(MessageRole.ASSISTANT, "{}", tags=self.agent._tags))  # Empty function calling because no function arguments are needed.
+                    logging.info(f"[AI_RESPONSE][From: {self.agent.name}]: {answer_slot.get_message().get_as_pretty()}")
+                else:
+                    self.agent._chat(tool_training_history, tool_use, medias=medias, json_output=True)  # !!Actual function calling
                 tool_output: str | None = self._tool_call(tool_training_history, tool)  # !!Actual tool calling
                 if tool_output is not None:
                     at_least_one_tool_has_outputted = True
@@ -220,7 +232,7 @@ class YacanaToolCaller(BaseToolCaller):
                 else:
                     tool_output: str = tool.function_ref(**function_args)
                 if tool_output is None:
-                    logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: None -> LLM won't be asked to reflect on the tool result.")
+                    logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: Tool returned 'None' so LLM won't be asked to reflect on the tool result.")
                 else:
                     tool_output = str(tool_output)
                     logging.info(f"[TOOL_RESPONSE][{tool.tool_name}]: {tool_output}\n")

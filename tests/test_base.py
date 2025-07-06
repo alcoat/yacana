@@ -5,6 +5,7 @@ from yacana import OllamaAgent
 from yacana import OpenAiAgent
 from yacana import OllamaModelSettings, OpenAiModelSettings
 
+
 class BaseAgentTest(unittest.TestCase):
     """Base class for agent tests with common setup and utilities."""
 
@@ -76,7 +77,7 @@ class BaseAgentTest(unittest.TestCase):
                 model_name="google/gemma-2-9b",
                 model_settings=cls.openai_settings,
                 system_prompt="You are a helpful AI assistant",
-                endpoint="http://localhost:8000/v1",
+                endpoint="http://127.0.0.1:1234/v1",
                 api_token="empty"
             )
             
