@@ -125,7 +125,7 @@ class TestStatePersistence(BaseAgentTest):
             # Test if we can continue with structured output
             message2 = Task("Tell me 2 facts about France.", new_agent, structured_output=Facts).solve()
             self.assertIsInstance(message2.structured_output, Facts)
-            self.assertEqual(len(message2.structured_output.countryFacts), 2) # VLLM has trouble outputting 2 facts which may fail the test
+            self.assertEqual(len(message2.structured_output.countryFacts), 2)  # VLLM has trouble outputting 2 facts which may fail the test
         
         # Test Ollama agent
         if self.run_ollama:

@@ -55,7 +55,7 @@ class OllamaAgent(GenericAgent):
 
     Attributes
     ----------
-    agent_type : AgentType
+    _agent_type : AgentType
         Type of the Agent to circumvent partial import when determining agent's type at runtime.
 
     Raises
@@ -68,7 +68,7 @@ class OllamaAgent(GenericAgent):
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
-        self.agent_type: AgentType = AgentType.OLLAMA
+        self._agent_type: AgentType = AgentType.OLLAMA
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking)
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:

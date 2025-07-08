@@ -55,7 +55,7 @@ class OpenAiAgent(GenericAgent):
 
     Attributes
     ----------
-    agent_type : AgentType
+    _agent_type : AgentType
         Type of the Agent to circumvent partial import when determining agent's type at runtime.
 
     Raises
@@ -71,7 +71,7 @@ class OpenAiAgent(GenericAgent):
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
-        self.agent_type: AgentType = AgentType.OPENAI
+        self._agent_type: AgentType = AgentType.OPENAI
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking)
         if self.api_token == "":
             logging.warning("OpenAI requires an API token to be set.")

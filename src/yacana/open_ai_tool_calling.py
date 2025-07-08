@@ -35,9 +35,9 @@ class OpenAiToolCaller(BaseToolCaller):
                 except Exception as e:
                     raise UnknownResponseFromLLM(f"Tool {tool_call.name} arguments are not a valid dict object: `{tool_call.arguments}`. Type: {type(tool_call.arguments)}. Original error: {e}.")
                 tool_output: str = self._call_openai_tool(tool, func_arguments)
-                if self.agent.agent_type == AgentType.OPENAI:
+                if self.agent._agent_type == AgentType.OPENAI:
                     self.agent.history.add_message(OpenAiToolCallingMessage(tool_output, tool_call.call_id, tags=self.agent._tags))
-                elif self.agent.agent_type == AgentType.OLLAMA:
+                elif self.agent._agent_type == AgentType.OLLAMA:
                     self.agent.history.add_message(OllamaToolCallingMessage(tool_output, tool_call.name, tags=self.agent._tags))
 
             logging.info(f"[PROMPT][To: {self.agent.name}]: Retrying with original task and tools answer: '{task}'")
