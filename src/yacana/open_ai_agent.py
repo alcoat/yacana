@@ -282,7 +282,6 @@ class OpenAiAgent(GenericAgent):
                     response = self._dispatch_chunk_if_streaming(response, streaming_callback)
                 break
             except openai.BadRequestError as e:
-                print(e.message, "--", e.response, "--", e.param, "--", e.type, "--", e.request, "--", e.code, "--", e.status_code, "--", e.args, "--", e.body)
                 logging.error(e.message)
                 if e.status_code == 400 and has_tried_no_json_mode is False:
                     logging.warning("An error occurred during inference with the OpenAiAgent. Are you sure the backend is OpenAi compatible ? Whatever the case, Yacana will retry the request without the JSON mode. Maybe your LLM or backend doesn't deal with JSON correctly. Therefore we will rely solely on prompt engineering to get valid JSON output.")
@@ -309,8 +308,6 @@ class OpenAiAgent(GenericAgent):
                 logging.debug("Response assessment is tool calling")
                 tool_calls: List[ToolCallFromLLM] = []
                 for tool_call in choice.message.tool_calls:
-                    print("OPENAI voyons voir le type de ce truc = ", tool_call.function.arguments)
-                    print("type= ", type(tool_call.function.arguments))
                     tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, tool_call.function.arguments))
                     logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
                 answer_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))

@@ -157,8 +157,6 @@ class YacanaToolCaller(BaseToolCaller):
             ai_tool_choice: str = self.agent._chat(local_history, tool_choose).content
             ai_tool_choice = self.agent._strip_thinking_tags(ai_tool_choice).strip(" \n").lower()
 
-            print("ai tool choice = ", ai_tool_choice)
-
             found_tools: List[Tool] = []
 
             for tool in tools:

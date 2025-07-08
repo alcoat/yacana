@@ -304,7 +304,6 @@ class OllamaAgent(GenericAgent):
             for tool in tools:
                 if tool.tool_type == ToolType.OPENAI and tool.optional is False and tool.shush is False:
                     logging.warning(f"You chose to use the OpenAI style tool calling with the OllamaAgent for the tool '{tool.tool_name}'. This tool is set by default as optional=False (hence making it mandatory to use). Note that Ollama does NOT support setting tools optional status on tools! They are all optional by default and this cannot be changed. Yacana may in the future mitigate this issue. If this is important for you please open an issue on the Yacana Github. You can hide this warning by setting `shush=True` in the Tool constructor.")
-        print("what his getting = ", history.get_messages_as_dict())
         client = Client(host=self.endpoint, headers=self.headers)
         params = {
             "model": self.model_name,

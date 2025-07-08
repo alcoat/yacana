@@ -119,7 +119,6 @@ class Mcp:
 
         for line in response.iter_lines(decode_unicode=True):
             if line is None:
-                print("line is None")
                 continue
 
             line = line.strip()
@@ -131,7 +130,7 @@ class Mcp:
                     try:
                         data = json.loads(full_data)
                         if "result" in data:
-                            print("=> ", data["result"])
+                            #print("=> ", data["result"])
                             return data["result"]
                         elif "error" in data:
                             raise McpResponseError(f"MCP Error: {data['error']}")
@@ -141,8 +140,8 @@ class Mcp:
                 continue
 
             if line.startswith('data:'):
-                print("strip => ", line[5:].lstrip())
-                # Could be just 'data:' (empty), so use slicing carefully
+                #print("strip => ", line[5:].lstrip())
+                # @todo Could be just 'data:' (empty), so use slicing carefully
                 event_data_lines.append(line[5:].lstrip())
 
         raise McpBadTransport("Invalid SSE stream format")
