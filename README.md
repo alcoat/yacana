@@ -230,9 +230,9 @@ python3 quick_demo.py
 
 ➡️
 ```python
-agent1 = Agent("Expert banker", "llama3.1:8b", model_settings=ms)
-agent2 = Agent("Naming expert", "llama3.1:8b")
-agent3 = Agent("File-system helper", "llama3.1:8b", model_settings=ms)
+agent1 = OllamaAgent("Expert banker", "llama3.1:8b", model_settings=ms)
+agent2 = OllamaAgent("Naming expert", "llama3.1:8b")
+agent3 = OllamaAgent("File-system helper", "llama3.1:8b", model_settings=ms)
 ```
 * If you are not using Ollama please refer to: [Using other inference servers](https://remembersoftwares.github.io/yacana/pages/other_inference_servers.html) and use one of the corresponding [demos](https://github.com/rememberSoftwares/yacana/tree/main/examples/invoices_checker).
 
@@ -392,6 +392,13 @@ for invoice_file in files:
 ---
 
 ## Releases
+
+**0.3.0**  
++ MCP tools support in Alpha.
++ Mixing Yacana and OpenAi tool calling styles with both OllamaAgent and OpenAiAgent.
++ Internal use of structured output can be shutdown if your LLM does not support it.
++ Tools without arguments now have their own workflow when using Yacana tool calling style.
++ Removed Herobrine
 
 **0.2.1**  
 + Ollama Enhanced Tool Calling is now better (70% accuracy upgrade!).

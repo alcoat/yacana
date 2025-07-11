@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 
 
 class Dotdict(dict):
@@ -33,3 +34,8 @@ def to_base64(data):
     if isinstance(data, str):
         data = data.encode('utf-8')
     return base64.b64encode(data).decode('utf-8')
+
+
+class AgentType(Enum):
+    OLLAMA = "OLLAMA"
+    OPENAI = "OPENAI"
