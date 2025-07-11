@@ -10,6 +10,31 @@ from .tool import Tool, ToolType
 
 
 class Mcp:
+    """
+    Connects to an HTTP streamable MCP server to get the tools and make them available to your Tasks.
+
+    Parameters
+    ----------
+    server_url: str
+        Url of the remote MCP server.
+    headers: dict
+        Dict of headers passed to all requests made to the MCP server. Use this for authentification.
+
+    Attributes
+    ----------
+    server_url: str
+        Url of the remote MCP server.
+    headers: dict
+        Dict of headers passed to all requests made to the MCP server. Use this for authentification.
+    session: request.session
+        The network session from connecting to the server using request.
+    tools: List[Tool]
+        The list of tools auto discovered on the server.
+    initialized: bool
+        Is the connection to the server established.
+    session_id: Optional[str]
+        Id of the request session.
+    """
 
     def __init__(self, server_url: str, headers: dict = None) -> None:
         self.server_url = server_url.rstrip('/')

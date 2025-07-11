@@ -80,8 +80,12 @@ class Tool:
         Maximum number of custom errors (raised from the function) allowed before stopping the task.
     max_call_error : int
         Maximum number of call errors (eg: python can't find the function) allowed before stopping the task.
+    is_mcp: bool
+        Is this tool a local tool or an MCP tool.
     shush : bool
-        If True, suppresses warnings about unsupported optional tool configurations.
+        If True, suppresses warnings about unsupported optional tool configurations with Ollama.
+    tool_type: ToolType
+        The tool execution style. Either use the Yacana style (default) or follow the OpenAi style.
 
     Raises
     ------
