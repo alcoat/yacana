@@ -2,8 +2,6 @@ import copy
 import logging
 import uuid
 from typing import List, Type, Callable, Dict
-
-from numpy.ma.extras import unique
 from pydantic import BaseModel
 
 from .generic_agent import GenericAgent, GenericMessage
@@ -150,20 +148,25 @@ class Task:
         """
         Check that all local tools have unique names and that MCP tools do not conflict with local tool names.
         """
-        local_tools: List[Tool] = [tool for tool in self.tools if not tool.is_mcp]
-        if len(unique([tool.tool_name for tool in local_tools])) != len(local_tools):
+        local_tool_names: List[str] = [tool.tool_name for tool in self.tools if not tool.is_mcp]
+
+        if len(set(local_tool_names)) != len(local_tool_names):
             raise IllogicalConfiguration("All local tools must have unique names. Found duplicates in the task's tool list.")
 
         unique_mcp_tools: List[Tool] = []
-        local_tool_names: List[str] = [tool.tool_name for tool in local_tools]
         mcp_tools: List[Tool] = [tool for tool in self.tools if tool.is_mcp]
 
         for mcp_tool in mcp_tools:
             if mcp_tool.tool_name not in local_tool_names:
                 unique_mcp_tools.append(mcp_tool)
             else:
-                logging.warning("Tool '%s' is a MCP tool but its name '%s' is already used by a tool defined at Task "
-                                "level. Local task tools take precedence upon remote MCP tools for security reasons. You should either change your local tool name or use the .forget_tool() method from the Mcp class. For now the remote tool will no be available.", mcp_tool.tool_name, mcp_tool.tool_name)
+                logging.warning(
+                    "Tool '%s' is a MCP tool but its name '%s' is already used by a tool defined at Task "
+                    "level. Local task tools take precedence upon remote MCP tools for security reasons. You should either change your local tool name or use the .forget_tool() method from the Mcp class. For now the remote tool will no be available.",
+                    mcp_tool.tool_name,
+                    mcp_tool.tool_name
+                )
+
         self.tools = [tool for tool in self.tools if not tool.is_mcp] + unique_mcp_tools
 
     def add_tool(self, tool: Tool) -> None:
