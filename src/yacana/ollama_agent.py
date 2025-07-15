@@ -316,7 +316,8 @@ class OllamaAgent(GenericAgent):
             **self.task_runtime_config
         }
         logging.debug("Runtime parameters before inference: %s", str(params))
-        response = client.chat(**params)
+        chat_response = client.chat(**params)
+        response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
         logging.debug("Inference output: %s", str(response))
         if structured_output is not None:
             logging.debug("Response assessment is structured output")

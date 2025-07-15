@@ -77,6 +77,7 @@ message = Task("Tell me 1 fact about Canada using the format {'countryName': '',
                 <hr>
 
                 <h2 id="structured-output-with-pydantic">Structured Output with Pydantic</h2>
+                <h4>Benefits of structured output</h4>
                 <p>
                     To get more reliable and typed JSON outputs, Yacana offers <code>structured_output</code>.
                     This feature uses Pydantic to define a strict schema that the response must follow.
@@ -99,7 +100,7 @@ class Facts(BaseModel):
                     is a list of
                     <code>CountryFact</code>. And this new class has 2 members a <code>name</code> (string) and an
                     associated <code>fact</code> (string).<br>
-                    In JSON it could be represented like so:
+                    In JSON, it could be represented like so:
                     <pre><code class="text-output">
 [
     {
@@ -113,13 +114,13 @@ class Facts(BaseModel):
 ]
                     </code></pre>
                     <br>
-                    The benefits of using a class based approch instead of a JSON one is that parsing is way
+                    The benefits of using a class based approach instead of a JSON one is that parsing is way
                     cleaner.<br>
                     When parsing JSON, your IDE won't help you access correct member as it doesn't know the JSON format.
                     This can lead in many programming mistakes.<br>
-                    Whereas using the Pydantic class approch ensures you access existing members and loop over items
+                    Whereas using the Pydantic class approach ensures you access existing members and loop over items
                     that
-                    can actually be looped uppon, etc.
+                    can actually be looped upon, etc.
                     <br>
                     <br>
                     Now, let's ask an LLM to fill this pydantic base class:
@@ -156,7 +157,57 @@ print("Fact = ", message.structured_output.countryFacts[0].fact)
                 </ul>
 
                 <p>The <code>structured_output</code> is particularly useful when you need to process responses
-                    programmatically and want to guarantee the data structure.</p>
+                    programmatically and want to guarantee the data structure.</p><br>
+
+                <h4>Increasing routing accuracy</h4>
+
+                <div>
+                    You can use structured output to get a more precise answer from the LLM to do routing.<br>
+                    In the <a href="agents_and_tasks.html#concepts-of-routing">routing</a> documentation, we asked
+                    the LLM for <i>'yes/no'</i> string answers. Then we try
+                    to
+                    match either strings to go
+                    down a specific path based on that string.<br>
+                    But matching <i>'yes'</i> and <i>'no'</i> from an LLM isn't very robust...<br>
+                    Using structured output can create a simple boolean class the LLM will use to
+                    answer.<br><br>
+                </div>
+                For example:
+                <pre><code class="language-python">
+from yacana import OllamaAgent, Task, GenericAgent
+from pydantic import BaseModel
+
+agent1 = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
+
+# Structured output for boolean answer
+class IsAboutPlant(BaseModel):
+    isAboutPlant: bool
+
+# Let's invent a question about 'plants'
+question: str = "Why do leaves fall in autumn ?"
+
+# Ask if the question is plant related: yes or no
+router_answer: GenericAgent = Task(f"Is the following question about plants ? &ltquestion&gt{question}&lt/question&gt. Answer by true or false as JSON", agent1, structured_output=IsAboutPlant).solve()
+
+# Getting the result of the structured output
+if router_answer.structured_output.isAboutPlant is True:
+    print("Yes, question is about plants")
+    # next step in the workflow that involves plants
+
+elif router_answer.structured_output.isAboutPlant is False:
+    print("No, question is NOT about plants")
+    # Next step in the workflow that DOESN'T involve plants
+                </code></pre><br>
+                Output<br>
+                <pre><code class="text-output">
+INFO: [PROMPT][To: AI assistant]: Is the following question about plants ? &ltquestion&gtWhy do leaves fall in autumn?&lt/question&gt Answer by true or false as JSON
+
+INFO: [AI_RESPONSE][From: AI assistant]: {
+  "isAboutPlant": true
+}
+Yes, question is about plants
+                </code></pre><br>
+
                 <hr class="major">
 
                 <header class="main">
@@ -276,7 +327,6 @@ vision_agent = OllamaAgent("AI assistant", "llama3.2-vision:11b", system_prompt=
 
 Task("What color is the object ?", vision_agent, medias=["https://avatars.githubusercontent.com/u/12821004"], tools=[color_name_to_hexa_tool]).solve()
                     </code></pre>
-                </p>
                 <br>
                 Yacana supports HTTPS URLs in addition to local file system. In this example we are giving an image by
                 its URL. Note,
@@ -360,11 +410,11 @@ agent.history.pretty_print()
                 <p>
                     In the above snippet we used the <code>thinking_tokens=("start_token", "end_token")</code> to tell
                     Yacana what is Deepseek's self reasoning process and what's the actual answer.<br>
-                    This way it will not disrupt Yacana's features anymore and you can use this LLM as any normal
+                    This way it will not disrupt Yacana's features anymore, and you can use this LLM as any normal
                     LLM.<br>
                 </p><br><br>
 
-                <h2 id="mcp-tools">MCP tool support</h2>
+                <h2 id="mcp-tools">MCP tools</h2>
 
                 <div> Yacana offers MCP tools discovery and calling. It can connect to HTTP streamable endpoints.
                     Meaning that it can connect to remote MCP servers like
@@ -441,7 +491,7 @@ deepwiki.connect()
 
 ollama_agent = OllamaAgent("Ai assistant", "llama3.1:8b")
 
-Task("Asking question about repo: In the repo 'rememberSoftwares/yacana' how do you instanciate an ollama agent ?", ollama_agent, tools=deepwiki.get_tools_as(ToolType.YACANA)).solve()
+Task("Asking question about repo: In the repo 'rememberSoftwares/yacana' how do you instantiate an ollama agent ?", ollama_agent, tools=deepwiki.get_tools_as(ToolType.YACANA)).solve()
                 </code></pre><br>
                 <div class="icon solid fa-info-circle"> A few important notes about the MCP tools:
                     <ol>

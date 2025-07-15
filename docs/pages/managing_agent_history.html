@@ -104,7 +104,7 @@
                     could use the <code>forget=True</code> parameter in the <code>Task()</code> class so the prompt and the LLM
                     response do not get saved to the history. You'll see there are many ways to preserve the history from useless noise. <br/>
                 </p>
-                <p>
+                <div>
                     The Agent class comes with a <code>.history</code> property of type <a href="classes.html#tech-doc-history">History</a>.
                     It exposes methods to manipulate and view the history.
                     For instance, you can use the <code>.pretty_print()</code> method to print the history on the standard output
@@ -119,7 +119,7 @@ messages = agent1.history.get_messages_as_dict()
 messages[0].content # First message
 messages[1].content # Second message
                     </code></pre>
-                </p>
+                </div>
 
                 <p>Let's discover all the different ways to interact with an agent's history!</p>
                 <hr/>
@@ -318,7 +318,7 @@ Generate 5 pastry names displayed as a list. ONLY output the names and nothing e
 5. Sugar Serenades
 
 [user]:
-The user said 'Hummm. The golden one ?'. Your task is to output a specific sentence and replace the <replace> tags with the correct values: 'You selected the <replace>selected pastry</replace>. The average calorie intake for this pastry is <replace>average associated calories for the selected pastry</replace>. Do you wish to continue ?
+The user said 'Hummm. The golden one ?'. Your task is to output a specific sentence and replace the &#60;replace&#62; tags with the correct values: 'You selected the &#60;replace&#62;selected pastry&#60;/replace&#62;. The average calorie intake for this pastry is &#60;replace&#62;average associated calories for the selected pastry&#60;/replace&#62;. Do you wish to continue ?
 
 [assistant]:
 You selected the Golden Galettes. The average calorie intake for this pastry is approximately 250-300 calories per serving. Do you wish to continue?
@@ -436,13 +436,15 @@ INFO: [AI_RESPONSE][From: Ai assistant]: Here is the sentence rewritten in JSON 
 Let me know if you'd like me to help with anything else!
 					</code></pre>
                 <br>
-                <p>Not bad but there's noise. We would like to output the JSON and nothing else. No bedside manners.
+                <div>
+                    Not bad but there's noise. We would like to output the JSON and nothing else. No bedside manners.
                     The <code>Let me know if you'd like me to help with anything else!</code> must go. <br/>
                     Let's introduce another optional Task() parameter: <code>json_output=True</code>. This relies on
                     the inference server (Ollama, OpenAI, etc.) to output as JSON. <br/>
                     <p class="icon solid fa-info-circle"> It is preferable to prompt the LLM to "output as JSON" in addition to this option. </p>
-                    <p>⚠️ This is only <b>best effort</b> ! Meaning that it may fail at ouputing correct JSON. If you need reliable JSON then go try <a href="agents_features.html#structured-output">structured output</a> !</p>
-                </p>
+                    <p>⚠️ This is only <b>best effort</b> ! Meaning that it may fail at outputting correct JSON. If you
+                        need reliable JSON then go try <a href="agents_features.html#structured-output">structured output</a> !</p>
+                </div>
                 <p>Replace the Task with this one:</p>
                 <pre><code class="language-python">
 Task(f"Print the following sentence as JSON extracting the names and rephrasing the actions: 'Marie is walking her dog. Ryan is watching them through the window. The dark sky is pouring down heavy raindrops.'", agent1, json_output=True).solve()
@@ -516,8 +518,8 @@ INFO: [AI_RESPONSE]: {"name": "Marie", "action": "Walking with her dog."}
                 <hr class="major"/>
 
                 <h2 id="saving-agent-state">Saving Agent state</h2>
-                <p>
-                    Yacana provides a way to store an Agent state into a file and load it later. All of the Agent's
+                <div>
+                    Yacana provides a way to store an Agent state into a file and load it later. All the Agent's
                     properties, model settings, etc are saved including the History.<br><br>
                     Examples of use cases:
                     <ul>
@@ -527,12 +529,12 @@ INFO: [AI_RESPONSE]: {"name": "Marie", "action": "Walking with her dog."}
                         </li>
                         <li>
                             You are facing a crash at some point in a script and need to restart the whole inference steps to get to the desired history state.<br>
-                            Doing this cost a lot of money because tokens are not free. Fortunatly, you can save agent state just before the crash.<br>
+                            Doing this cost a lot of money because tokens are not free. Fortunately, you can save agent state just before the crash.<br>
                             Now, you can boot your script right before the crash point, load the agent's state and investigate
                             the crash by replaying it for free all the times you need.
                         </li>
                     </ul>
-                </p>
+                </div>
                 <p>To save an Agent do the following: </p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Task
@@ -601,7 +603,7 @@ INFO: [AI_RESPONSE]: If we multiply 4 by 2, we get...
                     The <code>Task()</code> class exposes a parameter to attach tags to messages. You can then use the tags to  find specific messages inside the history to
                     read or alter them.
                     <br>
-                    Tags are a convinient way to keep track of things and change history state during runtime.
+                    Tags are a convenient way to keep track of things and change history state during runtime.
                 </p>
                 <br>
                 <p>
@@ -620,7 +622,7 @@ first_message: Message = Task("What's 2+2 ?", agent1, tags=["first_task"]).solve
                         This told Yacana to add the tag <code>"first_task"</code> to both  the prompt and LLM output message generated by the task.
                     </p>
                     <p>
-                        Note that you can also tag individual Message manualy:
+                        Note that you can also tag individual Message manually:
                     </p>
                     <pre><code class="language-python">
 ...
@@ -645,7 +647,7 @@ Task("What's 2+2 ?", agent1, tags=["first_task"]).solve().add_tags(["first_task_
                     <br>
                     <p>
                         Let's make a longer example to show how tagging works. Bellow is a script that will ask 3 numeric related questions to the LLM.<br>
-                        The script will then change the second question + answer to something completly different.
+                        The script will then change the second question + answer to something completely different.
                         Finally, the script will ask the LLM what question was not about numbers. Because we updated the second task, it should tell us that it's the second one.
                     </p>
                     <pre><code class="language-python">
@@ -765,7 +767,7 @@ That would be "Why is the sky blue?" It's a classic example of an explanation of
                     <br>
                     It's quite specific so be sure to understand the range we're selecting.
                     <br>
-                    We'll just be counting but you can think of anything, even deleting the messages!
+                    We'll just be counting, but you can think of anything, even deleting the messages!
                 </p>
                 <pre><code class="language-python">
 from typing import List
