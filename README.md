@@ -48,7 +48,7 @@ If you like Yacana consider giving a star to the repo! Opensource projects need 
 ## Installation
 
 ```shell
-pip install yacana
+pip install yacana==0.3.1
 ```
 
 ---
