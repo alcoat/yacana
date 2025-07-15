@@ -393,6 +393,9 @@ for invoice_file in files:
 
 ## Releases
 
+**0.3.1**  
++ Fixed major error in requirements asking for Numpy.
+
 **0.3.0**  
 + MCP tools support in Alpha.
 + Mixing Yacana and OpenAi tool calling styles with both OllamaAgent and OpenAiAgent.
