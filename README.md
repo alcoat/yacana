@@ -48,7 +48,7 @@ If you like Yacana consider giving a star to the repo! Opensource projects need 
 ## Installation
 
 ```shell
-pip install yacana==0.3.1
+pip install yacana==0.3.2
 ```
 
 ---
@@ -392,6 +392,9 @@ for invoice_file in files:
 ---
 
 ## Releases
+
+**0.3.2**  
++ Fixed streaming error.
 
 **0.3.1**  
 + Fixed major error in requirements asking for Numpy.
