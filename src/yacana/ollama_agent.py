@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 
-from ollama import Client
+from ollama import Client, ChatResponse
 from typing import List, Type, Any, T, Dict, Callable, Mapping, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
@@ -214,20 +214,20 @@ class OllamaAgent(GenericAgent):
         except Exception as e:
             raise TypeError(f"Failed to convert response to JSON: {e}")
 
-    def _dispatch_chunk_if_streaming(self, completion: Mapping[str, Any] | Iterator[Mapping[str, Any]], streaming_callback: Callable | None) -> Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]:
+    def _dispatch_chunk_if_streaming(self, chat_response: ChatResponse | Iterator[ChatResponse], streaming_callback: Callable | None) -> Dict | ChatResponse | Iterator[ChatResponse]:
         """
         Handles streaming responses by dispatching chunks to the callback.
 
         Parameters
         ----------
-        completion : Mapping[str, Any] | Iterator[Mapping[str, Any]]
+        chat_response : ChatResponse | Iterator[ChatResponse]
             The completion response or iterator.
         streaming_callback : Callable | None
             Optional callback for streaming responses.
 
         Returns
         -------
-        Dict | Mapping[str, Any] | Iterator[Mapping[str, Any]]
+        Dict | ChatResponse | Iterator[ChatResponse]
             The processed response.
 
         Raises
@@ -235,10 +235,11 @@ class OllamaAgent(GenericAgent):
         TaskCompletionRefusal
             If the streaming response contains no data.
         """
+        # If we are not streaming, we return the Ollama message directly.
         if streaming_callback is None:
-            return completion
+            return chat_response
         all_chunks = ""
-        for chunk in completion:
+        for chunk in chat_response:
             if chunk['message']['content'] is not None:
                 all_chunks += chunk['message']['content']
                 streaming_callback(chunk['message']['content'])
@@ -316,21 +317,20 @@ class OllamaAgent(GenericAgent):
             **self.task_runtime_config
         }
         logging.debug("Runtime parameters before inference: %s", str(params))
-        chat_response = client.chat(**params)
+        chat_response: ChatResponse | Iterator[ChatResponse] = client.chat(**params)
         response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
         logging.debug("Inference output: %s", str(response))
         if structured_output is not None:
             logging.debug("Response assessment is structured output")
             answer_slot: HistorySlot = history.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
-        elif self._is_tool_calling(response.message):
+        elif self._is_tool_calling(response['message']):
             logging.debug("Response assessment is tool calling")
             tool_calls: List[ToolCallFromLLM] = []
-            for tool_call in response.message.tool_calls:
+            for tool_call in response['message']["tool_calls"]:
                 tool_calls.append(ToolCallFromLLM(str(uuid.uuid4()), tool_call.function.name, tool_call.function.arguments))
                 logging.debug("Tool info : Name= %s, Arguments= %s", tool_call.function.name, tool_call.function.arguments)
             answer_slot: HistorySlot = history.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
         else:
-            response = self._dispatch_chunk_if_streaming(response, streaming_callback)
             answer_slot: HistorySlot = history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
 
         self.task_runtime_config = {}
