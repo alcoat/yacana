@@ -303,12 +303,6 @@ class YacanaToolCaller(BaseToolCaller):
             The output from the LLM to the initial task after the tool call.
         """
         self.agent.history.add_message(OllamaUserMessage(MessageRole.USER, initial_task, tags=self.agent._tags + [PROMPT_TAG]))
-        # self.history.add_message(
-        #    OllamaTextMessage(MessageRole.ASSISTANT,
-        #                      f"I can use the tool '{tool.tool_name}' related to the task to solve it correctly.", tags=self._tags))
-        # self.history.add_message(OllamaUserMessage(MessageRole.USER, f"Output the tool '{tool.tool_name}' as valid JSON.", tags=self._tags))
-        # self.history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, last_tool_call, tags=self._tags))
-        # self.history.add_message(OllamaTextMessage(MessageRole.USER, tool_output, tags=self._tags + [RESPONSE_TAG]))
         self.agent.history.add_message((OllamaUserMessage(MessageRole.ASSISTANT, final_response, tags=self.agent._tags + [PROMPT_TAG])))
 
 

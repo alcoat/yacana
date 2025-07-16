@@ -60,22 +60,18 @@
                 <span class="image main"><img src="../images/toolcalling.jpg" alt="Tool calling"/></span>
 
                 <h2>Introduction to the tool calling concept</h2>
-                <p>Allowing the LLM to call a tool is the most important thing an agent can do! But what is a
-                    "tool"? A tool simply refers to a Python function. This function can be the entry point to any
-                    level of underlying complexity. But it doesn't matter. What matters is that the LLM can call the
-                    tool with parameters that match the function. This way, LLMs can interact with <em>classic</em>
-                    programming interfaces that produce deterministic results (aka normal programming).
-                </p>
-                <p>For instance, let's say you want a calculator powered by an LLM. You cannot rely on the LLM to do
-                    the math because even though it knows how to decompose equations to an extent and has basic
-                    arithmetics, it will fail on more advanced calculations. Therefore we do not expect the LLM to
-                    perform the operation itself. We already have the CPU to do this task perfectly. On the other
-                    hand, we expect the LLM to decompose the equation correctly and call tools for each arithmetic
-                    operation needed to solve it.
-                </p>
+                <div>
+                    Letting an LLM call a tool is the most powerful thing an agent can do. But what is a “tool”? Simply put, it’s a Python function.
+                    This function might be simple or wrap complex logic, it doesn’t matter. What matters is that the LLM can call it with the right parameters.
+                    This allows LLMs to interact with traditional, deterministic code.
+
+                    For example, imagine building an LLM-powered calculator. You shouldn’t rely on the LLM to do the math itself. It may handle basic arithmetic but will fail on more complex expressions.
+                    Instead, let the CPU do the math. The LLM’s job is to break down the equation and call the appropriate tools to compute each step.
+                </div>
                 <br>
-                <h4>In what way is Yacana different than other frameworks?</h4>
-                <p>Other frameworks assign their tools to the agent during its initialization. This creates a hard
+                <h4>In what way is Yacana different from other frameworks?</h4>
+                <p>
+                    Other frameworks assign their tools to the agent during its initialization. This creates a hard
                     link between the tools and the agents. In our opinion, this implementation tends to confuse the
                     agent because it's getting access to many tools that may not be relevant to the immediate task
                     it is given. In Yacana tools are only available at the Task level. Thus no noise is generated
@@ -85,58 +81,79 @@
                 </p>
                 <br>
                 <h4>Understanding the underlying mechanism of tool calling in LLMs</h4>
-                <p>A side note for those interested...</p>
-                <p>If you don't understand how a text-to-text neural network can call a Python function let me tell
-                    you: It doesn't.
-                </p><br>
-                <p>When we refer to <em>tool calling</em> we also refer to <em>function calling</em> which is very
-                    poorly named. Function calling is the ability of an inference server to make the LLM output the
-                    text in a particular format. As of today, only JSON is supported but there is no doubt that more
-                    formats will be available soon.
-                </p><br>
-                <p>
-                    That said, now that we can control how the LLM answers, we can parse a JSON of which we know the
-                    structure. Therefore, we can ask the LLM for a JSON that matches the prototype of a Python
-                    function. For instance the function name and some parameter values.
-                </p><br>
-                <p>
-                    Some LLMs have been trained to output JSON in a particular way that matches a particular JSON
-                    structure. This particular JSON structure has become a convention and was pushed by big AI
-                    players like OpenAI.<br>
-                    <br>
-                    Unfortunately, the size and complexity of this JSON doesn't work very well with our dumb 8B
-                    LLMs. This is a problem that ChatGPT, Claude, Grok and other smart LLMs don't have.<br>
-                    To overcome this particular issue, Yacana comes with its own JSON structure to call Python
-                    functions! It's way lighter than the OpenAI standard and Yacana uses <a href="https://youtube.com/shorts/Sb1spHDHU_4?si=yZsSLGx-7LeyG-5B">percussive
-                        maintenance</a> to force the LLM to output the JSON in a way that the tool
-                    expects.
-                </p>
-                <br>
-                <h4>Difference between the OllamaAgent and the OpenAIAgent</h4>
-                <p>
-                    Tools in Yacana share the same programming API across both Ollama and OpenAI-compatible backends. 
-                    However, they currently don't behave identically.<br>
-                    The OllamaAgent uses an enhanced tool calling mechanism tailored for local open-source models. 
-                    In contrast, the OpenAIAgent uses the standard OpenAI function calling approach, fully compatible with 
-                    ChatGPT and any backend that follows OpenAI’s API (like vLLM).<br>
-                </p>
-                    At the moment, each agent is stuck with its respective mechanism:
+                <p>A side note for beginers...</p>
+                <details>
+                  <summary>Show section...</summary>
+                    <p>
+                        You might wonder: how can a text-generating AI call a Python function? Well, it can't. Not directly.
+                    </p><br>
+
+                    <p>
+                        When we talk about <em>tool calling</em> (sometimes called <em>function calling</em>), we’re referring to a specific process: the LLM outputs a well-structured JSON object that 
+                        describes a function to call, including its name and the parameters to use. These parameters, and their values, are generated by the model.
+                    </p><br>
+
+                    <p>
+                        Since LLMs don’t normally speak JSON, it’s easy to detect when they’re trying to call a function. If the output matches the expected JSON structure, we parse it and trigger 
+                        the corresponding Python function with the provided parameters. Otherwise, the LLM’s response is treated like any regular reply, and the workflow continues.
+                    </p><br>
+
+                    <p>
+                        But how does the model know which functions it can call, and how to call them? Before the LLM can make any function call, you must send it a message containing two things:
+                    </p>
                     <ul>
-                        <li>The <a href=classes.html#tech-doc-OllamaAgent>OllamaAgent</a> uses the Enhanced Tool Calling</li>
-                        <li>The <a href=classes.html#tech-doc-openai-agent>OpenAiAgent</a> uses the OpenAI standard.</li>
+                        <li>A task or instruction</li>
+                        <li>A list of available tools</li>
                     </ul>
+                    <p>
+                        This tool list is itself a JSON array. It includes each function’s name, description, and the parameters it accepts, including the expected types.
+                        The types are important: passing <code>"4"</code> (a string) instead of <code>4</code> (an integer) can break the call or cause bugs.
+                        Some parameters may also be marked as optional, allowing the LLM to skip the function call if it feels it can answer the task directly.
+                    </p><br>
+
+                    <p>
+                        The most widely used standard for function calling comes from OpenAI. But not all LLMs can follow it. Why? Because function calling requires specialized training.
+                        Most LLMs are trained to follow instructions in a chat format, usually with <code>USER</code> and <code>ASSISTANT</code> messages. But for tool use, 
+                        a third message type — <code>TOOL</code> — is needed, and only certain models (like Llama, Gemma, or DeepSeek) are fine-tuned to handle it correctly.
+                    </p><br>
+
+                    <p>
+                        Unfortunately, the OpenAI JSON format can be quite heavy, and smaller models (like basic 7B or 8B models) often struggle with it.
+                        That’s why <strong>Yacana</strong> includes its own lightweight function-calling format. It’s easier for smaller models to handle and uses
+                        <a href="https://youtube.com/shorts/Sb1spHDHU_4?si=yZsSLGx-7LeyG-5B">percussive maintenance</a> to nudge the model into outputting valid JSON.
+                    </p><br>
+
+                    <p>
+                        As a result, Yacana enables tool calling with almost any LLM, while still supporting the OpenAI format when needed.
+                    </p>
+                </details>
+
+                <br>
+                <h4>Difference between Yacana and OpenAi tool calling styles</h4>
                 <p>
-                    In the near future, Yacana will support both mechanisms on both agents. The Enhanced Tool Calling 
-                    system will be made available to OpenAI-compatible backends, and the OllamaAgent will gain support for the 
-                    OpenAI standard via Ollama’s OpenAI-compatible endpoint.<br>
-                    Also, note that you can connect the OpenAIAgent to Ollama's OpenAI-compatible endpoint hence
-                    using the OpenAI tool calling standard with your Ollama instance.
+                    Both can call functions inside your application but have pros and cons.<br><br>
+
+                    ▶️ A tool should use <b>OpenAi</b> style when:<br>
+                    <ul>
+                        <li>The LLM has been fine-tuned on tool calling.</li>
+                        <li>Tool calling needs to happen fast.</li>
+                        <li>LLM is smart (like chatGPT or opensource 45B+).</li>
+                    </ul>
+                    ▶️ A tool should use the <b>Yacana</b> style when:<br>
+                    <ul>
+                        <li>The LLM isn't fine-tuned on tool calling.</li>
+                        <li>Time is not the issue.</li>
+                        <li>LLM knows english.</li>
+                        <li>LLM is dumb (8B-).</li>
+                        <li>You Task has multiple assigned tools and needs native multi turn tool calls.</li>
+                    </ul>
+                    By default Tools use the Yacana style but you can change that in the Tool constructor as you will see later in this tutorial.
                 </p>
 
                 <hr class="major"/>
 
                 <h2 id="calling-a-tool">Calling a tool</h2>
-                <p>Let's write our first tool call to perform a simple addition!</p>
+                <p>Let's write our first tool call to perform a simple addition!</p><br>
                 <p>First, let's define our tool:</p>
                 <pre><code class="language-python">
 def adder(first_number: int, second_number: int) -> int:
@@ -249,15 +266,15 @@ Equation result =  22
 
                 <p>
                     Since LLMs are not deterministic, we can never be certain of the values they’ll send to our tools. 
-                    That’s why you should think of a tool the same way you would a web server route—it requires server-side validation. 
+                    That’s why you should think of a tool the same way you would a web server route,it requires server-side validation. 
                     Your tool must verify the input it receives and raise an error if the data is invalid.
                 </p>
                 <p>
                     This involves adding strict validation checks to your tool. 
                     When the LLM sends an incorrect value, an error will be raised, not just any error, but a ToolError(...). 
                     Yacana will catch this exception and notify the LLM that something went wrong during the tool call.<br>
-                    It’s crucial to provide clear and specific error messages in the exception, as the LLM will use that message to adjust its next attempt.
-                </p>
+                    <b>It’s crucial to provide clear and specific error messages in the exception, as the LLM will use that message to adjust its next attempt.</b>
+                </p><br>
                 <p>Let's upgrade our adder tool!</p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Tool, Task, ToolError
@@ -298,7 +315,6 @@ def adder(first_number: int, second_number: int) -> int:
     print("Result of added tool is: ", ret)
     return ret
 
-# No more examples
 adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adder)
 
 result: str = Task(f"What's 2+2 ?", agent1, tools=[adder_tool]).solve().content
@@ -431,17 +447,17 @@ What's 2+2 ?
 
 INFO: [AI_RESPONSE][From: Ai assistant]: {"first_number": 2, "second_number": 2}
 
-Tool adder was called with param '2' (<class 'int'>) and '2' (<class 'int'>)
+Tool adder was called with param '2' (&ltclass 'int'&gt) and '2' (&ltclass 'int'&gt)
 Equation result =  4
 				</code></pre>
                 <br>
                 <p>It worked!<br>
                     The LLM saw that the tool needed integers for input. As such, it called the tool with the correct
-                    types therefore the adder tool returned <code>4</code> as it was expected. Houra!</p>
+                    types therefore the adder tool returned <code>4</code> as it was expected. Hurray!</p>
                 <p>⚠️ Do not abuse this technic as it tends to create some noise. Trying to manage too many
                     hypothetical use cases might, in the end, degrade the performance of the tool call.</p>
                 <p class="icon solid fa-info-circle">
-                    You should combine both server-side validaton and multi-shot prompting.<br>
+                    You should combine both server-side validation and multi-shot prompting.<br>
                     Providing one example may prevent one tool call failure hence less lost CPU time.
                     Though, adding many validation checks in your tool raising with explicit
                     error messages is the best way to ensure that nothing breaks! Nothing beats good all fashion
@@ -477,6 +493,23 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
 
                 <hr class="major"/>
 
+                <h2 id="optional-tools">Choosing tool calling style</h2>
+                <div>
+                    You can either use the <b>OpenAi</b> or <b>Yacana</b> tool call style. By default Tools are using the Yacana style. It's what you have been using previously. Yacana relies on iterative prompt engineering
+                    to make the tool call.<br>
+                    Although this methods is great for small LLMs (ie: 8B) it lacks rapidity in its execution.<br>
+                    To make the calls faster you can use the OpenAi style <b>IF your LLM has been fine-tuned on tool calling.</b><br>
+                    You can find this information in the model's card description. In ollama you can even filter LLMs by <a href="https://ollama.com/search?c=tools">tool calling support</a>.
+                </div><br>
+                <div>
+                    To change the tool type to <i>OpenAi</i> use the <code>tool_type=</code> parameter in the <a href="classes.html#tech-doc-tool">Tool's constructor</a>.<br>
+                    Available values are <code>ToolType.YACANA</code> or <code>ToolType.OPENAI</code>.<br>
+                    Let's see an example:
+                </div>
+                
+
+                <hr class="major"/>
+
                 <h2 id="optional-tools">Optional tools</h2>
                 <p>Sometimes you assign a Tool to a Task without knowing for sure that the tool will be useful. If
                     you have a fine-tuned model or doing basic operations you may want to rely on the LLM's
@@ -485,7 +518,7 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
                     LLM, leaving it a chance to pass on the offer of the tool and use its own knowledge instead.</p>
                 <p>To demonstrate this, let's make a tool that returns a temperature from a city. It will return a
                     fake temperature as we don't really care. We <strong>won't</strong> set
-                    <code>optionnal=True</code> so it will be forced to use the tool:
+                    <code>optional=True</code> so it will be forced to use the tool:
                 </p>
                 <pre><code class="language-python">
 from yacana import Task, OllamaAgent, Tool

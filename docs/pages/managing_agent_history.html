@@ -403,7 +403,7 @@ The answer is 4
                 <p>⚠️ Try to keep the alternation of USER and ASSISTANT as this is how "instruct" LLMs have been
                     trained. </p>
                 <hr/>
-                <p>Let's see a 0-shot example asking for a JSON output extracted from a given sentence: </p>
+                <p>▶️ Let's see a 0-shot example asking for a JSON output extracted from a given sentence: </p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Task
 
@@ -441,11 +441,11 @@ Let me know if you'd like me to help with anything else!
                     The <code>Let me know if you'd like me to help with anything else!</code> must go. <br/>
                     Let's introduce another optional Task() parameter: <code>json_output=True</code>. This relies on
                     the inference server (Ollama, OpenAI, etc.) to output as JSON. <br/>
-                    <p class="icon solid fa-info-circle"> It is preferable to prompt the LLM to "output as JSON" in addition to this option. </p>
+                    <p class="icon solid fa-info-circle"> It is preferable to prompt the LLM to <i>"output as JSON"</i> in addition to this option. </p><br>
                     <p>⚠️ This is only <b>best effort</b> ! Meaning that it may fail at outputting correct JSON. If you
-                        need reliable JSON then go try <a href="agents_features.html#structured-output">structured output</a> !</p>
-                </div>
-                <p>Replace the Task with this one:</p>
+                        need reliable JSON then go try <a href="agents_features.html#structured-output-with-pydantic">structured output</a> !</p>
+                </div><br>
+                <p>▶️ Replace the Task with this one:</p>
                 <pre><code class="language-python">
 Task(f"Print the following sentence as JSON extracting the names and rephrasing the actions: 'Marie is walking her dog. Ryan is watching them through the window. The dark sky is pouring down heavy raindrops.'", agent1, json_output=True).solve()
 					</code></pre>
@@ -457,11 +457,15 @@ INFO: [PROMPT][To: Ai assistant]: Print the following sentence as JSON extractin
 INFO: [AI_RESPONSE][From: Ai assistant]: {"names": ["Marie", "Ryan"], "actions": {"Marie": "is walking", "Ryan": "is watching"}, "description": [{"location": "window", "activity": "watching"}, {"location": "outdoors", "activity": "pouring raindrops"}]}
 					</code></pre>
                 <br>
-                <p>Way better. No more noise. <br/>
+                <p>
+                    Way better. No more noise. <br/>
                     However, we would prefer having an array of <code>name</code> and <code>action</code> even for
-                    the weather (the name would be <em>sky</em> and the action <em>raining</em>).</p>
-                <p>To achieve this let's give the LLM an example of what we expect by making it believe it already
-                    outputted it correctly once: </p>
+                    the weather (the name would be <em>sky</em> and the action <em>raining</em>).
+                </p>
+                <p>
+                    ▶️ Let's give the LLM an example of what we expect by making it believe it already
+                    outputted it correctly once:
+                </p>
                 <pre><code class="language-python">
 from yacana import OllamaAgent, Task, MessageRole, Message
 
@@ -485,35 +489,6 @@ INFO: [AI_RESPONSE][From: Ai assistant]: [{"name": "Marie", "action": "Walking h
                     (❕ Model temperature may impact performance here. Consider using a lower value.) <br/>
                     You can add multiple fake interactions like this one to cover more advanced use cases and train
                     the LLM on how to react when they happen. It would become multi-shot prompting. </p>
-                <hr/>
-                <p>You can also do multi-shot prompting with self-reflection. This takes more CPU time because you
-                    decompose the task into multiple subtasks but can be beneficial in some scenarios. </p>
-                <p>For example: </p>
-                <pre><code class="language-python">
-from yacana import OllamaAgent, Task
-
-agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
-
-Task('I will give you a sentence where you must extract as JSON all the names and rephrase all the actions. For example in the following sentence: "John is reading a book on the porch while the cold wind blows through the trees." would result in this JSON output: [{"name": "John", "action": "Reading a book."}, {"name": "Cold wind", "action": "Blowing through the trees."}] ', agent1).solve()
-
-Task(f"Marie is walking her dog. Ryan is watching them through the window. The dark sky is pouring down heavy raindrops.", agent1, json_output=True).solve()
-					</code></pre>
-                <br>
-                <p>Outputs</p>
-                <pre><code class="text-output">
-INFO: [PROMPT]: I will give you a sentence where you must extract as JSON all the names and rephrase all the actions. For example in the following sentence: "John is reading a book on the porch while the cold wind blows through the trees." would result in this JSON output: [{"name": "John", "action": "Reading a book."}, {"name": "Cold wind", "action": "Blowing through the trees."}]
-
-INFO: [AI_RESPONSE]: I'm ready to extract the names and rephrase the actions. What's the sentence?
-
-INFO: [PROMPT]: Marie is walking her dog. Ryan is watching them through the window. The dark sky is pouring down heavy raindrops.
-
-INFO: [AI_RESPONSE]: {"name": "Marie", "action": "Walking with her dog."}
-					</code></pre>
-                <br>
-                <p>:-( <br/>
-                    In this case, it didn't work very well as only one name was extracted as JSON. But in more
-                    complex scenarios we can assure you that letting the LLM reflect on the guideline beforehand,
-                    can be very beneficial to solving the task. </p>
 
                 <hr class="major"/>
 
@@ -574,14 +549,16 @@ agent1.export_to_file("./agent1_save.json")
                 <pre><code class="language-python">
 from yacana import GenericAgent, Task
 
-# You can use any of the Agent classes? The GenericAgent is merely the abstract parent class.
+# You can use any of the Agent classes. The GenericAgent is merely the abstract parent class.
 agent2: GenericAgent = GenericAgent.import_from_file("./agent1_save.json")
 
 Task("Multiply by 2 the previous result", agent2).solve()
 					</code></pre>
                 <br>
-                <p class="icon solid fa-info-circle"> The <code>.import_from_file(...)</code> works like a
-                    factory pattern, returning a new Agent instance.</p>
+                <p class="icon solid fa-info-circle">
+                    The <code>.import_from_file(...)</code> acts as a factory pattern, returning a new Agent instance.
+                </p><br>
+                
                 <p>▶️ Output:</p>
                 <pre><code class="text-output">
 INFO: [PROMPT]: Multiply by 2 the previous result
@@ -594,8 +571,11 @@ INFO: [AI_RESPONSE]: If we multiply 4 by 2, we get...
                 <p>
                     As you can see when asked to multiply by 2 the previous result, it remembered agent1's result
                     which was 4. Then it performed the multiplication and got us 8. &#127881;
-                </p>
-                <br>
+                </p><br>
+                <div class="icon solid fa-info-circle">
+                    Example usecase: A user ends its conversation with a chatbot. The agent saves its state to a file. When the user logs in later, the Agent is loaded with the history and the conversation can carry on where it was left of.
+                </div><br>
+
 
                 <h2>Managing Agent History using tags</h2>
 
@@ -611,15 +591,15 @@ INFO: [AI_RESPONSE]: If we multiply 4 by 2, we get...
                     <br>
                     To add tags to your prompt messages use the <code>tags=[...]</code> parameter like this:
                     <pre><code class="language-python">
-from yacana import OllamaAgent, Task
+from yacana import OllamaAgent, Task, GenericMessage
 
 agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
-first_message: Message = Task("What's 2+2 ?", agent1, tags=["first_task"]).solve()
+first_response: GenericMessage = Task("What's 2+2 ?", agent1, tags=["first_task"]).solve()
                     </code></pre>
                     <br>
                     <p>
-                        This told Yacana to add the tag <code>"first_task"</code> to both  the prompt and LLM output message generated by the task.
+                        This told Yacana to add the tag <code>"first_task"</code> <b>to both the prompt and LLM output message</b> generated by the task.
                     </p>
                     <p>
                         Note that you can also tag individual Message manually:
@@ -627,7 +607,7 @@ first_message: Message = Task("What's 2+2 ?", agent1, tags=["first_task"]).solve
                     <pre><code class="language-python">
 ...
 
-first_message.add_tags(["first_task_response"])
+first_response.add_tags(["first_task_response"])
                     </code></pre>
                     <br>
                     <p>
@@ -653,7 +633,7 @@ Task("What's 2+2 ?", agent1, tags=["first_task"]).solve().add_tags(["first_task_
                     <pre><code class="language-python">
 from yacana import OllamaAgent, Task, GenericMessage
 
-agent1 = OllamaAgent("Ai assistant", "llama3.1:latest")
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
 
 # Creating 3 numeric related questions with one tag each
 Task("What's 2+2 ?", agent1, tags=["first_task"]).solve()

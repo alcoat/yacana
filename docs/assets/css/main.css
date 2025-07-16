@@ -2294,3 +2294,7 @@ button,
   font-family: 'FontAwesome';
   font-style: normal;
 }
+
+summary {
+cursor: pointer;
+}
