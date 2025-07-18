@@ -62,7 +62,7 @@ from yacana import Task, OllamaAgent
 ollama_agent = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
 # Create a task to tell a joke
-message = Task("Tell me a joke. But do NOT tell me the answer.", ollama_agent).solve()
+message = Task("Tell me a riddle. But do NOT tell me the answer.", ollama_agent).solve()
 
 # "Why was the math book sad?"
 print(message.content)
@@ -423,13 +423,11 @@ for invoice_file in files:
 ## Roadmap
 
 ❗ Highest priority  
-* Making Enhanced Tool Calling available for the OpenAi compatible backends and OpenAi standard for Ollama backends  
-* Compatibility with **MCP**
-* Support for thinking models like deepseek
+* Adding native RAG capabilities
+* More MCP resources support
 
 ❕ Lower priority  
-* Adding memory to agents  
-* Adding native RAG capabilities
+* Adding memory to agents
 * Simplify shift message and maybe rework GroupChat itself a bit.  
 * Keeping working on the documentation.  
 * Adding a section about code generation.  
