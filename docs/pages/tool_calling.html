@@ -502,8 +502,6 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
                     
                 </p>
 
-                TMP =>>> Yacana relies on iterative prompt engineering to make the tool call.<br>
-
                 <h4>Changing tool execution type</h4>
                 <div>
                     To change the tool type to <i>OpenAi</i> use the <code>tool_type=</code> parameter in the <a href="classes.html#tech-doc-tool">Tool's constructor</a>.<br>
@@ -570,6 +568,7 @@ Equation result = Simple math problem! The answer is indeed 4.
                     Setting the <code>optional: bool = True</code> will tweak how Yacana proposes the Tools to the
                     LLM, leaving it a chance to pass on the offer of the tool and use its own knowledge instead.
                 </p><br>
+                <h4>Forcing tool call and giving it a prompt that makes sense</h4><br>
                 <p>
                     To demonstrate this, let's make a tool that returns a temperature from a city. It will return a
                     fake temperature as we don't really care.<br>
@@ -620,8 +619,12 @@ INFO: [AI_RESPONSE][From: Ai assistant]: { "city": "NY" }
 Temperature = 20			
 					</code></pre>
                 <br>
-                <p>The tool was called with <code>{ "city": "NY" }</code> which returned 20. Good!</p>
+                <p>The tool was called with <code>{ "city": "NY" }</code> which returned 20. Good!</p><br>
+
                 <hr>
+                
+                <h4>Forcing tool call and giving it a prompt that DOESN'T make sense</h4><br>
+
                 <p>Now let's ask something completely <b>unrelated</b> but keep the tool <b>mandatory</b>:</p>
                 <pre><code class="language-python">
 result: str = Task(f"Why is the sky blue ?", agent1, tools=[Tool("get_temp", "Returns the celsius temperature of a given city", get_temperature)]).solve().content					
@@ -658,6 +661,9 @@ Temperature = 20
                     blame it. The tool we provided and the Task to solve have nothing to do with each other. So <b>it's
                     making things up</b>, like this city name.</p>
                 <hr>
+
+                <h4>Optional tool call and giving it a prompt that DOESN'T make sense</h4><br>
+
                 <p>Now let's make the tool optional with <code>optional=True</code> and keep our unrelated Task:</p>
                 <pre><code class="language-python">
 result: str = Task(f"Why is the sky blue ?", agent1, tools=[Tool("get_temp", "Returns the celsius temperature of a given city", get_temperature, optional=True)]).solve().content						
@@ -710,11 +716,22 @@ So, to summarize: the sky appears blue because of the selective scattering of sh
                 <pre><code class="text-output">
 						In my opinion, using the `get_temperature` tool is NOT relevant to solving this task. The task asks about why the sky is blue, and temperature doesn't seem to be directly related to that.
 					</code></pre>
-                <br>
+                
+                 <hr/>
+
+                <h4>Ollama and optional tool support</h4><br>
+                
+                <div>
+                    When using the <a href="classes.html#tech-doc-ollamaagent">OllamaAgent</a> with the tool type <code>ToolType.OPENAI</code> you may encounter a minor issue.<br>
+                    Ollama doesn't support mandatory tools when using the OpenAi tool calling style. So, <b>all Tools are optional by default</b> and setting <code>optional=False</code> in
+                    the <a href="classes.html#tech-doc-tool">Tool's</a> constructor will have no effect.<br>
+                    It you realy need to enforce a Tool as mandatory then set the tool's type as <code>ToolType.YACANA</code> (default).<br><br>
+                </div>
 
                 <hr class="major"/>
 
                 <h2 id="assigning-multiple-tools">Assigning multiple Tools</h2>
+
                 <p>In this section, we will see that you can assign more than one tool to a Task. You can add as
                     many Tools as you wish and the LLM will be asked what tool it wants to use. After using one of
                     the tools it will be asked if it considers its Task complete. If it says "no" then Yacana will
@@ -740,8 +757,9 @@ So, to summarize: the sky appears blue because of the selective scattering of sh
                         chosen.
                     </p>
                 </blockquote>
-                <p>⚠️ For this next section we assume that you have already read section <strong>Assigning a tool to
-                    a Task</strong> of the documentation.</p>
+                <p>
+                    ⚠️ <b>When assigning multiple tools to a Task, all Tools are considered optional!</b> Setting the <code>optional=True/False</code> in the Task's constructor will not have any effects anymore!
+                </p><br>
                 <p>Let's make a more advanced calculator and solve <code>2 + 2 - 6 * 8</code>. We'll add the missing
                     tools and give them some
                     "server-side" checking to help the LLM use them properly.</p>
@@ -757,7 +775,7 @@ def adder(first_number: int, second_number: int) -> int:
     print(f"Adder was called with param = |{first_number}| and |{second_number}|")
     return first_number + second_number
 
-def multiplier(first_number, second_number) -> int:
+def multiplier(first_number: int, second_number: int) -> int:
     print("Multiplier was called with types = ", str(type(first_number)), str(type(second_number)))
     if not (isinstance(first_number, int)):
         raise ToolError("Parameter 'first_number' expected a type integer")
@@ -766,7 +784,7 @@ def multiplier(first_number, second_number) -> int:
     print(f"Multiplier was called with param = |{first_number}| and |{second_number}|")
     return first_number * second_number
 
-def substractor(first_number, second_number) -> int:
+def substractor(first_number: int, second_number: int) -> int:
     print("substractor was called with types = ", str(type(first_number)), str(type(second_number)))
     if not (isinstance(first_number, int)):
         raise ToolError("Parameter 'first_number' expected a type integer")
@@ -957,7 +975,139 @@ Since I have now calculated all parts of the original expression, there are no m
                 <br>
                 <p>
                     -44 is the correct answer!
+                </p><br>
+
+                <h4>Multiple tools with OpenAi tool execution</h4>
+
+                In the previous snippet we did not set the <code>ToolType</code> so the default was Yacana.<br>
+                Now, let's use the OpenAi tool calling style which is faster to execute!<br>
+                But before we do, there is a key difference to understand about how both mode behave.<br><br>
+
+                ▶️ <u>Yacana relies on iterative prompt engineering to make the tool calls.</u><br>
+                This means that when a tool returns a value, Yacana will prompt the LLM to see if it want's to use another one. That's why you can call 3 tools with only one Task.
+                <p>
+                    It looks like that:<br>
+                    <span class="image main"><img style="width: 400px; height: auto;" src="../images/multi_tool_yacana.png" alt="Tool calling with multiple tools using yacana."/></span>
                 </p>
+
+                ▶️ <u>On the other hand, if using the OpenAi tool execution a Task can only call ONE tool.</u>
+                <p>
+                    It looks like that:<br>
+                    <span class="image main"><img style="width: 400px; height: auto;" src="../images/multi_tool_openai_incomplete.png" alt="Tool calling with multiple tools using OpenAi can only call one tool at a time."/></span>
+                    If you need the LLM to call more than one Tool you will have to do the prompt engineering yourself...
+                </p><br>
+                <div>
+                    Let's fix that by implementing the logic ourselves!
+                    <p>
+                        <b>We'll make a loop allowing the LLM to decide if it must keep calling tools or not :</b><br>
+                        <span class="image main"><img style="width: 50%; height: auto;" src="../images/multi_tool_openai_full.png" alt="Tool calling with multiple tools using OpenAi can only call one tool at a time."/></span>
+                        In the above example the LLM called the 3 tools one after the other using results it got from previous iterations.
+                    </p>
+                </div>
+                <pre><code class="language-python">
+from yacana import Task, OllamaAgent, Tool, ToolError, ToolType
+
+def adder(first_number: int, second_number: int) -> int:
+    print("Adder was called with types = ", str(type(first_number)), str(type(second_number)))
+    if not (isinstance(first_number, int)):
+        raise ToolError("Parameter 'first_number' expected a type integer")
+    if not (isinstance(second_number, int)):
+        raise ToolError("Parameter 'second_number' expected a type integer")
+    print(f"Adder was called with param = |{first_number}| and |{second_number}|")
+    return first_number + second_number
+
+def multiplier(first_number: int, second_number: int) -> int:
+    print("Multiplier was called with types = ", str(type(first_number)), str(type(second_number)))
+    if not (isinstance(first_number, int)):
+        raise ToolError("Parameter 'first_number' expected a type integer")
+    if not (isinstance(second_number, int)):
+        raise ToolError("Parameter 'second_number' expected a type integer")
+    print(f"Multiplier was called with param = |{first_number}| and |{second_number}|")
+    return first_number * second_number
+
+def substractor(first_number: int, second_number: int) -> int:
+    print("substractor was called with types = ", str(type(first_number)), str(type(second_number)))
+    if not (isinstance(first_number, int)):
+        raise ToolError("Parameter 'first_number' expected a type integer")
+    if not (isinstance(second_number, int)):
+        raise ToolError("Parameter 'second_number' expected a type integer")
+    print(f"substractor was called with param = |{first_number}| and |{second_number}|")
+    return first_number - second_number
+
+# Defining 3 tools as optional and ToolType set to OPENAI
+adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adder, optional=True, tool_type=ToolType.OPENAI)
+substractor_tool: Tool = Tool("Substractor", "Subtracts two numbers and returns the result. When having, for instance, 2 - 6 the arguments are 2 and 6 and not 2 and -6. The tool does the subtraction.", substractor, optional=True, tool_type=ToolType.OPENAI)
+multiplier_tool: Tool = Tool("Multiplier", "Multiplies two numbers and returns the result.", multiplier, optional=True, tool_type=ToolType.OPENAI)
+
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
+
+# Initial Task
+Task(f"What's `2 + 2 - 6 * 8` ? You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correcttly the equation. You are not allowed to guess the result of any operation. Wait for each tool result before continuing. Only call one tool at a time. When you belive you're finished output 'FINISH'.", agent1, tools=[adder_tool, substractor_tool, multiplier_tool]).solve()
+
+# Creating Tasks in a loop until the LLM decides it's done
+while True:
+    msg = Task(f"Continue solving the equation! You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correctly the equation. Only call one tool at a time. When you belive you're finished output 'FINISH'", agent1, tools=[adder_tool, substractor_tool, multiplier_tool]).solve()
+    
+    # If the LLM prints "finish" then it means it's done and we exit the loop
+    if "finish" in msg.content.lower():
+        break
+                </code></pre><br>
+
+                Output:<br>
+                <pre><code class="text-output">
+INFO: [PROMPT][To: Ai assistant]: What's `2 + 2 - 6 * 8` ? You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correcttly the equation. You are not allowed to guess the result of any operation. Wait for each tool result before continuing. Only call one tool at a time. When you belive you're finished output 'FINISH'.
+
+INFO: [AI_RESPONSE][From: Ai assistant]: [{"id": "28f9264d-8064-46e6-b59e-01fe0d6147e5", "type": "function", "function": {"name": "Multiplication", "arguments": {"number_one": 6, "number_two": 8}}}]
+tool = 6 * 8 =  48
+
+INFO: [TOOL_RESPONSE][Multiplication]: 48
+
+
+INFO: [PROMPT][To: Ai assistant]: Retrying with original task and tools answer: 'What's `2 + 2 - 6 * 8` ? You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correcttly the equation. You are not allowed to guess the result of any operation. Wait for each tool result before continuing. Only call one tool at a time. When you belive you're finished output 'FINISH'.'
+
+INFO: [AI_RESPONSE][From: Ai assistant]: Now that we have the result of the multiplication, let's go back to our original equation:
+
+`2 + 2 - 48`
+
+Next operation is addition.
+
+{"name": "Addition", "parameters": {"number_one":2,"number_two":2}}
+
+INFO: [PROMPT][To: Ai assistant]: Continue solving the equation! You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correctly the equation. Only call one tool at a time. When you belive you're finished output 'FINISH'
+
+INFO: [AI_RESPONSE][From: Ai assistant]: [{"id": "3741caad-0030-401e-a92f-ffe29889c2da", "type": "function", "function": {"name": "Addition", "arguments": {"number_one": 2, "number_two": 2}}}]
+tool = 2 + 2 =  4
+
+INFO: [TOOL_RESPONSE][Addition]: 4
+
+
+INFO: [PROMPT][To: Ai assistant]: Retrying with original task and tools answer: 'Continue solving the equation! You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correctly the equation. Only call one tool at a time. When you belive you're finished output 'FINISH''
+
+INFO: [AI_RESPONSE][From: Ai assistant]: Now that we have the result of the addition, let's go back to our original equation:
+
+`4 - 48`
+
+Next operation is subtraction.
+
+{"name": "Subtraction", "parameters": {"number_one":4,"number_two":48}}
+
+INFO: [PROMPT][To: Ai assistant]: Continue solving the equation! You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correctly the equation. Only call one tool at a time. When you belive you're finished output 'FINISH'
+
+INFO: [AI_RESPONSE][From: Ai assistant]: [{"id": "f8946e10-d4b1-400d-9836-3932c8d312cc", "type": "function", "function": {"name": "Subtraction", "arguments": {"number_one": 4, "number_two": 48}}}]
+tool = 4 - 48 =  -44
+
+INFO: [TOOL_RESPONSE][Subtraction]: -44
+
+
+INFO: [PROMPT][To: Ai assistant]: Retrying with original task and tools answer: 'Continue solving the equation! You can only do one operation at a time. Don't worry you will be ask to continue with the operations later. Follow PEMDAS to solve correctly the equation. Only call one tool at a time. When you belive you're finished output 'FINISH''
+
+INFO: [AI_RESPONSE][From: Ai assistant]: Now that we have the result of the subtraction, our equation is complete.
+
+FINISH
+                </code></pre><br>
+                <div>
+                    As you can see, using the OpenAi style executes way faster than the Yacana style. However, it requires you to inplement the looping mechanism yourself.<br><br>
+                </div>
                 <div style="text-align: center; margin-top: 50px;">
                     <h4>Pagination</h4>
                     <ul class="pagination">

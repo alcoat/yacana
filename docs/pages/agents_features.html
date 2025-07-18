@@ -114,16 +114,13 @@ class Facts(BaseModel):
 ]
                     </code></pre>
                     <br>
-                    The benefits of using a class based approach instead of a JSON one is that parsing is way
-                    cleaner.<br>
-                    When parsing JSON, your IDE won't help you access correct member as it doesn't know the JSON format.
-                    This can lead in many programming mistakes.<br>
-                    Whereas using the Pydantic class approach ensures you access existing members and loop over items
-                    that
-                    can actually be looped upon, etc.
-                    <br>
-                    <br>
-                    Now, let's ask an LLM to fill this pydantic base class:
+                    There are many benefits of using a class based approach instead of a JSON one.<br>
+                    First, parsing LLM outputs is way cleaner for you as developer.<br>
+                    And secondly, it's way more acurate for AI workflows as <b>structured output is forced onto the LLM</b> output!
+                    This is way stronger than the simple <a href="agents_features.html#simple-json-mode">JSON mode</a>.<br>
+                    Having reliable output from an LLM is the sinews of war. Knowing for sure that you'll get actual JSON following a knowledgeable structure helps a lot with building AI applications.
+                    <br><br>
+                    Let's ask an LLM to fill this pydantic base class:
                 </div>
                 <pre><code class="language-python">
 from pydantic import BaseModel
@@ -269,7 +266,7 @@ The Eiffel Tower in Paris, France was originally intended to be a temporary stru
                     <a href="https://ollama.com/library/llama3.2-vision">llama3.2-vision</a> or <a
                         href="https://ollama.com/library/llava">Llava</a>.
                 <pre><code class="text-output">
-ollama pull llama3.2-vision:11b
+ollama pull llama3.2-vision:11b       # For lighter PC: llama3.2-vision:11b-instruct-q4_K_M
                     </code></pre>
                 <br>
                 <p class="icon solid fa-info-circle">
@@ -428,7 +425,7 @@ agent.history.pretty_print()
                         href="https://github.com/sparfenyuk/mcp-proxy">mcp-proxy</a>.
                 </div><br>
                 <div>
-                    For now Yacana only support tools discovery and not other types of resources that can be
+                    For now, Yacana only support tools discovery and not the other types of resources that can be
                     exposed by the MCP server like "templates", etc.
                 </div>
                 <br>
