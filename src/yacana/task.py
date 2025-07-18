@@ -5,7 +5,7 @@ from typing import List, Type, Callable, Dict
 from pydantic import BaseModel
 
 from .generic_agent import GenericAgent, GenericMessage
-from .exceptions import MaxToolErrorIter, IllogicalConfiguration
+from .exceptions import IllogicalConfiguration
 from .history import History
 from .logging_config import LoggerManager
 from .tool import Tool

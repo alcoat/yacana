@@ -48,7 +48,7 @@ If you like Yacana consider giving a star to the repo! Opensource projects need 
 ## Installation
 
 ```shell
-pip install yacana==0.3.2
+pip install yacana
 ```
 
 ---
@@ -61,7 +61,7 @@ from yacana import Task, OllamaAgent
 
 ollama_agent = OllamaAgent("AI assistant", "llama3.1:8b", system_prompt="You are a helpful AI assistant")
 
-# Create a task to tell a joke
+# Create a task to tell a riddle
 message = Task("Tell me a riddle. But do NOT tell me the answer.", ollama_agent).solve()
 
 # "Why was the math book sad?"
@@ -389,9 +389,14 @@ for invoice_file in files:
 
 ![invoice_demo](https://github.com/user-attachments/assets/7cf6fd5f-325f-4868-b4c9-0667a30543fd)
 
+To look at more complete examples try the [examples folder](https://github.com/rememberSoftwares/yacana/tree/main/examples).
+
 ---
 
 ## Releases
+
+**0.3.3**  
++ Minor doc fixes.
 
 **0.3.2**  
 + Fixed streaming error.
