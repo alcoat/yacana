@@ -563,13 +563,17 @@ Equation result = Simple math problem! The answer is indeed 4.
                 <hr class="major"/>
 
                 <h2 id="optional-tools">Optional tools</h2>
-                <p>Sometimes you assign a Tool to a Task without knowing for sure that the tool will be useful. If
+                <p>
+                    Sometimes you assign a Tool to a Task without knowing for sure that the tool will be useful. If
                     you have a fine-tuned model or doing basic operations you may want to rely on the LLM's
                     reasoning to choose if it really needs to call the tool or use his own training knowledge.
                     Setting the <code>optional: bool = True</code> will tweak how Yacana proposes the Tools to the
-                    LLM, leaving it a chance to pass on the offer of the tool and use its own knowledge instead.</p>
-                <p>To demonstrate this, let's make a tool that returns a temperature from a city. It will return a
-                    fake temperature as we don't really care. We <strong>won't</strong> set
+                    LLM, leaving it a chance to pass on the offer of the tool and use its own knowledge instead.
+                </p><br>
+                <p>
+                    To demonstrate this, let's make a tool that returns a temperature from a city. It will return a
+                    fake temperature as we don't really care.<br>
+                    We <strong>won't</strong> set
                     <code>optional=True</code> so it will be forced to use the tool:
                 </p>
                 <pre><code class="language-python">
@@ -618,7 +622,7 @@ Temperature = 20
                 <br>
                 <p>The tool was called with <code>{ "city": "NY" }</code> which returned 20. Good!</p>
                 <hr>
-                <p>Now let's ask something completely unrelated but keep the tool mandatory:</p>
+                <p>Now let's ask something completely <b>unrelated</b> but keep the tool <b>mandatory</b>:</p>
                 <pre><code class="language-python">
 result: str = Task(f"Why is the sky blue ?", agent1, tools=[Tool("get_temp", "Returns the celsius temperature of a given city", get_temperature)]).solve().content					
 					</code></pre>
@@ -651,8 +655,8 @@ Temperature = 20
 					</code></pre>
                 <br>
                 <p>It asked the tool for the temperature in the city 'Paris' without any particular reason. We can't
-                    blame it. The tool we provided and the Task to solve have nothing to do with each other. So it's
-                    making things up, like this city name.</p>
+                    blame it. The tool we provided and the Task to solve have nothing to do with each other. So <b>it's
+                    making things up</b>, like this city name.</p>
                 <hr>
                 <p>Now let's make the tool optional with <code>optional=True</code> and keep our unrelated Task:</p>
                 <pre><code class="language-python">
