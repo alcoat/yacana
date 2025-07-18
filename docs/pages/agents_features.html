@@ -72,7 +72,7 @@ message = Task("Tell me 1 fact about Canada using the format {'countryName': '',
                     guarantee on the syntactic quality of the generated JSON as no grammar is enforced.<br>
                     Also, always ask for JSON output in the prompt or else the LLM will have trouble generating
                     anything.<br>
-                    Optionnaly, you can pass a struture for the LLM to follow. This way you can parse the output.
+                    Optionally, you can pass a structure for the LLM to follow. This way you can parse the output.
                 </p>
                 <hr>
 
@@ -116,7 +116,7 @@ class Facts(BaseModel):
                     <br>
                     There are many benefits of using a class based approach instead of a JSON one.<br>
                     First, parsing LLM outputs is way cleaner for you as developer.<br>
-                    And secondly, it's way more acurate for AI workflows as <b>structured output is forced onto the LLM</b> output!
+                    And secondly, it's way more accurate for AI workflows as <b>structured output is forced onto the LLM</b> output!
                     This is way stronger than the simple <a href="agents_features.html#simple-json-mode">JSON mode</a>.<br>
                     Having reliable output from an LLM is the sinews of war. Knowing for sure that you'll get actual JSON following a knowledgeable structure helps a lot with building AI applications.
                     <br><br>
@@ -270,7 +270,7 @@ ollama pull llama3.2-vision:11b       # For lighter PC: llama3.2-vision:11b-inst
                     </code></pre>
                 <br>
                 <p class="icon solid fa-info-circle">
-                    You can use the OpenAiAgent with 'gpt-4o-mini' as its multi modal by default and supports images and
+                    You can use the OpenAiAgent with 'gpt-4o-mini' as its multi-modal by default and supports images and
                     sound.
                     However, every medias is transformed into tokens and will count in your rate limit! The media is
                     encoded to base64
@@ -278,7 +278,7 @@ ollama pull llama3.2-vision:11b       # For lighter PC: llama3.2-vision:11b-inst
                 </p>
                 <br>
                 To run the following snippets, cd into the <a href="https://github.com/rememberSoftwares/yacana">root
-                github repo</a>, create the file there and run the code.
+                GitHub repo</a>, create the file there and run the code.
                 <pre><code class="language-python">
 from yacana import Task, OllamaAgent, GenericMessage
 
@@ -327,7 +327,7 @@ Task("What color is the object ?", vision_agent, medias=["https://avatars.github
                 <br>
                 Yacana supports HTTPS URLs in addition to local file system. In this example we are giving an image by
                 its URL. Note,
-                that even when using an URL, the media will still be converted to tokens before being sent.
+                that even when using a URL, the media will still be converted to tokens before being sent.
                 <br>
                 <br>
                 Output:

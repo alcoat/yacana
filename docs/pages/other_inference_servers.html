@@ -65,7 +65,7 @@
                 <p>
                     Yacana was initially designed to work only with Ollama. However, many projects require mixing both private LLM providers and local open source models to achieve
                     a greater production grade product. Private LLM providers like OpenAI or Anthropic are great for production due to their quality but cost a lot of money.
-                    On the other hand, local open source models are way cheaper to run but their quality is not always there. Hence having the ability to mix both is a great asset.
+                    On the other hand, local open source models are way cheaper to run but their quality is not always there. Hence, having the ability to mix both is a great asset.
                 </p>
                 <br>
                 <p>
@@ -86,7 +86,7 @@
                 <br>
                 <h2 id="using-chatgpt">Using ChatGPT</h2>
                 <p>
-                    Using ChatGpt requires using the <code>OpenAiAgent</code>. It has the same constructor and functionnalities
+                    Using ChatGpt requires using the <code>OpenAiAgent</code>. It has the same constructor and functionalities
                     than the <code>OllamaAgent</code>. It just has one more parameter: the <code>api_token</code> required to authenticate to OpenAI servers.
                     <br>
                     To connect Yacana to ChatGPT, simply use the <a href="classes.html#tech-doc-openai-agent">OpenAiAgent</a> like this:
@@ -105,7 +105,7 @@ print(message.content)
                 <h4>Using tools</h4>
                 The Yacana API for calling tools with the  <a href="classes.html#tech-doc-openai-agent">OpenAiAgent</a>
                 is the same as with the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a>. The difference lies in how they are 
-                called internaly. Let me show you what I mean:
+                called internally. Let me show you what I mean:
                 <pre><code class="language-python">
 from yacana import OpenAiAgent, Task, ToolError, Tool
 
@@ -135,7 +135,7 @@ INFO: [PROMPT][To: AI assistant]: Retrying with original task and tools answer: 
 INFO: [AI_RESPONSE][From: AI assistant]: The temperature in Paris is currently 18 degrees Celsius.
                 </code></pre>
                 <br>
-                First, in the ouput we can see that the tool calling is more concise than the one done by the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a>.
+                First, in the output we can see that the tool calling is more concise than the one done by the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a>.
                 This effectiveness can only work with very smart LLMs like ChatGPT.
                 <br>
                 What’s particularly interesting is this line:
@@ -150,7 +150,7 @@ INFO: [PROMPT][To: AI assistant]: Retrying with original task and tools answer: 
                 The result you get from this Task is <i>that</i> final answer.<br>
                 In contrast, the <a href="classes.html#tech-doc-OllamaAgent">OllamaAgent</a> does not perform this replay, you would need to create a second Task manually to handle the tool’s output.
                 <br>
-                Using the enhaced tool calling for the OpenAIAgent will be addressed in a future update.
+                Using the enhanced tool calling for the OpenAIAgent will be addressed in a future update.
                 <br>
                 <hr>
 
@@ -310,7 +310,7 @@ Raw JSON output from LLM :
                 <br>
                 <b>About the <a href="classes.html#tech-doc-history-slot">HistorySlot</a></b>:<br>
 
-                The HistorySlot is class that wraps the message from the LLM. There are very few usecases where you'll need to
+                The HistorySlot is class that wraps the message from the LLM. There are very few use cases where you'll need to
                 interact with it. When accessing a Message from the history in reality you go through the HistorySlot object even though you can't see it.
                 <br>
                 However, in this case the <code>logprobs</code> data is not available inside the <a href="classes.html#tech-doc-message">Message</a> object itself. So, we must use the <code>.raw_llm_json</code> 
@@ -394,7 +394,7 @@ Current main message is: One of Nikola Tesla's main inventions is the alternatin
                 </code></pre>
                 <br>
                 <p>
-                    The <a href="classes.html#tech-doc-history-slot">HistorySlot</a> has been discused above. But to put it simply, it wraps each message in the history.
+                    The <a href="classes.html#tech-doc-history-slot">HistorySlot</a> has been disused above. But to put it simply, it wraps each message in the history.
                     This means that the history is not a list of <a href="classes.html#tech-doc-message">Message</a> but a list of slots (makes sense?).<br>
                     Each slot has one or more message. In our case, we have 3. The first one is the main message and is the one presented to the LLM during inference
                     and the other 2 are alternate messages.<br>
@@ -416,7 +416,7 @@ Current main message is: One of Nikola Tesla's main inventions is the alternatin
                     <br>
                     You can find the detailed installation steps on the <a href="https://docs.vllm.ai/en/stable/getting_started/installation/gpu.html">VLLM documentation</a>.
                     <br>
-                    We recommand you use conda to install VLLM. Note that conda does not allow you to use it in an enterprise environment without paying for a license. You can use 'uv' instead.
+                    We recommend you use conda to install VLLM. Note that conda does not allow you to use it in an enterprise environment without paying for a license. You can use 'uv' instead.
                     <br>
                     Once conda is installed you can simply pip install vllm.
                     <pre><code class="language-python">
@@ -498,9 +498,9 @@ Task("What's the weather in paris ?", vllm_agent, tools=[get_weather_tool], runt
                 <br>
                 <p>
                     Note how we used the <code>runtime_config</code> parameter to specify the guided decoding backend. You can use this parameter to specify other parameters as well.
-                    This is a direct access to the underlying library.
+                    This is direct access to the underlying library.
                     <br>
-                    For OpenAI we use the <a href="https://github.com/openai/openai-python">OpenAI python client</a>. You can set any parameter supported by this library.
+                    For OpenAI, we use the <a href="https://github.com/openai/openai-python">OpenAI python client</a>. You can set any parameter supported by this library.
                     <br>
                     These settings can either be set at the Agent level or at the Task level. For more information 
                     please refer to the <a href="agents_and_tasks.html#accessing-the-underlying-client-library">Accessing the underlying client library</a> section.
@@ -510,7 +510,7 @@ Task("What's the weather in paris ?", vllm_agent, tools=[get_weather_tool], runt
                 <p>
                     Using structured outputs is the same as with the OllamaAgent. This is the power of Yacana. It provides you with the same API for structured outputs on
                     local LLMs as on OpenAI. However, you still need to provide the <code>outline</code> parameter. In this example we set it at the Agent level because it will be
-                    usefull for every future task requiring grammar enforcement.
+                    useful for every future task requiring grammar enforcement.
                 </p>
                 <pre><code class="language-python">
 from pydantic import BaseModel
@@ -577,7 +577,7 @@ print("Fact = ", message.structured_output.countryFacts[0].fact)
                 <div class="mini-posts">
                     <article>
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
-                        <p>Youtube video for this section is still under creation. Please be patient ^^</p>
+                        <p>YouTube video for this section is still under creation. Please be patient ^^</p>
                     </article>
                 </div>
             </section>

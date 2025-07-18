@@ -81,7 +81,7 @@
                 </p>
                 <br>
                 <h4>Understanding the underlying mechanism of tool calling in LLMs</h4>
-                <p>A side note for beginers...</p><br>
+                <p>A side note for beginners...</p><br>
                 <details>
                   <summary>Show section...</summary><br>
                     <p>
@@ -471,7 +471,7 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
 
                 <hr class="major"/>
 
-                <h2 id="optional-tools">Choosing tool calling style</h2>
+                <h2 id="tool-calling-styles">Choosing tool calling style</h2>
 
                 <b>Tool calling</b> refers to the ability to call your application's functions. So far you used the default tool calling style wich is <b>Yacana style</b>.<br>
                 But like everything on this earth it has its pros and cons. Also, you can <em>change it to the one from OpenAi.</em><br><br>
@@ -482,13 +482,14 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
                     Both can call functions inside your application but have pros and cons.<br><br>
 
                     ▶️ <u>A tool should use <b>OpenAi</b> style when:</u><br>
-                    <ul>
+                    <ul style="margin-bottom: 0;">
                         <li>The LLM has been fine-tuned on tool calling.</li>
                         <li>Tool calling needs to happen fast.</li>
                         <li>LLM is smart (like chatGPT or opensource 45B+).</li>
-                        You can find if your LLM supports tool calling in the model's card description. In ollama you can even filter LLMs by <a href="https://ollama.com/search?c=tools">tool
-                        calling support</a>.<br>
                     </ul>
+                <span style="padding-top">You can find if your LLM supports tool calling in the model's card
+                    description. In ollama you can even filter LLMs by
+                    <a href="https://ollama.com/search?c=tools">tool calling support</a>.</span><br><br>
                     
                     
                     ▶️ <u>A tool should use the <b>Yacana</b> style when:</u><br>
@@ -497,7 +498,7 @@ adder_tool: Tool = Tool("Adder", "Adds two numbers and returns the result", adde
                         <li>Time is not the issue.</li>
                         <li>LLM knows english.</li>
                         <li>LLM is dumb (8B-).</li>
-                        <li>You Task has multiple assigned tools and needs native multi turn tool calls.</li>
+                        <li>Your Task has multiple assigned tools and needs native multi turn tool calls.</li>
                     </ul>
                     
                 </p>
@@ -552,8 +553,9 @@ Equation result = Simple math problem! The answer is indeed 4.
                 </code></pre><br>
 
                 <div>
-                    As you can see above, the LLM outputed a <em>function calling</em> JSON string: <code>[{"id": "XX", "type": "function", "function": {"name": "Adder", "arguments": {"first_number": 2, "second_number": 2}}}]</code>.<br>
-                    This method is way faster than the Yacana style. But as mentionned before, not all LLMs support this type of tool calling.<br><br>
+                    As you can see above, the LLM outputed a <em>function calling</em> JSON string: <code>[{"id":
+                    "XX", "type": "function", "function": {"name": "Adder", "arguments": {"first_number": 2, "second_number": 2}}}]</code>.<br>
+                    This method is way faster than the Yacana style. But as mentioned before, not all LLMs support this type of tool calling.<br><br>
                     Note that you can change the <code>tool_type</code> member of a <a href="classes.html#tech-doc-tool">Tool</a> instance during runtime and not only in the constructor.<br>
                     Meaning that you can use the same tool with different execution types in 2 separate Tasks: <code>tool_instance.tool_type=ToolType.OPENAI</code>. 
                 </div>
@@ -984,7 +986,7 @@ Since I have now calculated all parts of the original expression, there are no m
                 But before we do, there is a key difference to understand about how both mode behave.<br><br>
 
                 ▶️ <u>Yacana relies on iterative prompt engineering to make the tool calls.</u><br>
-                This means that when a tool returns a value, Yacana will prompt the LLM to see if it want's to use another one. That's why you can call 3 tools with only one Task.
+                This means that when a tool returns a value, Yacana will prompt the LLM to see if it wants to use another one. That's why you can call 3 tools with only one Task.
                 <p>
                     It looks like that:<br>
                     <span class="image main"><img style="width: 400px; height: auto;" src="../images/multi_tool_yacana.png" alt="Tool calling with multiple tools using yacana."/></span>
@@ -1150,7 +1152,7 @@ FINISH
                 <div class="mini-posts">
                     <article>
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
-                        <p>Youtube video for this section is still under creation. Please be patient ^^</p>
+                        <p>YouTube video for this section is still under creation. Please be patient ^^</p>
                     </article>
                 </div>
             </section>
