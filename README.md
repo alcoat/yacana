@@ -32,7 +32,7 @@ Yacana offers a **guided workflow** approach or **multi-turn chat** for producti
 ## Key Features
 
 * 🔗 **Link** tasks together to create workflows
-* 🧰 Enhanced Tool Calling for **every** local LLMs
+* 🧰 Enhanced **Tool Calling** for **every** local LLMs + **MCP** tools support
 * 🤖 **Multi-agents** & **multi-turn** autonomous chat
 * 🚄 **Streaming** for speed and **structured output** for reliability
 * 🛠️ Same dev. API for both **Ollama** and **OpenAi** compatible servers
