@@ -478,7 +478,7 @@ elif "no" in router_answer.lower():
                 <br>
                 <p>You should get the following output:</p>
                 <pre><code class="text-output">
-INFO: [PROMPT]: Is the following question about plants? &#60;question>Why do leaves fall in autumn ?&#60;/question&#62; Answer ONLY by 'yes' or 'no'.
+INFO: [PROMPT]: Is the following question about plants? &#60;question&#62;Why do leaves fall in autumn?&#60;/question&#62; Answer ONLY by 'yes' or 'no'.
 
 INFO: [AI_RESPONSE]: yes
 Question is about plants
@@ -897,7 +897,7 @@ Question is NOT about plants sorry.
 
     <!-- Sidebar -->
     <div id="sidebar">
-        <div class="inner">
+        <div class="inner inner-sidebar">
 
             <!-- Search -->
             <section id="search" class="alt">
@@ -906,15 +906,11 @@ Question is NOT about plants sorry.
                 </form>
             </section>
 
-            <!-- Menu Container -->
-            <div id="menu-container"></div>
+            <!-- Main website Menu Container -->
+            <nav id="menu" class="menu"></nav>
 
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
-                </div>
-            </section>
+            <!-- Page navigation menu -->
+            <nav id="page-nav-container" class="menu"></nav>
 
             <!-- Section -->
             <section>
