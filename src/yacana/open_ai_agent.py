@@ -275,7 +275,7 @@ class OpenAiAgent(GenericAgent):
         answer_slot = HistorySlot()
         for _ in range(2):
             try:
-                if structured_output is not None:
+                if structured_output:
                     response = client.beta.chat.completions.parse(**params)
                 else:
                     response = client.chat.completions.create(**params)

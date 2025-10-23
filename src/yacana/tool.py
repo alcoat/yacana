@@ -1,7 +1,7 @@
 import inspect
 import json
 import logging
-from enum import Enum
+from enum import Enum, unique
 from typing import List, Callable, Dict, Any, Tuple
 
 from .exceptions import IllogicalConfiguration, McpBadToolConfig
@@ -9,6 +9,7 @@ from .function_to_json_schema import function_to_json_with_pydantic
 from .history import History, MessageRole, OllamaUserMessage
 
 
+@unique
 class ToolType(Enum):
     """
     <b>ENUM:</b> ToolType

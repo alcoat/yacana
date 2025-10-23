@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
+from .TokenCount import HuggingFaceDetails
 from .yacana_tool_calling import YacanaToolCaller
 from .history import History, GenericMessage, MessageRole, Message
 from .model_settings import ModelSettings
@@ -119,6 +120,8 @@ class GenericAgent(ABC):
         self.tool_caller: YacanaToolCaller | OpenAiToolCaller | None = None
 
         self.history: History = history if history is not None else History()
+        # Not passed in the constructor because you should be able to switch history from one agent to another and this value needs to be updated accordingly
+        self.history.llm_model_name = model_name
         if self.system_prompt is not None and history is None:
             self.history.add_message(Message(MessageRole.SYSTEM, system_prompt))
 

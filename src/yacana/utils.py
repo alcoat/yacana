@@ -1,5 +1,5 @@
 import json
-from enum import Enum
+from enum import Enum, unique
 
 
 class Dotdict(dict):
@@ -36,6 +36,7 @@ def to_base64(data):
     return base64.b64encode(data).decode('utf-8')
 
 
+@unique
 class AgentType(Enum):
     OLLAMA = "OLLAMA"
     OPENAI = "OPENAI"

@@ -18,6 +18,7 @@ class Media:
     def get_as_openai_dict(path: str) -> dict:
         """
         Convert a media file to a dictionary format suitable for OpenAI API.
+        The media is transformed into a base64-encoded string.
 
         Parameters
         ----------
@@ -87,12 +88,12 @@ class Media:
     @staticmethod
     def path_to_base64(path: str) -> str:
         """
-        Convert the content of a file or URL to a base64-encoded string.
+        Converts a target resource (remote or local) to a base64-encoded string.
 
         Parameters
         ----------
         path : str
-            The path to the file or URL to convert.
+            Path of the resource to convert.
 
         Returns
         -------

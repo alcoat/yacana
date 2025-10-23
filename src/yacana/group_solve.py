@@ -1,5 +1,5 @@
 import copy
-from enum import Enum
+from enum import Enum, unique
 from typing import List
 import logging
 from typing_extensions import Tuple
@@ -12,6 +12,7 @@ from .exceptions import ReachedTaskCompletion, IllogicalConfiguration
 logger = logging.getLogger(__name__)
 
 
+@unique
 class EndChatMode(Enum):
     """
     <b>ENUM:</b> All types of group chat completion.

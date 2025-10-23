@@ -2,16 +2,22 @@ import copy
 import json
 import uuid
 from datetime import datetime
-from enum import Enum
-from typing import List, Dict, Type, T, Any, Sequence
+from enum import Enum, unique
+from typing import List, Dict, Type, T, Sequence
 import importlib
+import regex
 from typing_extensions import Self
 from abc import ABC, abstractmethod
 import logging
 
+from .TokenCount import HuggingFaceDetails, count_tokens_using_huggingface, count_tokens_using_tiktoken, count_tokens_using_regex, HFMessage
+from .exceptions import SpecializedTokenCountingError, IllogicalConfiguration
 from .medias import Media
 
 
+
+
+@unique
 class MessageRole(Enum):
     """
     <b>ENUM:</b>  The available types of message creators.
@@ -37,6 +43,7 @@ class MessageRole(Enum):
     TOOL = "tool"
 
 
+@unique
 class SlotPosition(Enum):
     """
     <b>ENUM:</b> The position of a slot in the history. This is only a syntactic sugar to make the code more readable.
@@ -178,16 +185,53 @@ class GenericMessage(ABC):
 
     def __init__(self, role: MessageRole, content: str | None = None, tool_calls: List[ToolCallFromLLM] | None = None, medias: List[str] | None = None, structured_output: Type[T] | None = None, tags: List[str] | None = None, id: uuid.UUID | None = None) -> None:
         self.id = str(uuid.uuid4()) if id is None else str(id)
-        self.role: MessageRole = role
-        self.content: str | None = content
-        self.tool_calls: List[ToolCallFromLLM] | None = tool_calls
-        self.medias: List[str] = medias if medias is not None else []
+        self._role: MessageRole = role
+        self._content: str | None = content
+        self._tool_calls: List[ToolCallFromLLM] | None = tool_calls
+        self._medias: List[str] = medias if medias is not None else []
         self.structured_output: Type[T] | None = structured_output
         self.tags: List[str] = list(tags) if tags is not None else []
+        self.token_count: int | None = None
 
         # Checking that both @message and @tool_calls are neither None nor empty at the same time
         if content is None and (tool_calls is None or (tool_calls is not None and len(tool_calls) == 0)):
             raise ValueError("A Message must have a content or a tool call that is not None or [].")
+
+    @property
+    def role(self):
+        return self._role
+
+    @role.setter
+    def role(self, value):
+        self._role = value
+        self.token_count = None
+
+    @property
+    def content(self):
+        return self._content
+
+    @content.setter
+    def content(self, value):
+        self._content = value
+        self.token_count = None
+
+    @property
+    def tool_calls(self):
+        return self._tool_calls
+
+    @tool_calls.setter
+    def tool_calls(self, value):
+        self._tool_calls = value
+        self.token_count = None
+
+    @property
+    def medias(self):
+        return self._medias
+
+    @medias.setter
+    def medias(self, value):
+        self._medias = value
+        self.token_count = None
 
     def __init_subclass__(cls, **kwargs):
         """
@@ -259,7 +303,21 @@ class GenericMessage(ABC):
         NotImplementedError
             This method must be implemented by subclasses.
         """
-        raise(NotImplementedError("This method should be implemented in the child class"))
+        raise NotImplementedError("This method should be implemented in the child class")
+
+    @abstractmethod
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        raise NotImplementedError("This method should be implemented in the child class")
 
     def get_as_pretty(self) -> str:
         """
@@ -335,6 +393,30 @@ class GenericMessage(ABC):
         """
         raise NotImplemented(f"This method should be implemented in the child Message class when 'structured_output' is not None. Message type: {self.__class__.__name__}.")
 
+    def get_token_count(self, llm_model_name: str = None, hugging_face_repo_name: str = None, hugging_face_token: str = None, padding_per_message: int = 4) -> int:
+
+        if self.token_count:
+            print("cache !", self.token_count, self.content)
+            return self.token_count
+
+        simplified_message: HFMessage = self.get_message_as_hugging_face_dict()
+
+        print("role: ", simplified_message["role"])
+        print("content: ", simplified_message["content"])
+
+        try:
+            if hugging_face_repo_name:
+                self.token_count = count_tokens_using_huggingface([simplified_message], hugging_face_repo_name, hugging_face_token, padding_per_message)
+                return self.token_count
+            elif llm_model_name:
+                self.token_count = count_tokens_using_tiktoken(llm_model_name, simplified_message, padding_per_message)
+                return self.token_count
+        except SpecializedTokenCountingError:
+            pass  # Falling back to regex method
+
+        self.token_count = count_tokens_using_regex(simplified_message, padding_per_message)
+        return self.token_count
+
     def __str__(self) -> str:
         """
         Get a string representation of the message.
@@ -381,6 +463,22 @@ class Message(GenericMessage):
             "content": self.content
         }
 
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        return {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+
 
 class OpenAIUserMessage(GenericMessage):
     """
@@ -419,12 +517,32 @@ class OpenAIUserMessage(GenericMessage):
             "role": self.role.value,
             "content": self.content
         }
-        if self.medias is not None:
+        if self.medias:
             message_as_dict["content"] = [
                 {"type": "text", "text": self.content},
                 *[Media.get_as_openai_dict(media_path) for media_path in self.medias]
             ]
         return message_as_dict
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        simplified_message: HFMessage = {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+        if self.medias:
+            for media_path in self.medias:
+                simplified_message["content"] += " " + Media.path_to_base64(media_path)
+        return simplified_message
 
     def _structured_output_to_dict(self) -> Dict:
         """
@@ -500,6 +618,22 @@ class OpenAITextMessage(GenericMessage):
             "content": self.content
         }
 
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        return {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+
 
 class OpenAIFunctionCallingMessage(GenericMessage):
     """
@@ -536,6 +670,25 @@ class OpenAIFunctionCallingMessage(GenericMessage):
             "content": self.content,
             **({"tool_calls": [tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls]} if self.tool_calls is not None else {})
         }
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        simplified_msg: HFMessage = {
+            "role": self.role.value,
+            "content": ""
+        }
+        if self.tool_calls:
+            simplified_msg["content"] += " " + json.dumps([tool_call.get_tool_call_as_dict() for tool_call in self.tool_calls])
+        return simplified_msg
 
 
 class OpenAiToolCallingMessage(GenericMessage):
@@ -582,6 +735,25 @@ class OpenAiToolCallingMessage(GenericMessage):
             ** ({"tool_call_id": self.tool_call_id} if self.tool_call_id is not None else {})
         }
 
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        simplified_msg: HFMessage = {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+        if self.tool_call_id:
+            simplified_msg["content"] += " " + self.tool_call_id
+        return simplified_msg
+
 
 class OllamaToolCallingMessage(GenericMessage):
     """
@@ -626,6 +798,25 @@ class OllamaToolCallingMessage(GenericMessage):
             "content": self.content,
             "name": self.tool_call_name
         }
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        simplified_msg: HFMessage = {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+        if self.tool_calls:
+            simplified_msg["content"] += " " + self.tool_call_name
+        return simplified_msg
 
 
 class OpenAIStructuredOutputMessage(GenericMessage):
@@ -701,6 +892,22 @@ class OpenAIStructuredOutputMessage(GenericMessage):
 
         return cls(**data["data"])
 
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        return{
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+
 
 class OllamaUserMessage(GenericMessage):
     """
@@ -775,8 +982,29 @@ class OllamaUserMessage(GenericMessage):
 
         module = importlib.import_module(module_name)
         cls = getattr(module, class_name)
-
         return cls
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        simplified_msg: HFMessage = {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+        if self.medias:
+            final_medias = []
+            for media in self.medias:
+                final_medias.append(Media.path_to_base64(media))
+            simplified_msg["content"] += " " + json.dumps(final_medias)
+        return simplified_msg
 
 
 class OllamaTextMessage(GenericMessage):
@@ -810,8 +1038,23 @@ class OllamaTextMessage(GenericMessage):
         """
         return {
             "role": self.role.value,
-            "content": self.content,
-            **({"images": self.medias} if self.medias is not None else {}),
+            "content": self.content
+        }
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        return {
+            "role": self.role.value,
+            "content": str(self.content)
         }
 
 
@@ -887,6 +1130,22 @@ class OllamaStructuredOutputMessage(GenericMessage):
         cls = getattr(module, class_name)
 
         return cls(**data["data"])
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        return {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
 
 
 class HistorySlot:
@@ -1144,6 +1403,10 @@ class History:
 
     Parameters
     ----------
+    llm_model_name : str | None, optional
+        The name of the LLM model. Used to count tokens more accurately when using an OpenAi model. Will use Tiktoken under the hood.
+    hugging_face_details: HuggingFaceDetails | None, optional
+        Details for Hugging Face models, including repo name and access token. Used to count tokens more accurately when using an HuggingFace model. Will use the transformers library under the hood.
     **kwargs: Any
         Additional keyword arguments including:
         slots : List[HistorySlot], optional
@@ -1157,11 +1420,14 @@ class History:
         List of history slots.
     _checkpoints : Dict[str, list[HistorySlot]]
         Dictionary of checkpoints for the history.
+    llm_model_name : str | None
+        The name of the LLM model used to count tokens when using an OpenAi model.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, llm_model_name: str | None = None, **kwargs) -> None:
         self.slots: List[HistorySlot] = kwargs.get('slots', [])
         self._checkpoints: Dict[str, list[HistorySlot]] = kwargs.get('_checkpoints', {})
+        self.llm_model_name = llm_model_name
 
     def add_slot(self, history_slot: HistorySlot, position: int | SlotPosition = SlotPosition.BOTTOM) -> None:
         """
@@ -1616,6 +1882,36 @@ class History:
             The history to concatenate.
         """
         self.slots = self.slots + history.slots
+
+    def get_token_count(self, hugging_face_repo_name: str | None = None, hugging_face_token: str | None = None, padding_per_message: int = 4, evaluate_all_history_as_one: bool = False) -> int:
+        """
+        Get the total token count of messages in the history.
+
+        * If the hugging_face_repo_name is provided, the token count will be calculated using the transformers library.
+        (If the llm is gated (private), the hugging_face_token must be provided to access the repo.)
+        * If the llm_model_name is provided and is an OpenAI LLM, the token count will be calculated using the tiktoken library.
+        * If none of the above conditions are met, an approximative token count will be returned. This is only a rough estimate and should not be used for precise calculations.
+
+        Note that using Tiktoken and transformers are precise but quite slow (loging to HF using the token is the worst). The approximative token count is very fast but not precise.
+
+        Returns
+        -------
+        int
+            The total token count of all messages in history.
+        """
+        if evaluate_all_history_as_one is True and hugging_face_repo_name is None:
+            raise IllogicalConfiguration('`evaluate_all_history_as_one` can only be used when hugging_face_repo_name is provided. It allows to count the tokens of the entire history at once using the full chat template instead of applying the template one message at a time which is less accurate.')
+
+        try:
+            if hugging_face_repo_name and evaluate_all_history_as_one is True:
+                return count_tokens_using_huggingface([message.get_message_as_hugging_face_dict() for message in self.get_all_messages()], hugging_face_repo_name, hugging_face_token=hugging_face_token, padding_per_message=padding_per_message)
+        except SpecializedTokenCountingError:
+            logging.warning("Falling back to per-message token counting even though `evaluate_all_history_as_one` was True due to error in hugging_face token counting.")
+
+        tokens = 0
+        for message in self.get_all_messages():
+            tokens += message.get_token_count(llm_model_name=self.llm_model_name, hugging_face_repo_name=hugging_face_repo_name, hugging_face_token=hugging_face_token, padding_per_message=padding_per_message)
+        return tokens
 
     def __str__(self) -> str:
         """

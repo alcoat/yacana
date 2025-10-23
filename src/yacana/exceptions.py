@@ -167,3 +167,20 @@ class McpServerNotYetInitialized(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+
+class SpecializedTokenCountingError(Exception):
+    """
+    Exception raised when counting tokens using specialized methods fails.
+
+    If this is raised then we fall back to counting tokens using regex approximations.
+
+    Parameters
+    ----------
+    message : str
+        A descriptive message indicating why token counting didn't work.
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
