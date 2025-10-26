@@ -34,7 +34,7 @@ class BaseAgentTest(unittest.TestCase):
         if cls.run_ollama:
             cls.ollama_agent = OllamaAgent(
                 name="Ollama AI Assistant",
-                model_name="llama3.1:8b",
+                model_name="llama3.1:8b-instruct-q4_K_M",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
                 endpoint="http://127.0.0.1:11434"

@@ -1,8 +1,10 @@
 import unittest
 import os
+
 from tests.test_base import BaseAgentTest
 from yacana import Task, Message, MessageRole, History, HistorySlot, OpenAiModelSettings, Tool
 from yacana.generic_agent import GenericAgent
+from yacana.history import OllamaUserMessage, OllamaTextMessage
 
 class TestBasicInference(BaseAgentTest):
     """Test basic inference capabilities of all agent types."""
@@ -377,6 +379,75 @@ class TestBasicInference(BaseAgentTest):
         # Supprimer le slot restant via delete_slot_by_id
         history.delete_slot_by_id(slot4.id)
         self.assertEqual(len(history.slots), 0)
+
+    def test_counting_tokens_history(self):
+        """Test that counting tokens works for hugging face, tiktoken and regex methods."""
+
+        def test_hugging_face_counting(agent: GenericAgent):
+
+            m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
+            m1 = OllamaUserMessage(MessageRole.USER, "Hello !")
+            m2 = OllamaTextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
+
+            h = History(agent.model_name)
+            h.add_message(m0)
+            h.add_message(m1)
+            h.add_message(m2)
+
+            self.assertEqual(agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_"), 30, "Token count using hugging face should be exact")
+
+            print("init ", agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_"))
+
+            ollama_agent.history.get_last_message().content = "Kikou"
+
+            print("post update ", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_"))
+
+            print("full range ", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_", evaluate_all_history_as_one=True))
+
+            print("regex ", ollama_agent.history.get_token_count())
+
+            print("Not gated but should work because of cache ", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct"))
+
+            ollama_agent.history.get_all_messages()[1].content = "Vive le fromage!"
+
+            print("Not gated so should switch to regexp", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct"))
+
+            # Verify that the history was restored to its initial state
+            self.assertEqual(
+                len(agent.history.slots),
+                initial_history_length,
+                f"{agent.name} Token count using hugging face should be exact"
+            )
+
+            # Verify the content of the history matches the initial state
+            # Skip the first slot (system prompt) and check the rest
+            for i, slot in enumerate(agent.history.slots[1:], start=1):
+                self.assertEqual(
+                    slot.get_message().content,
+                    initial_messages[i - 1].content,
+                    f"{agent.name} message {i} content should match initial state"
+                )
+                self.assertEqual(
+                    slot.get_message().role,
+                    initial_messages[i - 1].role,
+                    f"{agent.name} message {i} role should match initial state"
+                )
+
+            def test_tiktoken_counting(agent: GenericAgent):
+                # Similar to the hugging face counting test
+                test_hugging_face_counting(agent)
+
+        # Test OpenAI agent
+        if self.run_openai:
+            test_agent_forget(self.openai_agent)
+
+        # Test VLLM agent
+        if self.run_vllm:
+            test_agent_forget(self.vllm_agent)
+
+        # Test Ollama agent
+        if self.run_ollama:
+            test_agent_forget(self.ollama_agent)
 
     def test_no_structure_thinking(self):
         """Test the ability to not use JSON structured output internally."""

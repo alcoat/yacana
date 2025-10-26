@@ -5,20 +5,17 @@ from datetime import datetime
 from enum import Enum, unique
 from typing import List, Dict, Type, T, Sequence
 import importlib
-import regex
 from typing_extensions import Self
 from abc import ABC, abstractmethod
 import logging
 
-from .TokenCount import HuggingFaceDetails, count_tokens_using_huggingface, count_tokens_using_tiktoken, count_tokens_using_regex, HFMessage
+from .TokenCount import count_tokens_using_huggingface, count_tokens_using_tiktoken, count_tokens_using_regex, HFMessage
 from .exceptions import SpecializedTokenCountingError, IllogicalConfiguration
 from .medias import Media
 
 
-
-
 @unique
-class MessageRole(Enum):
+class MessageRole(str, Enum):
     """
     <b>ENUM:</b>  The available types of message creators.
     User messages are the ones that are sent by the user to the LLM.
@@ -248,19 +245,27 @@ class GenericMessage(ABC):
     def _export(self) -> Dict:
         """
         Returns a pure python dictionary mainly to save the object into a file.
-        None entries are omitted.
 
         Returns
         -------
         Dict
-            A dictionary representation of the message with None entries omitted.
+            A dictionary representation of the message.
         """
         members = self.__dict__.copy()
+        final_members: dict = {}
+
         members["type"] = self.__class__.__name__
         members["role"] = self.role.value
         if members["structured_output"] is not None:
             members["structured_output"] = self._structured_output_to_dict()
-        return members
+
+        for key, value in members.items():
+            if key.startswith("_"):
+                final_members[key[1:]] = value
+            else:
+                final_members[key] = value
+        print("moi pas comprendre = ", final_members)
+        return final_members
 
     @staticmethod
     def create_instance(members: Dict):
@@ -1900,7 +1905,7 @@ class History:
             The total token count of all messages in history.
         """
         if evaluate_all_history_as_one is True and hugging_face_repo_name is None:
-            raise IllogicalConfiguration('`evaluate_all_history_as_one` can only be used when hugging_face_repo_name is provided. It allows to count the tokens of the entire history at once using the full chat template instead of applying the template one message at a time which is less accurate.')
+            raise IllogicalConfiguration("Parameter `evaluate_all_history_as_one` can only be used when hugging_face_repo_name is provided. It allows to count the tokens of the entire history at once using the full chat template instead of applying the template one message at a time which is less accurate. But it's only available for hugging face models that's why you need to set `hugging_face_repo_name`.")
 
         try:
             if hugging_face_repo_name and evaluate_all_history_as_one is True:
