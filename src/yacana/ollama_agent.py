@@ -3,7 +3,7 @@ import logging
 import uuid
 
 from ollama import Client, ChatResponse
-from typing import List, Type, Any, T, Dict, Callable, Mapping, Tuple
+from typing import List, Type, Any, T, Dict, Callable, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
 
@@ -11,7 +11,8 @@ from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
 from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal
-from .history import HistorySlot, GenericMessage, MessageRole, History, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage, ToolCallFromLLM, OpenAIFunctionCallingMessage
+from .history import HistorySlot, History
+from .messages import GenericMessage, MessageRole, OllamaUserMessage, OllamaStructuredOutputMessage, OllamaTextMessage, ToolCallFromLLM, OpenAIFunctionCallingMessage
 from .tool import Tool, ToolType
 from .constants import PROMPT_TAG, RESPONSE_TAG
 

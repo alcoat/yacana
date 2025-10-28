@@ -2,9 +2,8 @@ import unittest
 import os
 
 from tests.test_base import BaseAgentTest
-from yacana import Task, Message, MessageRole, History, HistorySlot, OpenAiModelSettings, Tool
+from yacana import Task, Message, MessageRole, History, HistorySlot, OpenAiModelSettings, Tool, OllamaUserMessage, OllamaTextMessage
 from yacana.generic_agent import GenericAgent
-from yacana.history import OllamaUserMessage, OllamaTextMessage
 
 class TestBasicInference(BaseAgentTest):
     """Test basic inference capabilities of all agent types."""
@@ -21,7 +20,7 @@ class TestBasicInference(BaseAgentTest):
 
     def test_simple_completion(self):
         """Test basic text completion with all agent types."""
-        prompt = "Count from 1 to 5 (no additionnal text, numbers only):"
+        prompt = "Count from 1 to 5 (no additional text, numbers only):"
         expected = "1, 2, 3, 4, 5"
         
         # Test Ollama agent
@@ -383,16 +382,19 @@ class TestBasicInference(BaseAgentTest):
     def test_counting_tokens_history(self):
         """Test that counting tokens works for Hugging Face, Tiktoken and regex methods."""
 
-        m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
-        m1 = OllamaUserMessage(MessageRole.USER, "Hello !")
-        m2 = OllamaTextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
+        def bootstrap_history() -> History:
+            m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
+            m1 = OllamaUserMessage(MessageRole.USER, "Hello !")
+            m2 = OllamaTextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
 
-        h = History()
-        h.add_message(m0)
-        h.add_message(m1)
-        h.add_message(m2)
+            h = History()
+            h.add_message(m0)
+            h.add_message(m1)
+            h.add_message(m2)
+            return h
 
         def test_hugging_face_counting(agent: GenericAgent):
+            h = bootstrap_history()
             agent.set_history(h)
 
             # Testing gated error here because logging into HF once stores the creds for the sessions and so it cannot be tested later
@@ -425,6 +427,7 @@ class TestBasicInference(BaseAgentTest):
             self.assertEqual(no_padding, 33, "No-padding should be 12 tokens short from previous regex count (default to 3 (messages) * 4 (tokens).")
 
         def test_tiktoken_counting(agent: GenericAgent):
+            h = bootstrap_history()
             agent.set_history(h)
 
             init = agent.history.get_token_count()
@@ -445,6 +448,8 @@ class TestBasicInference(BaseAgentTest):
             self.assertEqual(regex_only, 35, "Giving an unknown LLM model name will fail Tiktoken which should switch to regex counting.")
 
         def test_image_counting(agent: GenericAgent):
+            h = bootstrap_history()
+            agent.set_history(h)
             image_path = self.get_test_image_path("burger.jpg")
 
             # Testing Hugging Face counting with an image in history

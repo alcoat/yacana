@@ -6,7 +6,8 @@ from typing import List, Callable, Dict, Any, Tuple
 
 from .exceptions import IllogicalConfiguration, McpBadToolConfig
 from .function_to_json_schema import function_to_json_with_pydantic
-from .history import History, MessageRole, OllamaUserMessage
+from .history import History
+from .messages import MessageRole, OllamaUserMessage
 
 
 @unique

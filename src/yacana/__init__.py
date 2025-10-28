@@ -5,7 +5,9 @@ from .ollama_agent import OllamaAgent
 from .agent import Agent
 from .exceptions import MaxToolErrorIter, ToolError, IllogicalConfiguration, ReachedTaskCompletion
 from .group_solve import EndChatMode, EndChat, GroupSolve
-from .history import MessageRole, GenericMessage, History, Message, HistorySlot, SlotPosition, OllamaUserMessage, OllamaTextMessage, OpenAIUserMessage
+from .history import History, HistorySlot, SlotPosition
+from .messages import (MessageRole, GenericMessage, Message, OpenAIUserMessage, OpenAITextMessage, OpenAIFunctionCallingMessage, OpenAiToolCallingMessage, OllamaToolCallingMessage, OpenAIStructuredOutputMessage, OllamaUserMessage,
+                       OllamaTextMessage, OllamaStructuredOutputMessage)
 from .logging_config import LoggerManager
 from .model_settings import OllamaModelSettings
 from .model_settings import OpenAiModelSettings

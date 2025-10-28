@@ -5,7 +5,7 @@ from typing import List, Type, T, Dict, Callable
 from pydantic import BaseModel
 
 from .exceptions import MaxToolErrorIter, ToolError, UnknownResponseFromLLM
-from .history import OpenAiToolCallingMessage, OpenAIFunctionCallingMessage, OllamaToolCallingMessage
+from .messages import OpenAiToolCallingMessage, OpenAIFunctionCallingMessage, OllamaToolCallingMessage
 from .tool import Tool
 from .base_tool_caller import BaseToolCaller
 from .utils import AgentType

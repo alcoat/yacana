@@ -11,7 +11,8 @@ from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
-from .history import HistorySlot, GenericMessage, MessageRole, ToolCallFromLLM, OpenAIFunctionCallingMessage, OpenAITextMessage, History, OpenAIStructuredOutputMessage, OpenAIUserMessage
+from .history import HistorySlot, History
+from .messages import ToolCallFromLLM, GenericMessage, MessageRole, OpenAIFunctionCallingMessage, OpenAITextMessage, OpenAIStructuredOutputMessage, OpenAIUserMessage
 from .tool import Tool
 from .constants import PROMPT_TAG, RESPONSE_TAG
 

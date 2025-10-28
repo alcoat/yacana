@@ -4,7 +4,7 @@ from typing import List
 import logging
 from typing_extensions import Tuple
 
-from .generic_agent import GenericMessage, MessageRole
+from .messages import GenericMessage, MessageRole
 from .history import Message
 from .task import Task
 from .exceptions import ReachedTaskCompletion, IllogicalConfiguration
