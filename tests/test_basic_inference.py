@@ -381,73 +381,100 @@ class TestBasicInference(BaseAgentTest):
         self.assertEqual(len(history.slots), 0)
 
     def test_counting_tokens_history(self):
-        """Test that counting tokens works for hugging face, tiktoken and regex methods."""
+        """Test that counting tokens works for Hugging Face, Tiktoken and regex methods."""
+
+        m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
+        m1 = OllamaUserMessage(MessageRole.USER, "Hello !")
+        m2 = OllamaTextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
+
+        h = History()
+        h.add_message(m0)
+        h.add_message(m1)
+        h.add_message(m2)
 
         def test_hugging_face_counting(agent: GenericAgent):
+            agent.set_history(h)
 
-            m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
-            m1 = OllamaUserMessage(MessageRole.USER, "Hello !")
-            m2 = OllamaTextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
+            # Testing gated error here because logging into HF once stores the creds for the sessions and so it cannot be tested later
+            gate_protected = agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct")
+            self.assertEqual(gate_protected, 46, "Gate protected HF model should fail but is saved by regex counting (fallback).")
 
-            h = History(agent.model_name)
-            h.add_message(m0)
-            h.add_message(m1)
-            h.add_message(m2)
+            init = agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token=self.hf_token)
+            self.assertEqual(init, 46, "Token count using hugging face and chat template.")
 
-            self.assertEqual(agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_"), 30, "Token count using hugging face should be exact")
+            cache = agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token=self.hf_token)
+            self.assertEqual(cache, 46, "Token count using cache should be the same as previous test.")
 
-            print("init ", agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_"))
+            agent.history.get_all_messages()[1].content = "Hey hey hey!"
 
-            ollama_agent.history.get_last_message().content = "Kikou"
+            post_update = agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token=self.hf_token)
+            self.assertEqual(post_update, 48, "Token count after hot update should now be 48 tokens.")
 
-            print("post update ", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_"))
+            full_history =  agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token=self.hf_token, evaluate_all_history_as_one=True)
+            self.assertEqual(full_history, 46, "Token count when evaluating the whole history as one and not message per message.")
 
-            print("full range ", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="hf_", evaluate_all_history_as_one=True))
+            gate_protected_cached =  agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct")
+            self.assertEqual(gate_protected_cached, 48, "Gate protected HF model should fail but is saved by cache.")
 
-            print("regex ", ollama_agent.history.get_token_count())
+            agent.history.get_all_messages()[1].content = "He! He! He!"
 
-            print("Not gated but should work because of cache ", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct"))
+            regex_only = agent.history.get_token_count()
+            self.assertEqual(regex_only, 45, "Giving no HF data will force to use regex")
 
-            ollama_agent.history.get_all_messages()[1].content = "Vive le fromage!"
+            no_padding = agent.history.get_token_count(padding_per_message=0)
+            self.assertEqual(no_padding, 33, "No-padding should be 12 tokens short from previous regex count (default to 3 (messages) * 4 (tokens).")
 
-            print("Not gated so should switch to regexp", ollama_agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct"))
+        def test_tiktoken_counting(agent: GenericAgent):
+            agent.set_history(h)
 
-            # Verify that the history was restored to its initial state
-            self.assertEqual(
-                len(agent.history.slots),
-                initial_history_length,
-                f"{agent.name} Token count using hugging face should be exact"
-            )
+            init = agent.history.get_token_count()
+            self.assertEqual(init, 31, "Token count using Tiktoken.")
 
-            # Verify the content of the history matches the initial state
-            # Skip the first slot (system prompt) and check the rest
-            for i, slot in enumerate(agent.history.slots[1:], start=1):
-                self.assertEqual(
-                    slot.get_message().content,
-                    initial_messages[i - 1].content,
-                    f"{agent.name} message {i} content should match initial state"
-                )
-                self.assertEqual(
-                    slot.get_message().role,
-                    initial_messages[i - 1].role,
-                    f"{agent.name} message {i} role should match initial state"
-                )
+            cache = agent.history.get_token_count()
+            self.assertEqual(cache, 31, "Token count using cache should be the same as previous test.")
 
-            def test_tiktoken_counting(agent: GenericAgent):
-                # Similar to the hugging face counting test
-                test_hugging_face_counting(agent)
+            agent.history.get_all_messages()[1].content = "Hey hey hey!"
+
+            post_update = agent.history.get_token_count()
+            self.assertEqual(post_update, 33, "Token count after hot update should not use cache.")
+
+            agent.history.get_all_messages()[1].content = "Ho! Ho! HO!"
+
+            agent.history.llm_model_name = "unknown LLM"
+            regex_only = agent.history.get_token_count()
+            self.assertEqual(regex_only, 35, "Giving an unknown LLM model name will fail Tiktoken which should switch to regex counting.")
+
+        def test_image_counting(agent: GenericAgent):
+            image_path = self.get_test_image_path("burger.jpg")
+
+            # Testing Hugging Face counting with an image in history
+            Task("Tell me 1 fact about what is depicted in this image.", agent, medias=[image_path]).solve()
+            token_count_img_using_hf = agent.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token=self.hf_token)
+            self.assertGreater(token_count_img_using_hf, 70000, "Counting how many tokens are in the history containing an image using HF should be greater than 70000.")
+
+            # Testing Tiktoken counting with an image in history (Must be done after an HF counting to cache the image tokens otherwise we would have to call chatGPT)
+            model_name_save = agent.history.llm_model_name #  Patching llm model to match something that Tiktoken knows about
+            agent.history.llm_model_name = "gpt-4o-mini"
+            for message in agent.history.get_all_messages():
+                message.token_count = None  #  Clearing cache to force recounting
+            token_count_img_using_tiktoken = agent.history.get_token_count()
+            print("version tiktoken = ", token_count_img_using_tiktoken)
+            self.assertGreater(token_count_img_using_tiktoken, 68000, "Counting how many tokens are in the history containing an image using Tiktoken should be greater than 70000.")
+            agent.history.llm_model_name = model_name_save #  Restoring
+
 
         # Test OpenAI agent
         if self.run_openai:
-            test_agent_forget(self.openai_agent)
+            test_tiktoken_counting(self.openai_agent)
 
         # Test VLLM agent
         if self.run_vllm:
-            test_agent_forget(self.vllm_agent)
+            test_tiktoken_counting(self.vllm_agent)
 
         # Test Ollama agent
         if self.run_ollama:
-            test_agent_forget(self.ollama_agent)
+            test_hugging_face_counting(self.ollama_agent)
+            test_image_counting(self.ollama_vision_agent)
 
     def test_no_structure_thinking(self):
         """Test the ability to not use JSON structured output internally."""
@@ -467,7 +494,7 @@ class TestBasicInference(BaseAgentTest):
             Task("Update the server", agent, tools=[update_server]).solve()
             Task("Update the server", agent, tools=[update_server, rollback_server]).solve()
             agent.structured_thinking = True
-            # Vérifier que le mot "JSON" n'apparaît qu'une seule fois dans les contenus des messages
+            # Checks that the word "JSON" only appears once in the messages' content
             all_messages = agent.history.get_all_messages()
             json_count = sum("JSON" in message.content for message in all_messages)
             self.assertEqual(json_count, 2, 'Le mot "JSON" doit apparaître exactement 2 fois dans les contenus des messages (1 par Task)')

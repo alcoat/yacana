@@ -29,12 +29,13 @@ class BaseAgentTest(unittest.TestCase):
         cls.run_openai = os.getenv('TEST_OPENAI', 'true').lower() == 'true'
         cls.run_vllm = os.getenv('TEST_VLLM', 'true').lower() == 'true'
         cls.run_lmstudio = os.getenv('TEST_LMSTUDIO', 'true').lower() == 'true'
+        cls.hf_token = os.getenv("HF_TOKEN", None)
         
         # Initialize agents based on which ones are enabled
         if cls.run_ollama:
             cls.ollama_agent = OllamaAgent(
                 name="Ollama AI Assistant",
-                model_name="llama3.1:8b-instruct-q4_K_M",
+                model_name="llama3.2:latest",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
                 endpoint="http://127.0.0.1:11434"
@@ -42,7 +43,7 @@ class BaseAgentTest(unittest.TestCase):
             
             cls.ollama_vision_agent = OllamaAgent(
                 name="Ollama Vision AI Assistant",
-                model_name="llama3.2-vision:11b-instruct-q4_K_M",
+                model_name="llama3.2-vision:latest",
                 model_settings=cls.ollama_settings,
                 system_prompt="You are a helpful AI assistant",
                 endpoint="http://127.0.0.1:11434"

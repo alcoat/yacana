@@ -401,26 +401,30 @@ class GenericMessage(ABC):
     def get_token_count(self, llm_model_name: str = None, hugging_face_repo_name: str = None, hugging_face_token: str = None, padding_per_message: int = 4) -> int:
 
         if self.token_count:
-            print("cache !", self.token_count, self.content)
-            return self.token_count
+            logging.debug("Using cache token count for message.")
+            print("cache !", self.token_count + padding_per_message, self.content)
+            return self.token_count + padding_per_message
 
         simplified_message: HFMessage = self.get_message_as_hugging_face_dict()
 
-        print("role: ", simplified_message["role"])
-        print("content: ", simplified_message["content"])
-
         try:
             if hugging_face_repo_name:
-                self.token_count = count_tokens_using_huggingface([simplified_message], hugging_face_repo_name, hugging_face_token, padding_per_message)
-                return self.token_count
+                print('HF')
+                logging.debug("Will try to count tokens using Hugging Face.")
+                self.token_count = count_tokens_using_huggingface([simplified_message], hugging_face_repo_name, hugging_face_token)
+                return self.token_count + padding_per_message * len([simplified_message])
             elif llm_model_name:
-                self.token_count = count_tokens_using_tiktoken(llm_model_name, simplified_message, padding_per_message)
-                return self.token_count
+                print("TIKTOKEN")
+                logging.debug("Will try to count tokens using Tiktoken.")
+                self.token_count = count_tokens_using_tiktoken(llm_model_name, simplified_message)
+                return self.token_count + padding_per_message
         except SpecializedTokenCountingError:
             pass  # Falling back to regex method
 
-        self.token_count = count_tokens_using_regex(simplified_message, padding_per_message)
-        return self.token_count
+        print("REGEX")
+        logging.debug("Fallback : Will try to count tokens using regex (approximate).")
+        self.token_count = count_tokens_using_regex(simplified_message)
+        return self.token_count + padding_per_message
 
     def __str__(self) -> str:
         """
@@ -1906,10 +1910,14 @@ class History:
         """
         if evaluate_all_history_as_one is True and hugging_face_repo_name is None:
             raise IllogicalConfiguration("Parameter `evaluate_all_history_as_one` can only be used when hugging_face_repo_name is provided. It allows to count the tokens of the entire history at once using the full chat template instead of applying the template one message at a time which is less accurate. But it's only available for hugging face models that's why you need to set `hugging_face_repo_name`.")
+        if hugging_face_token is not None and hugging_face_repo_name is None:
+            raise IllogicalConfiguration("Parameter `hugging_face_token` can only be used when `hugging_face_repo_name` is provided. The token is used to access private models on Hugging Face Hub.")
 
         try:
             if hugging_face_repo_name and evaluate_all_history_as_one is True:
-                return count_tokens_using_huggingface([message.get_message_as_hugging_face_dict() for message in self.get_all_messages()], hugging_face_repo_name, hugging_face_token=hugging_face_token, padding_per_message=padding_per_message)
+                logging.debug("Will try to count tokens using the whole history instead of message per message.")
+                hf_messages_list: List[HFMessage] = [message.get_message_as_hugging_face_dict() for message in self.get_all_messages()]
+                return count_tokens_using_huggingface(hf_messages_list, hugging_face_repo_name, hugging_face_token=hugging_face_token) + padding_per_message * len(hf_messages_list)
         except SpecializedTokenCountingError:
             logging.warning("Falling back to per-message token counting even though `evaluate_all_history_as_one` was True due to error in hugging_face token counting.")
 

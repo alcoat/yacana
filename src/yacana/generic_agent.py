@@ -277,3 +277,7 @@ class GenericAgent(ABC):
             This method must be implemented by subclasses.
         """
         raise NotImplemented(f"This method must be subclassed by the child class. It starts the inference using given parameters.")
+
+    def set_history(self, history: History):
+        history.llm_model_name = self.model_name
+        self.history = history
