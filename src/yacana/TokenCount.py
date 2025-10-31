@@ -26,7 +26,6 @@ def count_tokens_using_huggingface(hugging_faces_messages: List[HFMessage], hugg
         logging.debug("Loading tokenizer from Hugging Face Hub for model: " + hugging_face_repo_name)
         tokenizer = AutoTokenizer.from_pretrained(hugging_face_repo_name)
         tokens = tokenizer.apply_chat_template(hugging_faces_messages, tokenize=True)
-        print("Decoded tokens:", tokenizer.decode(tokens))
         nb_tokens = len(tokens)
         return nb_tokens
     except Exception as e:
@@ -39,8 +38,6 @@ def count_tokens_using_tiktoken(llm_model_name: str, message: HFMessage) -> int:
     try:
         logging.debug("Loading tiktoken encoding for model: " + llm_model_name)
         enc = tiktoken.encoding_for_model(llm_model_name)  # Getting correct encoding if it's an OpenAI model ONLY else ValueError
-        print(str(enc))
-        print(len(enc.encode(message["role"])), len(enc.encode(message["content"])))
         return len(enc.encode(message["role"])) + len(enc.encode(message["content"]))
     except KeyError:
         logging.debug(f"Could not find encoding for model {llm_model_name}. This is normal if this model is not from OpenAI. You should set the @hugging_face_repo_nama and token in the Agent class so Yacana may use the correct tokeniser for this LLM. Falling back to approximative token count instead.")
@@ -50,5 +47,4 @@ def count_tokens_using_tiktoken(llm_model_name: str, message: HFMessage) -> int:
 def count_tokens_using_regex(message: HFMessage) -> int:
     token_match_regex = regex.compile(r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+", regex.MULTILINE)
     logging.debug("Using approximative token count method.")
-    print(len(token_match_regex.findall(message["role"])), len(token_match_regex.findall(message["content"])))
     return len(token_match_regex.findall(message["role"]) + token_match_regex.findall(message["content"]))

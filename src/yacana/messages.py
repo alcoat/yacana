@@ -246,7 +246,6 @@ class GenericMessage(ABC):
                 final_members[key[1:]] = value
             else:
                 final_members[key] = value
-        print("moi pas comprendre = ", final_members)
         return final_members
 
     @staticmethod
@@ -384,26 +383,22 @@ class GenericMessage(ABC):
 
         if self.token_count:
             logging.debug("Using cache token count for message.")
-            print("cache !", self.token_count + padding_per_message, self.content)
             return self.token_count + padding_per_message
 
         simplified_message: HFMessage = self.get_message_as_hugging_face_dict()
 
         try:
             if hugging_face_repo_name:
-                print('HF')
                 logging.debug("Will try to count tokens using Hugging Face.")
                 self.token_count = count_tokens_using_huggingface([simplified_message], hugging_face_repo_name, hugging_face_token)
                 return self.token_count + padding_per_message * len([simplified_message])
             elif llm_model_name:
-                print("TIKTOKEN")
                 logging.debug("Will try to count tokens using Tiktoken.")
                 self.token_count = count_tokens_using_tiktoken(llm_model_name, simplified_message)
                 return self.token_count + padding_per_message
         except SpecializedTokenCountingError:
             pass  # Falling back to regex method
 
-        print("REGEX")
         logging.debug("Fallback : Will try to count tokens using regex (approximate).")
         self.token_count = count_tokens_using_regex(simplified_message)
         return self.token_count + padding_per_message

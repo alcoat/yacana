@@ -463,7 +463,6 @@ class TestBasicInference(BaseAgentTest):
             for message in agent.history.get_all_messages():
                 message.token_count = None  #  Clearing cache to force recounting
             token_count_img_using_tiktoken = agent.history.get_token_count()
-            print("version tiktoken = ", token_count_img_using_tiktoken)
             self.assertGreater(token_count_img_using_tiktoken, 68000, "Counting how many tokens are in the history containing an image using Tiktoken should be greater than 70000.")
             agent.history.llm_model_name = model_name_save #  Restoring
 

@@ -798,6 +798,137 @@ What's 200+200 ? ==> ['end', 'yacana_prompt']
 Number of messages between the two selected messages:  2
                 </code></pre>
 
+                <h2>Counting tokens inside the context window</h2>
+
+                <div>
+                    Each time you solve a Task, the whole agent's history is sent to the LLM. It's called the "context".<br>
+                    The more context you give an LLM, the better are its answers. Unfortunately LLMs have a maximum context size which you mustn't go over. [This is why counting tokens is important.](https://medium.com/@docteur_rs/life-of-an-amnesic-llm-5c80f8183298)<br>
+                    If you did trip the limit, the LLM forgets about the start of the context which may lead to poor results!<br>
+                    Yacana provides a way to count how many tokens are currently in the agent's history (the context) so that you can monitor it and decide when to trim it down.<br><br>
+                </div>
+
+                <h4>Precise counting of tokens using Hugging Face tokenizer</h4>
+
+                <div>
+                    Let's create a fake history for demo purpose. By controlling the history's content, you and I will have the same number of tokens:
+                    <pre><code class="language-python">
+from yacana import History, OllamaUserMessage, OllamaTextMessage, Message, MessageRole, OllamaAgent
+
+# Creating 3 messages
+m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
+m1 = OllamaUserMessage(MessageRole.USER, "Hello !")
+m2 = OllamaTextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
+
+# Creating a history and adding the messages
+h = History()
+h.add_message(m0)
+h.add_message(m1)
+h.add_message(m2)
+
+# Creating an agent and giving it our manually created history
+agent1 = OllamaAgent("Ai assistant", "llama3.1:8b")
+agent1.set_history(h)
+                    </code></pre>
+                </div>
+                <div>
+                    Now let's count how many tokens are in this history. Under the hood Yacana will use the Hugging Face tokenizer.<br>
+                    To make it work we must give Yacana the Hugging Face repo name corresponding to the LLM model.<br>
+                    For llama3.1:8b the corresponding hugging face repo is <code>meta-llama/Meta-Llama-3-8B-Instruct</code> ([link](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)).<br>
+                    This repo contains the tokenizer files we need. Unfortunately it is gated so you need to create a free hugging face account, accept the model's terms of use and <b>create a token</b>.<br>
+                    <pre><code class="language-python">
+token_count = agent1.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="HF_XXX_REPLACE_ME_XXX")
+print("Current token count in history: ", token_count)
+                    </code></pre>
+                    <pre><code class="text-output">
+Current token count in history:  46
+                    </code></pre>
+                    The <code>.get_token_count()</code> method says there are 46 tokens in the history.<br>
+                    This is very precise because it uses the same tokenizer as the LLM itself AND applies the chat template rules (like adding extra tokens for roles, etc.).<br><br>
+                </div>
+
+                !!!!information_source: Each message store its token count in cache. This means that the first time you call <code>.get_token_count()</code> it may be a bit slow because it has to compute the token count for each message.
+                However, subsequent calls will be much faster because the token counts are cached.<br>
+                The token count will be recomputed only if the message content changes in any way.
+
+                <hr>
+
+                You can get even more precision by setting the parameter <code>evaluate_all_history_as_one</code> to True. (defaults to False)<br>
+                In the previous example the chat template was applied to each message individually. However, some LLMs allow applying the chat template to the whole history at once.<br>
+                For example:
+                <pre><code class="language-python">
+token_count = agent1.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="HF_XXX_REPLACE_ME_XXX", evaluate_all_history_as_one=True)
+print("Current token count in history: ", token_count)
+                </code></pre>
+
+                <pre><code class="text-output">
+Current token count in history:  44
+               </code></pre>
+
+                There are 2 tokens of difference because the chat template was only applied once to the whole history instead of 3 times (once per message).<br>
+
+                !!!!information_source: Note that when using this method, no caching is involved and the whole history is tokenized from scratch each time.
+
+                <hr>
+
+                To be even more precise you should set the parameter <code>padding_per_message</code> to 0 (defaults to 4).<br>
+                This parameter adds a fixed amount of tokens per message to account for any extra tokens that may be added by the LLM chat template that we don't know about.<br>
+                But in this case we know exactly how the chat template is applied so we can set it to 0.<br>
+                <pre><code class="language-python">
+token_count = agent1.history.get_token_count(hugging_face_repo_name="meta-llama/Meta-Llama-3-8B-Instruct", hugging_face_token="HF_XXX_REPLACE_ME_XXX", evaluate_all_history_as_one=True, padding_per_message=0)
+print("Current token count in history: ", token_count)
+                </code></pre>
+                <pre><code class="text-output">
+Current token count in history:  34
+               </code></pre>
+                Initially it was 46 tokens. But the history being composed of 3 message with a 4 token padding we get 3 * 4 = 12 tokens of padding that are now set to 0 (46 - 12 = 34).<br>
+
+                <h4>Counting token precisely using Tiktoken tokenizer</h4>
+
+                <div>
+                    Let's create a fake history for an OpenAi agent:
+                    <pre><code class="language-python">
+from yacana import History, OpenAIUserMessage, OpenAITextMessage, Message, MessageRole, OpenAiAgent
+
+# Creating 3 messages
+m0 = Message(MessageRole.SYSTEM, "You are a helpful AI assistant.")
+m1 = OpenAIUserMessage(MessageRole.USER, "Hello !")
+m2 = OpenAITextMessage(MessageRole.ASSISTANT, "Hi there! How are you ?")
+
+# Creating a history and adding the messages
+h = History()
+h.add_message(m0)
+h.add_message(m1)
+h.add_message(m2)
+
+# Creating an agent and giving it our manually created history
+agent1 = OpenAiAgent("Ai assistant", "gpt-4o-mini")
+agent1.set_history(h)
+                    </code></pre>
+                </div>
+                <div>
+                    Now let's count how many tokens are in this history. Under the hood Yacana will use Tiktoken as tokenizer.<br>
+                    When using an official OpenAI model you don't have to provide any arguments to the function as the model name was already provided in the Agent definition. Yacana will reuse that information.<br>
+                    <pre><code class="language-python">
+token_count = agent1.history.get_token_count()
+print("Current token count in history: ", token_count)
+                    </code></pre>
+                    <pre><code class="text-output">
+Current token count in history:  31
+                    </code></pre>
+                    The <code>.get_token_count()</code> method says there are 31 tokens in the history.<br>
+                    This is quite precise because Tiktoken is the tokeniser used by OpenAI itself. However, because <b>we do not know the chat template they use</b>, the token count will be slightly off from reality. You can make up for
+                    this
+                    difference
+                    using the <code>padding_per_message</code> parameter:<br>
+                    <pre><code class="language-python">
+token_count = agent1.history.get_token_count(padding_per_message=3)
+print("Current token count in history: ", token_count)
+                    </code></pre>
+                    FYI, <code>padding_per_message</code> already defaults to 4.
+                </div>
+
+                <h4>Getting a rough token count estimation</h4>
+
                 <div style="text-align: center; margin-top: 50px;">
                     <h4>Pagination</h4>
                     <ul class="pagination">
