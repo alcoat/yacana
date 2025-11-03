@@ -769,10 +769,23 @@ class History:
 
         * If the hugging_face_repo_name is provided, the token count will be calculated using the transformers library.
         (If the llm is gated (private), the hugging_face_token must be provided to access the repo.)
-        * If the llm_model_name is provided and is an OpenAI LLM, the token count will be calculated using the tiktoken library.
+        * If no Hugging Face details are given and the model is recognized as an OpenAi model then the token count will be calculated using the tiktoken library.
         * If none of the above conditions are met, an approximative token count will be returned. This is only a rough estimate and should not be used for precise calculations.
 
         Note that using Tiktoken and transformers are precise but quite slow (loging to HF using the token is the worst). The approximative token count is very fast but not precise.
+        Important point: If you provide Hugging Face details, Yacana will try to evaluate the token count using the transformers library first even if the model is from OpenAi. If the Hugging Face evaluation fails then it won't fallback to Tiktoken but to the approximative method instead.
+
+        Parameters
+        ----------
+        hugging_face_repo_name : str | None, optional
+            The name of the Hugging Face repository for the model. If provided, the token count will be calculated using the transformers library.
+        hugging_face_token : str | None, optional
+            The Hugging Face access token for private models. Required if the model is gated (private).
+        padding_per_message : int, optional
+            The number of extra tokens to add per message for padding. Default is 4.
+        evaluate_all_history_as_one : bool, optional
+            If True, evaluates the entire history as a single input using the full chat template for token counting.
+            This is more accurate but only available for Hugging Face models. Default is False.
 
         Returns
         -------

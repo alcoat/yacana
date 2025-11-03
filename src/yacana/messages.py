@@ -157,6 +157,8 @@ class GenericMessage(ABC):
         Pydantic model for structured output.
     tags : List[str]
         List of tags associated with the message.
+    token_count : int | None
+        Number of tokens in the message. None if not calculated yet.
     """
 
     _registry = {}
@@ -380,7 +382,32 @@ class GenericMessage(ABC):
         raise NotImplemented(f"This method should be implemented in the child Message class when 'structured_output' is not None. Message type: {self.__class__.__name__}.")
 
     def get_token_count(self, llm_model_name: str = None, hugging_face_repo_name: str = None, hugging_face_token: str = None, padding_per_message: int = 4) -> int:
+        """
+        Get the total token count of messages in the history.
 
+        * If the hugging_face_repo_name is provided, the token count will be calculated using the transformers library.
+        (If the llm is gated (private), the hugging_face_token must be provided to access the repo.)
+        * If the llm_model_name is provided and is an OpenAI LLM, the token count will be calculated using the tiktoken library.
+        * If none of the above conditions are met, an approximative token count will be returned. This is only a rough estimate and should not be used for precise calculations.
+
+        Note that using Tiktoken and transformers are precise but quite slow (loging to HF using the token is the worst). The approximative token count is very fast but not precise.
+
+        Parameters
+        ----------
+        llm_model_name : str | None, optional
+            The name of the LLM model. If provided and is an OpenAI model, the token count will be calculated using the tiktoken library.
+        hugging_face_repo_name : str | None, optional
+            The name of the Hugging Face repository for the model. If provided, the token count will be calculated using the transformers library.
+        hugging_face_token : str | None, optional
+            The Hugging Face access token for private models. Required if the model is gated (private).
+        padding_per_message : int, optional
+            The number of extra tokens to add per message for padding. Default is 4.
+
+        Returns
+        -------
+        int
+            The total token count of all messages in history.
+        """
         if self.token_count:
             logging.debug("Using cache token count for message.")
             return self.token_count + padding_per_message
