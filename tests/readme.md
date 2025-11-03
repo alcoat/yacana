@@ -1,4 +1,4 @@
-From repo root use the following cmd lines to start tests.
+From **repo root** use the following cmd lines to start tests.
 
 Execute whole file:
 ```
