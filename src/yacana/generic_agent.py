@@ -279,5 +279,13 @@ class GenericAgent(ABC):
         raise NotImplemented(f"This method must be subclassed by the child class. It starts the inference using given parameters.")
 
     def set_history(self, history: History):
+        """
+        Sets the conversation history for the agent. Cleaner than accessing the attribute directly.
+
+        Parameters
+        ----------
+        history: History
+            The history object to set for the agent.
+        """
         history.llm_model_name = self.model_name
         self.history = history

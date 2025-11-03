@@ -1,5 +1,5 @@
 from jinja2 import Template
-from yacana import OllamaModelSettings, Task, Tool, OllamaAgent, MessageRole, GenericMessage, OpenAiAgent, OpenAiModelSettings, History, HistorySlot, Message, GroupSolve, EndChat, EndChatMode, LoggerManager, MaxToolErrorIter, ToolError, IllogicalConfiguration, ReachedTaskCompletion, GenericAgent, Mcp, ToolType
+from yacana import OllamaModelSettings, Task, Tool, OllamaAgent, MessageRole, GenericMessage, OpenAiAgent, OpenAiModelSettings, History, HistorySlot, Message, GroupSolve, EndChat, EndChatMode, LoggerManager, MaxToolErrorIter, ToolError, IllogicalConfiguration, ReachedTaskCompletion, GenericAgent, Mcp, ToolType, OpenAIUserMessage, OpenAITextMessage, OllamaUserMessage, OllamaTextMessage
 
 import inspect
 import re
@@ -181,7 +181,7 @@ def fill_template(exported_classes: List[dict]):
     print(f"Generated documentation HTML for {len(exported_classes)} classes at {output_filename}")
 
 
-all_classes = [OllamaAgent, OpenAiAgent, Task, Tool, Message, GenericMessage, MessageRole, History, HistorySlot, SlotPosition, Mcp, ToolType, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, OpenAiModelSettings, LoggerManager, ToolError, MaxToolErrorIter, IllogicalConfiguration, ReachedTaskCompletion, TaskCompletionRefusal, UnknownResponseFromLLM]
+all_classes = [OllamaAgent, OpenAiAgent, Task, Tool, Message, OpenAIUserMessage, OpenAITextMessage, OllamaUserMessage, OllamaTextMessage, MessageRole, History, HistorySlot, SlotPosition, Mcp, ToolType, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, OpenAiModelSettings, LoggerManager, ToolError, MaxToolErrorIter, IllogicalConfiguration, ReachedTaskCompletion, TaskCompletionRefusal, UnknownResponseFromLLM]
 exported_classes: List[dict] = []
 
 for cls in all_classes:
@@ -207,7 +207,6 @@ for cls in all_classes:
         "method_return_type": cls.__name__,
         "method_return_type_description": None
     })
-
 
     for name, method in inspect.getmembers(cls, predicate=inspect.isfunction):
         if name.startswith('_') or name == '__init__':
