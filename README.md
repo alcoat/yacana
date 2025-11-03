@@ -19,9 +19,12 @@ Task-driven multi-agents framework for developers to create open source LLM-powe
 
 Yacana is designed for both *beginners* and *advanced* AI users.  
 
-It features a simple OOP API with a **smooth learning curve**, while also offering advanced runtime LLM configurations when needed.  
+It features a **simple** OOP API with a **smooth learning curve**, while also offering advanced runtime LLM 
+configurations when needed.  
 
-The real strength of the framework lies in its ability to deliver impressive results with open-source models, even small ones, making **tool calling effortless with any LLM**.  
+The real strength of the framework lies in its ability to bring **tool calling to every LLM**, even tiny ones that 
+have not been fine-tuned for this.  
+It was **made to power open-source LLMs** from the ground up but works equally well with **any OpenAI models**.
 
 Yacana offers a **guided workflow** approach or **multi-turn chat** for production-grade capabilities, leveraging what we typically call '*Agents*'. However, Yacana takes a different approach to Agents compared to other frameworks, focusing more on chaining Tasks together rather than on the Agents themselves.
 
@@ -36,12 +39,12 @@ Yacana offers a **guided workflow** approach or **multi-turn chat** for producti
 * 🤖 **Multi-agents** & **multi-turn** autonomous chat
 * 🚄 **Streaming** for speed and **structured output** for reliability
 * 🛠️ Same dev. API for both **Ollama** and **OpenAi** compatible servers
-* 🚀 *Ready to use in minutes*
+* 🚀 **Ready to use in minutes** with an extensive documentation and examples
 
 ▶️▶️▶️ [Start by reading the documentation here](https://remembersoftwares.github.io/yacana/). ◀️◀️◀️    
 
 *Yacana is free and open source under MIT license.*  
-If you like Yacana consider giving a star to the repo! Opensource projects need your help! ⭐  
+**If you like Yacana consider giving a star to the repo! Opensource projects need your help!** ⭐  
 
 ---
 
