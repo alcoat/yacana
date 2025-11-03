@@ -81,25 +81,23 @@ A calculator using tools called by the LLM to solve an equation. It makes use of
 ```python
 from yacana import Task, OllamaAgent, ToolError, Tool, OllamaModelSettings
 
-# Basic type validation to make sure the LLM gave correct values to the tools
-def _validate_LLM_inputs(first_number, second_number):
-    if not isinstance(first_number, int):
-        raise ToolError("Parameter 'first_number' expected a type integer")
-    if not isinstance(second_number, int):
-        raise ToolError("Parameter 'second_number' expected a type integer")
-
-
 # Simple math operations functions
 def add(first_number: int, second_number: int) -> int:
-    _validate_LLM_inputs(first_number, second_number)
+    # Basic type validation to make sure the LLM gave correct values to the tools
+    if not isinstance(first_number, int) or not isinstance(second_number, int):
+        raise ToolError("Parameters must be integers")
     return first_number + second_number
 
 def multiply(first_number: int, second_number: int) -> int:
-    _validate_LLM_inputs(first_number, second_number)
+    # Basic type validation to make sure the LLM gave correct values to the tools
+    if not isinstance(first_number, int) or not isinstance(second_number, int):
+        raise ToolError("Parameters must be integers")
     return first_number * second_number
 
 def subtract(first_number: int, second_number: int) -> int:
-    _validate_LLM_inputs(first_number, second_number)
+    # Basic type validation to make sure the LLM gave correct values to the tools
+    if not isinstance(first_number, int) or not isinstance(second_number, int):
+        raise ToolError("Parameters must be integers")
     return first_number - second_number
 
 
@@ -394,6 +392,9 @@ To look at more complete examples try the [examples folder](https://github.com/r
 ---
 
 ## Releases
+
+**0.4.0**  
++ Added token counting in history.  
 
 **0.3.3**  
 + Minor doc fixes.
