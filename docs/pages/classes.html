@@ -54,7 +54,7 @@
 
             <section>
                 <header class="main">
-                    <h1 id="tech-doc">Technical documentation - Yacana 0.4.0</h1>
+                    <h1 id="tech-doc">Technical documentation - Yacana 0.x.x</h1>
                 </header>
                 <span class="image main"><img src="../images/tech_doc.jpg" alt="Roadmap"/></span>
 
@@ -78,19 +78,6 @@
                             </tr>
                             </thead>
                             <tbody>
-                            
-                            <tr>
-                                <td><code>_agent_type</code></td>
-                                <td style="text-align:center">
-                                    <a href="#tech-doc-agenttype">
-                                        AgentType
-                                    </a>&nbsp
-                                    <span></span>
-                                </td>
-                                <td style="text-align:center">
-                                        Type of the Agent to circumvent partial import when determining agent's type at runtime.
-                                </td>
-                            </tr>
                             
                             <tr>
                                 <td><code>name</code></td>
@@ -219,19 +206,6 @@
                                 </td>
                                 <td style="text-align:center">
                                         The conversation history.
-                                </td>
-                            </tr>
-                            
-                            <tr>
-                                <td><code>_tags</code></td>
-                                <td style="text-align:center">
-                                    <a href="#tech-doc-str">
-                                        List[str]
-                                    </a>&nbsp
-                                    <span></span>
-                                </td>
-                                <td style="text-align:center">
-                                        Internal list of tags.
                                 </td>
                             </tr>
                             
@@ -571,19 +545,6 @@
                             <tbody>
                             
                             <tr>
-                                <td><code>_agent_type</code></td>
-                                <td style="text-align:center">
-                                    <a href="#tech-doc-agenttype">
-                                        AgentType
-                                    </a>&nbsp
-                                    <span></span>
-                                </td>
-                                <td style="text-align:center">
-                                        Type of the Agent to circumvent partial import when determining agent's type at runtime.
-                                </td>
-                            </tr>
-                            
-                            <tr>
                                 <td><code>name</code></td>
                                 <td style="text-align:center">
                                     <a href="#tech-doc-str">
@@ -710,19 +671,6 @@
                                 </td>
                                 <td style="text-align:center">
                                         The conversation history.
-                                </td>
-                            </tr>
-                            
-                            <tr>
-                                <td><code>_tags</code></td>
-                                <td style="text-align:center">
-                                    <a href="#tech-doc-str">
-                                        List[str]
-                                    </a>&nbsp
-                                    <span></span>
-                                </td>
-                                <td style="text-align:center">
-                                        Internal list of tags.
                                 </td>
                             </tr>
                             
@@ -4689,19 +4637,6 @@
                             </tr>
                             
                             <tr>
-                                <td><code>_checkpoints</code></td>
-                                <td style="text-align:center">
-                                    <a href="#tech-doc-dictstr, listhistoryslot">
-                                        Dict[str, list[HistorySlot]]
-                                    </a>&nbsp
-                                    <span></span>
-                                </td>
-                                <td style="text-align:center">
-                                        Dictionary of checkpoints for the history.
-                                </td>
-                            </tr>
-                            
-                            <tr>
                                 <td><code>llm_model_name</code></td>
                                 <td style="text-align:center">
                                     <a href="#tech-doc-str">
@@ -4751,20 +4686,7 @@
                                         <span>Optional</span>
                                     </td>
                                     <td style="text-align:center">
-                                            The name of the LLM model. Used to count tokens more accurately when using an OpenAi model. Will use Tiktoken under the hood.
-                                    </td>
-                                </tr>
-                                
-                                <tr>
-                                    <td><code>hugging_face_details</code></td>
-                                    <td style="text-align:center">
-                                        <a
-                                                href="#tech-doc-huggingfacedetails">HuggingFaceDetails | None
-                                        </a>&nbsp
-                                        <span>Optional</span>
-                                    </td>
-                                    <td style="text-align:center">
-                                            Details for Hugging Face models, including repo name and access token. Used to count tokens more accurately when using an HuggingFace model. Will use the transformers library under the hood.
+                                            The name of the LLM model. Used to count tokens more accurately when using an OpenAi model. Will use Tiktoken under the hood. If not provided will rely on regex matching for approximative token count.
                                     </td>
                                 </tr>
                                 
@@ -8952,7 +8874,7 @@
 
     <!-- Sidebar -->
     <div id="sidebar">
-        <div class="inner">
+        <div class="inner inner-sidebar">
 
             <!-- Search -->
             <section id="search" class="alt">
@@ -8961,15 +8883,11 @@
                 </form>
             </section>
 
-            <!-- Menu Container -->
-            <div id="menu-container"></div>
+            <!-- Main website Menu Container -->
+            <nav id="menu" class="menu"></nav>
 
-            <!-- Section -->
-            <section>
-                <div class="page-nav-container">
-                    <!-- Dynamic page navigation will be inserted here -->
-                </div>
-            </section>
+            <!-- Page navigation menu -->
+            <nav id="page-nav-container" class="menu"></nav>
 
             <!-- Section -->
             <section>
@@ -8979,7 +8897,7 @@
                 <div class="mini-posts">
                     <article>
                         <a href="#" class="image"><img src="../images/youtube_down.jpg" alt=""/></a>
-                        <p>Youtube video for this section is still under creation. Please be patient ^^</p>
+                        <p>YouTube video for this section is still under creation. Please be patient ^^</p>
                     </article>
                 </div>
             </section>

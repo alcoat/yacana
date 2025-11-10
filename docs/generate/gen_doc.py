@@ -137,9 +137,13 @@ def collect_parent_class_attributes(cls) -> List[Dict]:
 def keep_uniq_attributes(child_attributes: List[Dict], parent_attributes: List[Dict]) -> List[Dict]:
     """
     Fusionne les attributs parent avec ceux de l'enfant qui ne sont pas déjà présents dans l'enfant.
+    Enlève les attributs privés (ceux commençant par '_').
     """
-    child_names = {attr['name'] for attr in child_attributes}
-    merged = child_attributes + [attr for attr in parent_attributes if attr['name'] not in child_names]
+    # Retirer d'abord les attributs privés présents dans l'enfant
+    child_filtered = [attr for attr in child_attributes if not attr['name'].startswith('_')]
+    child_names = {attr['name'] for attr in child_filtered if attr['name'].startswith('_') is False}
+    merged = child_filtered + [attr for attr in parent_attributes if attr['name'] not in child_names and attr['name'].startswith('_') is False]
+    print("--> Merged attributes: ", merged)
     return merged
 
 

@@ -284,9 +284,7 @@ class History:
     Parameters
     ----------
     llm_model_name : str | None, optional
-        The name of the LLM model. Used to count tokens more accurately when using an OpenAi model. Will use Tiktoken under the hood.
-    hugging_face_details: HuggingFaceDetails | None, optional
-        Details for Hugging Face models, including repo name and access token. Used to count tokens more accurately when using an HuggingFace model. Will use the transformers library under the hood.
+        The name of the LLM model. Used to count tokens more accurately when using an OpenAi model. Will use Tiktoken under the hood. If not provided will rely on regex matching for approximative token count.
     **kwargs: Any
         Additional keyword arguments including:
         slots : List[HistorySlot], optional
