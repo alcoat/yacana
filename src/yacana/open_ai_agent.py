@@ -1,11 +1,17 @@
 import logging
-import openai
-from openai import OpenAI, Stream
+import os
+import uuid
+
+from langfuse._client.observe import observe
+from langfuse import get_client, propagate_attributes
+#import openai
+from openai import Stream
 from typing import List, Mapping, Type, Any, Literal, T, Dict, Callable
 from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice, ChatCompletion
 from pydantic import BaseModel
 from openai.types.chat import ChatCompletionChunk
+from langfuse.openai import OpenAI
 
 from .generic_agent import GenericAgent
 from .model_settings import OpenAiModelSettings
@@ -75,7 +81,17 @@ class OpenAiAgent(GenericAgent):
         self._agent_type: AgentType = AgentType.OPENAI
         super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking)
         if self.api_token == "":
-            logging.warning("OpenAI requires an API token to be set.")
+            logging.warning("OpenAI requires the API token to be set to any non empty value. Empty quotes are forbidden because it can create misleading errors in some OpenAi compatible endpoints.")
+
+        self.langfuse_session_id = str(uuid.uuid4())
+        self.client = OpenAI(
+            api_key=self.api_token,
+            base_url=self.endpoint
+        )
+        os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-ee664b4c-f18f-4611-98d5-694744b45ca3"
+        os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-0fea30ad-1c52-40c2-9829-c096c8103567"
+        os.environ["LANGFUSE_BASE_URL"] = "http://localhost:3000"
+        self.langfuse_client = get_client()
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
@@ -244,89 +260,90 @@ class OpenAiAgent(GenericAgent):
         TaskCompletionRefusal
             If the model refuses to complete the task.
         """
-        if task:
-            logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
-        # Extracting all json schema from tools, so it can be passed to the OpenAI API
-        all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
+        with self.langfuse_client.start_as_current_observation(as_type="span", name="openai-call") as root_span:
+            with propagate_attributes(session_id=self.langfuse_session_id, user_id=self.langfuse_session_id):
+                if task:
+                    logging.info(f"[PROMPT][To: {self.name}]: {task}")
+                    question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
+                # Extracting all json schema from tools, so it can be passed to the OpenAI API
+                all_function_calling_json = [tool._openai_function_schema for tool in tools] if tools else []
 
-        tool_choice_option = self._find_right_tool_choice_option(tools)
-        response_format = self._get_expected_output_format(structured_output, json_output)
+                tool_choice_option = self._find_right_tool_choice_option(tools)
+                response_format = self._get_expected_output_format(structured_output, json_output)
 
-        client = OpenAI(
-            api_key=self.api_token,
-            base_url=self.endpoint
-        )
+                params = {
+                    "model": self.model_name,
+                    "messages": history.get_messages_as_dict(),
+                    "metadata": {
+                        "patate": "au four"
+                    },
+                    **({"stream": True} if streaming_callback is not None else {}),
+                    **({"response_format": response_format} if response_format is not None else {}),
+                    **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
+                    **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {}),
+                    **self.model_settings.get_settings(),
+                    **self.runtime_config,
+                    **self.task_runtime_config,
+                }
+                logging.debug("Runtime parameters before inference: %s", str(params))
 
-        params = {
-            "model": self.model_name,
-            "messages": history.get_messages_as_dict(),
-            **({"stream": True} if streaming_callback is not None else {}),
-            **({"response_format": response_format} if response_format is not None else {}),
-            **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
-            **({"tool_choice": tool_choice_option} if len(all_function_calling_json) > 0 else {}),
-            **self.model_settings.get_settings(),
-            **self.runtime_config,
-            **self.task_runtime_config
-        }
-        logging.debug("Runtime parameters before inference: %s", str(params))
+                has_tried_no_json_mode = False
+                response = None
+                answer_slot = HistorySlot()
+                for _ in range(2):
+                    try:
+                        if structured_output:
+                            response = self.client.beta.chat.completions.parse(**params)
+                        else:
+                            response = self.client.chat.completions.create(**params)
+                            response = self._dispatch_chunk_if_streaming(response, streaming_callback)
+                        break
+                    except openai.BadRequestError as e:
+                        logging.error(e.message)
+                        if e.status_code == 400 and has_tried_no_json_mode is False:
+                            logging.warning("An error occurred during inference with the OpenAiAgent. Are you sure the backend is OpenAi compatible ? Whatever the case, Yacana will retry the request without the JSON mode. Maybe your LLM or backend doesn't deal with JSON correctly. Therefore we will rely solely on prompt engineering to get valid JSON output.")
+                            params.pop("response_format", None)
+                            has_tried_no_json_mode = True
+                        else:
+                            raise
+                if response is None:
+                    raise UnknownResponseFromLLM("Something went wrong... Please open an issue is you see this message. It should not happen.")
 
-        has_tried_no_json_mode = False
-        response = None
-        answer_slot = HistorySlot()
-        for _ in range(2):
-            try:
-                if structured_output:
-                    response = client.beta.chat.completions.parse(**params)
+                self.task_runtime_config = {}
+                answer_slot.set_raw_llm_json(response.model_dump_json())
+                logging.debug("Inference output: %s", response.model_dump_json(indent=2))
+
+                for choice in response.choices:
+
+                    if self._is_structured_output(choice):
+                        logging.debug("Response assessment is structured output")
+                        if choice.message.refusal is not None:
+                            raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
+                        answer_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
+
+                    elif self._is_tool_calling(choice):
+                        logging.debug("Response assessment is tool calling")
+                        tool_calls: List[ToolCallFromLLM] = []
+                        for tool_call in choice.message.tool_calls:
+                            tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, tool_call.function.arguments))
+                            logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
+                        answer_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
+
+                    elif self._is_common_chat(choice):
+                        logging.debug("Response assessment is classic chat answer")
+                        answer_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
+                    else:
+                        raise UnknownResponseFromLLM("Unknown response from OpenAI API")
+
+                logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
+                last_message = answer_slot.get_message()
+                root_span.update(input=str(params), output=last_message.content)
+                if save_to_history is False:
+                    if task:
+                        history.delete_slot(question_slot)
                 else:
-                    response = client.chat.completions.create(**params)
-                    response = self._dispatch_chunk_if_streaming(response, streaming_callback)
-                break
-            except openai.BadRequestError as e:
-                logging.error(e.message)
-                if e.status_code == 400 and has_tried_no_json_mode is False:
-                    logging.warning("An error occurred during inference with the OpenAiAgent. Are you sure the backend is OpenAi compatible ? Whatever the case, Yacana will retry the request without the JSON mode. Maybe your LLM or backend doesn't deal with JSON correctly. Therefore we will rely solely on prompt engineering to get valid JSON output.")
-                    params.pop("response_format", None)
-                    has_tried_no_json_mode = True
-                else:
-                    raise
-        if response is None:
-            raise UnknownResponseFromLLM("Something went wrong... Please open an issue is you see this message. It should not happen.")
-
-        self.task_runtime_config = {}
-        answer_slot.set_raw_llm_json(response.model_dump_json())
-        logging.debug("Inference output: %s", response.model_dump_json(indent=2))
-
-        for choice in response.choices:
-
-            if self._is_structured_output(choice):
-                logging.debug("Response assessment is structured output")
-                if choice.message.refusal is not None:
-                    raise TaskCompletionRefusal(choice.message.refusal)  # Refusal key is only available for structured output but also doesn't work very well
-                answer_slot.add_message(OpenAIStructuredOutputMessage(MessageRole.ASSISTANT, choice.message.content, choice.message.parsed, tags=self._tags + [RESPONSE_TAG]))
-
-            elif self._is_tool_calling(choice):
-                logging.debug("Response assessment is tool calling")
-                tool_calls: List[ToolCallFromLLM] = []
-                for tool_call in choice.message.tool_calls:
-                    tool_calls.append(ToolCallFromLLM(tool_call.id, tool_call.function.name, tool_call.function.arguments))
-                    logging.debug("Tool info : Id= %s, Name= %s, Arguments= %s", tool_call.id, tool_call.function.name, tool_call.function.arguments)
-                answer_slot.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
-
-            elif self._is_common_chat(choice):
-                logging.debug("Response assessment is classic chat answer")
-                answer_slot.add_message(OpenAITextMessage(MessageRole.ASSISTANT, choice.message.content, tags=self._tags + [RESPONSE_TAG]))
-            else:
-                raise UnknownResponseFromLLM("Unknown response from OpenAI API")
-
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
-        last_message = answer_slot.get_message()
-        if save_to_history is False:
-            if task:
-                history.delete_slot(question_slot)
-        else:
-            history.add_slot(answer_slot)
-        return last_message
+                    history.add_slot(answer_slot)
+                return last_message
 
 
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
