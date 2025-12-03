@@ -1,19 +1,17 @@
 import logging
-import os
-import uuid
-
-from langfuse._client.observe import observe
-from langfuse import get_client, propagate_attributes
-#import openai
+from langfuse import propagate_attributes
+from openai import OpenAI
+from openai._exceptions import BadRequestError
 from openai import Stream
 from typing import List, Mapping, Type, Any, Literal, T, Dict, Callable
 from collections.abc import Iterator
 from openai.types.chat.chat_completion import Choice, ChatCompletion
 from pydantic import BaseModel
 from openai.types.chat import ChatCompletionChunk
-from langfuse.openai import OpenAI
+from contextlib import nullcontext
 
 from .generic_agent import GenericAgent
+from .langfuse import LangfuseConnector
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
@@ -59,6 +57,10 @@ class OpenAiAgent(GenericAgent):
     structured_thinking : bool, optional
         If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
         Defaults to True.
+    langfuse_connector : LangfuseConnector, optional
+        Connector to a Langfuse instance for logging LLM calls. Defaults to None.
+    **kwargs
+        Additional keyword arguments passed to the parent class.
 
     Attributes
     ----------
@@ -72,26 +74,16 @@ class OpenAiAgent(GenericAgent):
     """
 
     def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str | None = None,
-                 api_token: str = "cant_be_empty", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: tuple[str, str] | None = None, structured_thinking=True, **kwargs) -> None:
+                 api_token: str = "cant_be_empty", headers=None, model_settings: OpenAiModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: tuple[str, str] | None = None, structured_thinking=True, langfuse_connector: LangfuseConnector = None, **kwargs) -> None:
         if api_token == "":
             logging.warning(f"Empty api_token provided. This will most likely clash with the underlying inference library. You should probably set this to any non empty string.")
         model_settings = OpenAiModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OpenAiModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OpenAiModelSettings.")
         self._agent_type: AgentType = AgentType.OPENAI
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking)
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token=api_token, headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking, langfuse_connector=langfuse_connector)
         if self.api_token == "":
             logging.warning("OpenAI requires the API token to be set to any non empty value. Empty quotes are forbidden because it can create misleading errors in some OpenAi compatible endpoints.")
-
-        self.langfuse_session_id = str(uuid.uuid4())
-        self.client = OpenAI(
-            api_key=self.api_token,
-            base_url=self.endpoint
-        )
-        os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-ee664b4c-f18f-4611-98d5-694744b45ca3"
-        os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-0fea30ad-1c52-40c2-9829-c096c8103567"
-        os.environ["LANGFUSE_BASE_URL"] = "http://localhost:3000"
-        self.langfuse_client = get_client()
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
@@ -224,6 +216,12 @@ class OpenAiAgent(GenericAgent):
             ]
         })
 
+    def _get_openai_client(self):
+        if self.langfuse_connector:
+            return self.langfuse_connector.get_openai_client(self.endpoint, self.api_token)
+        else:
+            return OpenAI(api_key=self.api_token, base_url=self.endpoint)
+
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
                   streaming_callback: Callable | None = None) -> GenericMessage:
         """
@@ -260,8 +258,9 @@ class OpenAiAgent(GenericAgent):
         TaskCompletionRefusal
             If the model refuses to complete the task.
         """
-        with self.langfuse_client.start_as_current_observation(as_type="span", name="openai-call") as root_span:
-            with propagate_attributes(session_id=self.langfuse_session_id, user_id=self.langfuse_session_id):
+
+        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_suffix) if self.langfuse_connector else nullcontext() as root_span:
+            with propagate_attributes(session_id=self.langfuse_connector.session_id, user_id=self.langfuse_connector.user_id) if self.langfuse_connector else nullcontext():
                 if task:
                     logging.info(f"[PROMPT][To: {self.name}]: {task}")
                     question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
@@ -274,9 +273,7 @@ class OpenAiAgent(GenericAgent):
                 params = {
                     "model": self.model_name,
                     "messages": history.get_messages_as_dict(),
-                    "metadata": {
-                        "patate": "au four"
-                    },
+                    **({"metadata": self.langfuse_connector.metadata}  if self.langfuse_connector is not None else {}),
                     **({"stream": True} if streaming_callback is not None else {}),
                     **({"response_format": response_format} if response_format is not None else {}),
                     **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
@@ -292,13 +289,14 @@ class OpenAiAgent(GenericAgent):
                 answer_slot = HistorySlot()
                 for _ in range(2):
                     try:
+                        client = self._get_openai_client()
                         if structured_output:
-                            response = self.client.beta.chat.completions.parse(**params)
+                            response = client.beta.chat.completions.parse(**params)
                         else:
-                            response = self.client.chat.completions.create(**params)
+                            response = client.chat.completions.create(**params)
                             response = self._dispatch_chunk_if_streaming(response, streaming_callback)
                         break
-                    except openai.BadRequestError as e:
+                    except BadRequestError as e:
                         logging.error(e.message)
                         if e.status_code == 400 and has_tried_no_json_mode is False:
                             logging.warning("An error occurred during inference with the OpenAiAgent. Are you sure the backend is OpenAi compatible ? Whatever the case, Yacana will retry the request without the JSON mode. Maybe your LLM or backend doesn't deal with JSON correctly. Therefore we will rely solely on prompt engineering to get valid JSON output.")
@@ -314,7 +312,6 @@ class OpenAiAgent(GenericAgent):
                 logging.debug("Inference output: %s", response.model_dump_json(indent=2))
 
                 for choice in response.choices:
-
                     if self._is_structured_output(choice):
                         logging.debug("Response assessment is structured output")
                         if choice.message.refusal is not None:
@@ -337,7 +334,8 @@ class OpenAiAgent(GenericAgent):
 
                 logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
                 last_message = answer_slot.get_message()
-                root_span.update(input=str(params), output=last_message.content)
+                if self.langfuse_connector:
+                    root_span.update(input=str(params), output=last_message.content)
                 if save_to_history is False:
                     if task:
                         history.delete_slot(question_slot)
@@ -345,10 +343,11 @@ class OpenAiAgent(GenericAgent):
                     history.add_slot(answer_slot)
                 return last_message
 
-
     def _find_right_tool_choice_option(self, tools: List[Tool] | None) -> Literal["none", "auto", "required"]:
         """
         Determines the appropriate tool choice option based on tool configurations.
+        Depending on if all tools are optional, required, or if there are no tools at all it sets
+        the correct parameter for OpenAI API.
 
         Parameters
         ----------

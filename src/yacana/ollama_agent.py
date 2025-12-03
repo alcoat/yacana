@@ -1,12 +1,15 @@
 import json
 import logging
 import uuid
+from contextlib import nullcontext
 
+from langfuse._client.propagation import propagate_attributes
 from ollama import Client, ChatResponse
 from typing import List, Type, Any, T, Dict, Callable, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
 
+from .langfuse import LangfuseConnector
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
 from .utils import Dotdict, AgentType
@@ -51,6 +54,8 @@ class OllamaAgent(GenericAgent):
     structured_thinking : bool, optional
         If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
         Defaults to True.
+    langfuse_connector : LangfuseConnector, optional
+        An optional LangfuseConnector instance to log LLM interactions to Langfuse. Defaults to None.
     **kwargs
         Additional keyword arguments passed to the parent class.
 
@@ -65,12 +70,12 @@ class OllamaAgent(GenericAgent):
         If model_settings is not an instance of OllamaModelSettings.
     """
 
-    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: Tuple[str, str] | None = None, structured_thinking=True, **kwargs) -> None:
+    def __init__(self, name: str, model_name: str, system_prompt: str | None = None, endpoint: str = "http://127.0.0.1:11434", headers=None, model_settings: OllamaModelSettings = None, runtime_config: Dict | None = None, thinking_tokens: Tuple[str, str] | None = None, structured_thinking=True, langfuse_connector: LangfuseConnector = None, **kwargs) -> None:
         model_settings = OllamaModelSettings() if model_settings is None else model_settings
         if not isinstance(model_settings, OllamaModelSettings):
             raise IllogicalConfiguration("model_settings must be an instance of OllamaModelSettings.")
         self._agent_type: AgentType = AgentType.OLLAMA
-        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking)
+        super().__init__(name, model_name, model_settings, system_prompt=system_prompt, endpoint=endpoint, api_token="", headers=headers, runtime_config=runtime_config, history=kwargs.get("history", None), task_runtime_config=kwargs.get("task_runtime_config", None), thinking_tokens=thinking_tokens, structured_thinking=structured_thinking, langfuse_connector=langfuse_connector)
 
     def _interact(self, task: str, tools: List[Tool], json_output: bool, structured_output: Type[BaseModel] | None, medias: List[str] | None, streaming_callback: Callable | None = None, task_runtime_config: Dict | None = None, tags: List[str] | None = None) -> GenericMessage:
         """
@@ -297,51 +302,60 @@ class OllamaAgent(GenericAgent):
         GenericMessage
             The response content.
         """
+        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_suffix, model=self.model_name) if self.langfuse_connector else nullcontext() as root_span:
+            with propagate_attributes(session_id=self.langfuse_connector.session_id, user_id=self.langfuse_connector.user_id) if self.langfuse_connector else nullcontext():
 
-        if task:
-            logging.info(f"[PROMPT][To: {self.name}]: {task}")
-            question_slot = history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
+                if task:
+                    logging.info(f"[PROMPT][To: {self.name}]: {task}")
+                    question_slot = history.add_message(OllamaUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))
 
-        if tools is not None and len(tools) > 0:
-            for tool in tools:
-                if tool.tool_type == ToolType.OPENAI and tool.optional is False and tool.shush is False:
-                    logging.warning(f"You chose to use the OpenAI style tool calling with the OllamaAgent for the tool '{tool.tool_name}'. This tool is set by default as optional=False (hence making it mandatory to use). Note that Ollama does NOT support setting tools optional status on tools! They are all optional by default and this cannot be changed. Yacana may in the future mitigate this issue. If this is important for you please open an issue on the Yacana Github. You can hide this warning by setting `shush=True` in the Tool constructor.")
-        client = Client(host=self.endpoint, headers=self.headers)
-        params = {
-            "model": self.model_name,
-            "messages": history.get_messages_as_dict(),
-            "format": self._get_expected_output_format(json_output, structured_output),
-            "stream": True if streaming_callback is not None else False,
-            "options": self.model_settings.get_settings(),
-            **({"tools": [tool._openai_function_schema for tool in tools]} if tools is not None else {}),
-            **self.runtime_config,
-            **self.task_runtime_config
-        }
-        logging.debug("Runtime parameters before inference: %s", str(params))
-        chat_response: ChatResponse | Iterator[ChatResponse] = client.chat(**params)
-        response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
-        logging.debug("Inference output: %s", str(response))
-        if structured_output is not None:
-            logging.debug("Response assessment is structured output")
-            answer_slot: HistorySlot = history.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
-        elif self._is_tool_calling(response['message']):
-            logging.debug("Response assessment is tool calling")
-            tool_calls: List[ToolCallFromLLM] = []
-            for tool_call in response['message']["tool_calls"]:
-                tool_calls.append(ToolCallFromLLM(str(uuid.uuid4()), tool_call.function.name, tool_call.function.arguments))
-                logging.debug("Tool info : Name= %s, Arguments= %s", tool_call.function.name, tool_call.function.arguments)
-            answer_slot: HistorySlot = history.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
-        else:
-            answer_slot: HistorySlot = history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
+                if tools is not None and len(tools) > 0:
+                    for tool in tools:
+                        if tool.tool_type == ToolType.OPENAI and tool.optional is False and tool.shush is False:
+                            logging.warning(f"You chose to use the OpenAI style tool calling with the OllamaAgent for the tool '{tool.tool_name}'. This tool is set by default as optional=False (hence making it mandatory to use). Note that Ollama does NOT support setting tools optional status on tools! They are all optional by default and this cannot be changed. Yacana may in the future mitigate this issue. If this is important for you please open an issue on the Yacana Github. You can hide this warning by setting `shush=True` in the Tool constructor.")
+                client = Client(host=self.endpoint, headers=self.headers)
+                params = {
+                    "model": self.model_name,
+                    "messages": history.get_messages_as_dict(),
+                    "format": self._get_expected_output_format(json_output, structured_output),
+                    "stream": True if streaming_callback is not None else False,
+                    "options": self.model_settings.get_settings(),
+                    **({"tools": [tool._openai_function_schema for tool in tools]} if tools is not None else {}),
+                    **self.runtime_config,
+                    **self.task_runtime_config
+                }
+                logging.debug("Runtime parameters before inference: %s", str(params))
+                chat_response: ChatResponse | Iterator[ChatResponse] = client.chat(**params)
+                response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
+                logging.debug("Inference output: %s", str(response))
+                if self.langfuse_connector:
+                    root_span.update(input=history.get_messages_as_dict(),
+                                    output=str(response),
+                                    usage_details={"input_tokens": 10, "output_tokens": 20},  # Add token usage
+                                    model=self.model_name,  # Confirm model
+                                    model_parameters={"temperature": 0.7})
+                if structured_output is not None:
+                    logging.debug("Response assessment is structured output")
+                    answer_slot: HistorySlot = history.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
+                elif self._is_tool_calling(response['message']):
+                    logging.debug("Response assessment is tool calling")
+                    tool_calls: List[ToolCallFromLLM] = []
+                    for tool_call in response['message']["tool_calls"]:
+                        tool_calls.append(ToolCallFromLLM(str(uuid.uuid4()), tool_call.function.name, tool_call.function.arguments))
+                        logging.debug("Tool info : Name= %s, Arguments= %s", tool_call.function.name, tool_call.function.arguments)
+                    answer_slot: HistorySlot = history.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
+                else:
+                    answer_slot: HistorySlot = history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
 
-        self.task_runtime_config = {}
-        answer_slot.set_raw_llm_json(self._response_to_json(response))
+                self.task_runtime_config = {}
+                answer_slot.set_raw_llm_json(self._response_to_json(response))
 
-        logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
+                logging.info(f"[AI_RESPONSE][From: {self.name}]: {answer_slot.get_message().get_as_pretty()}")
 
-        last_message = history.get_last_message()
-        if save_to_history is False:
-            if task:
-                history.delete_slot(question_slot)
-            history.delete_slot(answer_slot)
-        return last_message
+                last_message = history.get_last_message()
+
+                if save_to_history is False:
+                    if task:
+                        history.delete_slot(question_slot)
+                    history.delete_slot(answer_slot)
+                return last_message

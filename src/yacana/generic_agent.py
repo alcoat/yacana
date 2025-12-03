@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
+from .langfuse import LangfuseConnector
 from .yacana_tool_calling import YacanaToolCaller
 from .history import History
 from .messages import GenericMessage, MessageRole, Message
@@ -52,6 +53,8 @@ class GenericAgent(ABC):
     structured_thinking : bool, optional
         If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
         Defaults to True.
+    langfuse_connector : LangfuseConnector | None, optional
+        An optional LangfuseConnector instance to log LLM interactions to Langfuse. Defaults to None.
 
     Raises
     ------
@@ -88,13 +91,15 @@ class GenericAgent(ABC):
     structured_thinking : bool, optional
         If True, Yacana will use structured_output internally to get better accuracy. If your LLM doesn't support structured_output set this to False.
         Defaults to True.
+    langfuse_connector : LangfuseConnector | None
+        An optional LangfuseConnector instance to log LLM interactions to Langfuse. Defaults to None.
     """
 
     _registry = {}
 
     def __init__(self, name: str, model_name: str, model_settings: ModelSettings, system_prompt: str | None = None, endpoint: str | None = None,
                  api_token: str = "", headers=None, runtime_config: Dict | None = None, history: History | None = None, task_runtime_config: Dict | None = None,
-                 thinking_tokens: tuple[str, str] | None = None, structured_thinking=True) -> None:
+                 thinking_tokens: tuple[str, str] | None = None, structured_thinking=True, langfuse_connector: LangfuseConnector = None) -> None:
         if model_settings is None:
             raise ValueError("model_settings cannot be None. Please provide a valid ModelSettings instance.")
 
@@ -116,6 +121,7 @@ class GenericAgent(ABC):
         self._tags: List[str] = []
         self.thinking_tokens: tuple[str, str] | None = thinking_tokens
         self.structured_thinking: bool = structured_thinking
+        self.langfuse_connector: LangfuseConnector | None = langfuse_connector
 
         self.tool_caller: YacanaToolCaller | OpenAiToolCaller | None = None
 

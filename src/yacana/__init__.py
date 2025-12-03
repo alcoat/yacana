@@ -14,3 +14,4 @@ from .model_settings import OpenAiModelSettings
 from .tool import Tool
 from .tool import ToolType
 from .mcp import Mcp
+from .langfuse import LangfuseConnector
