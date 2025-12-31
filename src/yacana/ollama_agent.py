@@ -302,7 +302,7 @@ class OllamaAgent(GenericAgent):
         GenericMessage
             The response content.
         """
-        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_suffix, model=self.model_name) if self.langfuse_connector else nullcontext() as root_span:
+        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_name_suffix, model=self.model_name) if self.langfuse_connector else nullcontext() as root_span:
             with propagate_attributes(session_id=self.langfuse_connector.session_id, user_id=self.langfuse_connector.user_id) if self.langfuse_connector else nullcontext():
 
                 if task:
@@ -328,12 +328,16 @@ class OllamaAgent(GenericAgent):
                 chat_response: ChatResponse | Iterator[ChatResponse] = client.chat(**params)
                 response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
                 logging.debug("Inference output: %s", str(response))
+                print(type(chat_response))
+                print("prompt = ", chat_response.prompt_eval_count)
                 if self.langfuse_connector:
+                    print("Ca bug ? ", history.get_messages_as_dict())
+                    print("et ca c'est comment ?", str(response['message']['content']))
                     root_span.update(input=history.get_messages_as_dict(),
-                                    output=str(response),
-                                    usage_details={"input_tokens": 10, "output_tokens": 20},  # Add token usage
-                                    model=self.model_name,  # Confirm model
-                                    model_parameters={"temperature": 0.7})
+                                    output=str(response['message']['content']),
+                                    model=self.model_name,
+                                    model_parameters=self.model_settings.get_settings(),
+                                    metadata=self.langfuse_connector.metadata)
                 if structured_output is not None:
                     logging.debug("Response assessment is structured output")
                     answer_slot: HistorySlot = history.add_message(OllamaStructuredOutputMessage(MessageRole.ASSISTANT, str(response['message']['content']), structured_output.model_validate_json(response['message']['content']), tags=self._tags + [RESPONSE_TAG]))
@@ -346,6 +350,16 @@ class OllamaAgent(GenericAgent):
                     answer_slot: HistorySlot = history.add_message(OpenAIFunctionCallingMessage(tool_calls, tags=self._tags))
                 else:
                     answer_slot: HistorySlot = history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
+
+                if self.langfuse_connector:
+                    print("alors ca envoie quoi ? = ", str({
+                        "input_tokens": chat_response.prompt_eval_count,
+                        **({"output_tokens": history.get_last_message().get_token_count()} if self.langfuse_connector.count_tokens_approximatively is True else {})
+                    }))
+                    root_span.update(usage_details={
+                        "input_tokens": chat_response.prompt_eval_count,
+                        **({"output_tokens": history.get_last_message().get_token_count()} if self.langfuse_connector.count_tokens_approximatively is True else {})
+                    })
 
                 self.task_runtime_config = {}
                 answer_slot.set_raw_llm_json(self._response_to_json(response))

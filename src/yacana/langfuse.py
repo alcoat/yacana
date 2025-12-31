@@ -18,11 +18,13 @@ class LangfuseConnector:
     secret_key: str
         The Langfuse secret_key
     metadata: dict, optional
-        Your custom metadata to associate with the trace.
+        Your custom metadata to associate with each trace.
     user_id: str, optional
         ID identifying a user in Langfuse to associate the trace with.
-    observation_suffix: str
+    observation_name_suffix: str
         Suffix to append to observations' names logged to Langfuse. Names start with the agent name + "-{suffix}" if provided.
+    count_tokens_approximatively: bool, optional
+        Whether to use approximative token counting for the LLM answer. This will send the count to Lanfuse. Defaults to False.
 
     Attributes
     ----------
@@ -36,22 +38,25 @@ class LangfuseConnector:
         Your custom metadata to associate with the trace. Defaults to {}.
     user_id: str
         ID identifying a user in Langfuse to associate the trace with.
-    observation_suffix: str
+    observation_name_suffix: str
         Suffix to append to observations' names logged to Langfuse. Names start with the agent name + "-{suffix}" if provided.
     session_id: str
         Unique identifier for the session. Generated using UUID4. Used to link traces with each others in Langfuse.
     client: Langfuse Client
         The Langfuse client instance.
+    count_tokens_approximatively: bool
+        Whether to use approximative token counting for the LLM answer. This will send the count to Lanfuse. Defaults to False.
     """
-    def __init__(self, endpoint: str, public_key: str, secret_key: str, metadata: dict | None = None, user_id: str = None, observation_suffix: str = ""):
+    def __init__(self, endpoint: str, public_key: str, secret_key: str, metadata: dict | None = None, user_id: str = None, observation_name_suffix: str = "", count_tokens_approximatively: bool = False):
         self._endpoint: str = endpoint
         self._public_key: str = public_key
         self._secret_key: str = secret_key
         self.metadata: dict | None = metadata if metadata else {}
         self.user_id: str = user_id
-        self.observation_suffix: str = observation_suffix if observation_suffix == "" else "-" + observation_suffix
+        self.observation_name_suffix: str = observation_name_suffix if observation_name_suffix == "" else "-" + observation_name_suffix
         self.session_id = str(uuid.uuid4())
         self._openai_client = None
+        self.count_tokens_approximatively: bool = count_tokens_approximatively
         os.environ["LANGFUSE_PUBLIC_KEY"] = self._public_key
         os.environ["LANGFUSE_SECRET_KEY"] = self._secret_key
         os.environ["LANGFUSE_BASE_URL"] = self._endpoint

@@ -259,7 +259,7 @@ class OpenAiAgent(GenericAgent):
             If the model refuses to complete the task.
         """
 
-        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_suffix) if self.langfuse_connector else nullcontext() as root_span:
+        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_name_suffix) if self.langfuse_connector else nullcontext() as root_span:
             with propagate_attributes(session_id=self.langfuse_connector.session_id, user_id=self.langfuse_connector.user_id) if self.langfuse_connector else nullcontext():
                 if task:
                     logging.info(f"[PROMPT][To: {self.name}]: {task}")
@@ -273,7 +273,7 @@ class OpenAiAgent(GenericAgent):
                 params = {
                     "model": self.model_name,
                     "messages": history.get_messages_as_dict(),
-                    **({"metadata": self.langfuse_connector.metadata}  if self.langfuse_connector is not None else {}),
+                    **({"metadata": self.langfuse_connector.metadata} if self.langfuse_connector is not None else {}),
                     **({"stream": True} if streaming_callback is not None else {}),
                     **({"response_format": response_format} if response_format is not None else {}),
                     **({"tools": all_function_calling_json} if len(all_function_calling_json) > 0 else {}),
