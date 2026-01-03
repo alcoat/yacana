@@ -1,5 +1,5 @@
 from jinja2 import Template
-from yacana import OllamaModelSettings, Task, Tool, OllamaAgent, MessageRole, GenericMessage, OpenAiAgent, OpenAiModelSettings, History, HistorySlot, Message, GroupSolve, EndChat, EndChatMode, LoggerManager, MaxToolErrorIter, ToolError, IllogicalConfiguration, ReachedTaskCompletion, GenericAgent, Mcp, ToolType, OpenAIUserMessage, OpenAITextMessage, OllamaUserMessage, OllamaTextMessage
+from yacana import OllamaModelSettings, Task, Tool, OllamaAgent, MessageRole, GenericMessage, OpenAiAgent, OpenAiModelSettings, History, HistorySlot, Message, GroupSolve, EndChat, EndChatMode, LoggerManager, MaxToolErrorIter, ToolError, IllogicalConfiguration, ReachedTaskCompletion, GenericAgent, Mcp, ToolType, OpenAIUserMessage, OpenAITextMessage, OllamaUserMessage, OllamaTextMessage, LangfuseConnector
 
 import inspect
 import re
@@ -185,7 +185,7 @@ def fill_template(exported_classes: List[dict]):
     print(f"Generated documentation HTML for {len(exported_classes)} classes at {output_filename}")
 
 
-all_classes = [OllamaAgent, OpenAiAgent, Task, Tool, Message, OpenAIUserMessage, OpenAITextMessage, OllamaUserMessage, OllamaTextMessage, MessageRole, History, HistorySlot, SlotPosition, Mcp, ToolType, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, OpenAiModelSettings, LoggerManager, ToolError, MaxToolErrorIter, IllogicalConfiguration, ReachedTaskCompletion, TaskCompletionRefusal, UnknownResponseFromLLM]
+all_classes = [OllamaAgent, OpenAiAgent, Task, Tool, Message, OpenAIUserMessage, OpenAITextMessage, OllamaUserMessage, OllamaTextMessage, MessageRole, History, HistorySlot, SlotPosition, Mcp, ToolType, LangfuseConnector, GroupSolve, EndChat, EndChatMode, OllamaModelSettings, OpenAiModelSettings, LoggerManager, ToolError, MaxToolErrorIter, IllogicalConfiguration, ReachedTaskCompletion, TaskCompletionRefusal, UnknownResponseFromLLM]
 exported_classes: List[dict] = []
 
 for cls in all_classes:

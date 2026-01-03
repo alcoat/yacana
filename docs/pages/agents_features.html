@@ -556,7 +556,48 @@ Task("Please update the server.", ollama_agent, tools=deepwiki.get_tools_as(Tool
                     while using it.
                 </div>
 
+                <br>
+                <h2 id="langfuse">Evaluation using LangFuse</h2>
+                <div>
+                    When using LLMs it is important to evaluate how well they perform in a given workflow.<br>
+                    To achieve this, Yacana offers a <a href="https://github.com/langfuse/langfuse">LangFuse</a> integration.<br><br>
 
+                    ▶️ <a href="https://github.com/langfuse/langfuse">LangFuse</a> is a popular open-source tool to evaluate LLMs and AI agents.<br>
+                    It will show you every call made to your LLMs, the associated prompts, responses, latencies and regroup them by workflow.<br>
+                    It also offers advanced evaluation features like using LLMs or humans to rate workflows.<br><br>
+                </div>
+                <div>
+                    Once LangFuse is set up you'll have to create a LangFuse project and get its API key.<br>
+                    Then you can initialize LangFuse in your agents like so:
+                </div>
+                <pre><code class="language-python">
+from yacana import Task, OllamaAgent, LangfuseConnector
+
+# Define the LangFuse connector. endpoint, public_key and secret_key must be replaced by your own values
+lc = LangfuseConnector(endpoint="http://127.0.0.1:3000", public_key="REPLACE", secret_key="REPLACE")
+
+# Now create an Ollama agent with LangFuse integration
+ollama_agent = OllamaAgent("Ai assistant", "llama3.1:8b", langfuse_connector=lc)
+
+Task(f"Why is the sky red and orange ?", ollama_agent).solve()
+                </code></pre>
+                <br>
+                Now you should be able to see your LLM calls and agent tasks in the LangFuse dashboard!<br><br>
+
+                ▶️ <b>There's a few more configuration options available.</b><br>
+                Inside the <code>LangfuseConnector(...)</code> constructor, set <code>count_tokens_approximatively=True</code> to have Yacana estimate the number of tokens used in each LLM call.<br>
+                Note that the OllamaAgent will rely on the regex based approximation so it won't be 100% accurate. The OpenAiAgent, on the other hand, will rely on the OpenAi library to send the correct token count.<br>
+                <br>
+                The constructor also accepts metadata to be sent along each LLM call. Use the metadata argument like so: <code>metadata={"some": "useful_metadata"}</code>.
+                <br><br>
+
+                Finally, <code>observation_name_suffix="some_specific_identifier"</code> will help you find specific LLM workflows by suffixing the observation names with the given string. A dash will be automatically added between the observation name and the suffix.
+                <br><br>
+
+                Complete example:<br>
+                <pre><code class="language-python">
+lc = LangfuseConnector("http://127.0.0.1:3000", "REPLACE_PUB_KEY", "REPLACE_PRIV_KEY", count_tokens_approximatively=True, metadata={"workflow_type": "Plants"}, observation_name_suffix="mimosa")
+                </code></pre>
                 <div style="text-align: center; margin-top: 50px;">
                     <h4>Pagination</h4>
                     <ul class="pagination">
@@ -576,7 +617,7 @@ Task("Please update the server.", ollama_agent, tools=deepwiki.get_tools_as(Tool
             <!-- Search -->
             <section id="search" class="alt">
                 <form method="post" action="#">
-                    <input type="text" name="query" id="query" placeholder="Search"/>
+                    <input onclick="window.location.href='https://deepwiki.com/rememberSoftwares/yacana'" type="text" name="query" id="query" placeholder="Search"/>
                 </form>
             </section>
 

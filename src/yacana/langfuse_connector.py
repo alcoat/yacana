@@ -1,7 +1,7 @@
 import os
 import uuid
 from langfuse.openai import OpenAI
-from langfuse import get_client, propagate_attributes
+from langfuse import get_client
 
 
 class LangfuseConnector:

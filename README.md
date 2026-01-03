@@ -77,7 +77,31 @@ message = Task("Now, give me the answer.", ollama_agent).solve()
 print(message.content)
 ```
 
+Now the same example but using an OpenAI-compatible server (like VLLM or LMStudio):
+
+🧪 Simple task solving and chaining (OpenAI-compatible server)
+```python
+from yacana import Task, OpenAiAgent
+
+# For OpenAi we add an endpoint and apikey.
+openai_agent = OpenAiAgent("Ai assistant", "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF", endpoint="http://localhost:8002/v1", api_token="token", system_prompt="You are a helpful AI assistant")
+
+# Create a task to tell a riddle
+message = Task("Tell me a riddle. But do NOT tell me the answer.", openai_agent).solve()
+
+# "Why was the math book sad?"
+print(message.content)
+
+# Chain a second task to get the answer from the previous joke
+message = Task("Now, give me the answer.", openai_agent).solve()
+
+# "Because it had too many problems!"
+print(message.content)
+```
+
 <br />
+
+**All these examples use Ollama, but you can easily switch to any OpenAI-compatible server by replacing `OllamaAgent` by `OpenAiAgent` and you're good to go!**
 
 🧪 Tool calling (Ollama 🦙)  
 A calculator using tools called by the LLM to solve an equation. It makes use of the [Enhanced Tool Calling](https://remembersoftwares.github.io/yacana/pages/tool_calling.html) feature and [ModelSettings](https://remembersoftwares.github.io/yacana/pages/agents_and_tasks.html#configuring-llms-settings).

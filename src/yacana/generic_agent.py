@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Type, T, Callable, Dict
 from pydantic import BaseModel
 
-from .langfuse import LangfuseConnector
+from .langfuse_connector import LangfuseConnector
 from .yacana_tool_calling import YacanaToolCaller
 from .history import History
 from .messages import GenericMessage, MessageRole, Message

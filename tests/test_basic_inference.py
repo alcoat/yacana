@@ -17,6 +17,8 @@ class TestBasicInference(BaseAgentTest):
             self.openai_agent.history.clean()
         if self.run_vllm:
             self.vllm_agent.history.clean()
+        if self.run_lmstudio:
+            self.lmstudio_agent.history.clean()
 
     def test_simple_completion(self):
         """Test basic text completion with all agent types."""
@@ -41,6 +43,12 @@ class TestBasicInference(BaseAgentTest):
             self.assertIn("1", message.content)
             self.assertIn("5", message.content)
 
+        # Test LMstudio agent
+        if self.run_lmstudio:
+            message = Task(prompt, self.lmstudio_agent).solve()
+            self.assertIn("1", message.content)
+            self.assertIn("5", message.content)
+
     def test_history_management(self):
         """Test basic history management operations."""
         history = History()
@@ -60,6 +68,10 @@ class TestBasicInference(BaseAgentTest):
         
         if self.run_vllm:
             assistant_message = Task("Respond to the greeting", self.vllm_agent).solve()
+            history.add_message(assistant_message)
+
+        if self.run_lmstudio:
+            assistant_message = Task("Respond to the greeting", self.lmstudio_agent).solve()
             history.add_message(assistant_message)
         
         # Verify history structure
@@ -97,9 +109,13 @@ class TestBasicInference(BaseAgentTest):
         if self.run_vllm:
             new_message = Task("Describe the weather", self.vllm_agent).solve()
             slot.add_message(new_message)
+
+        if self.run_lmstudio:
+            new_message = Task("Describe the weather", self.lmstudio_agent).solve()
+            slot.add_message(new_message)
         
         # Change the selected message and verify
-        expected_messages = sum([self.run_ollama, self.run_openai, self.run_vllm]) + 1  # +1 for user message
+        expected_messages = sum([self.run_ollama, self.run_openai, self.run_vllm, self.run_lmstudio]) + 1  # +1 for user message
         self.assertEqual(len(slot.messages), expected_messages)
         
         # Test keeping only selected message
@@ -128,6 +144,11 @@ class TestBasicInference(BaseAgentTest):
         
         if self.run_vllm:
             assistant_message = Task("Describe the weather", self.vllm_agent).solve()
+            assistant_message.add_tags(["weather"])
+            history.add_message(assistant_message)
+
+        if self.run_lmstudio:
+            assistant_message = Task("Describe the weather", self.lmstudio_agent).solve()
             assistant_message.add_tags(["weather"])
             history.add_message(assistant_message)
         
@@ -247,6 +268,10 @@ class TestBasicInference(BaseAgentTest):
         if self.run_ollama:
             test_agent_builtin_tags(self.ollama_agent)
 
+        # Test Ollama agent
+        if self.run_lmstudio:
+            test_agent_builtin_tags(self.lmstudio_agent)
+
     def test_multiple_responses(self):
         """Test getting multiple responses from the model."""
         # Test OpenAI agent
@@ -285,7 +310,7 @@ class TestBasicInference(BaseAgentTest):
                     f"Expected numbers 1-3 in response, got: {msg.content}"
                 )
         
-        # Note: Ollama doesn't support multiple responses (n parameter), so we skip it
+        # Note: Ollama and LMStudio doesn't support multiple responses (n parameter), so we skip it
 
     def test_forget_history(self):
         """Test that the forget=True option restores history to its initial state."""
@@ -337,6 +362,10 @@ class TestBasicInference(BaseAgentTest):
         # Test Ollama agent
         if self.run_ollama:
             test_agent_forget(self.ollama_agent)
+
+        # Test LMStudio agent
+        if self.run_lmstudio:
+            test_agent_forget(self.lmstudio_agent)
 
     def test_history_deletion_methods(self):
         """Test the ability to delete messages and slots from the history."""
@@ -480,6 +509,10 @@ class TestBasicInference(BaseAgentTest):
             test_hugging_face_counting(self.ollama_agent)
             test_image_counting(self.ollama_vision_agent)
 
+        # Test LMStudio agent
+        if self.run_lmstudio:
+            test_hugging_face_counting(self.lmstudio_agent)
+
     def test_no_structure_thinking(self):
         """Test the ability to not use JSON structured output internally."""
 
@@ -522,6 +555,7 @@ class TestBasicInference(BaseAgentTest):
         cls.run_ollama = os.getenv('TEST_OLLAMA', 'true').lower() == 'true'
         cls.run_openai = os.getenv('TEST_OPENAI', 'true').lower() == 'true'
         cls.run_vllm = os.getenv('TEST_VLLM', 'true').lower() == 'true'
+        cls.run_lmstudio = os.getenv('TEST_LMSTUDIO', 'true').lower() == 'true'
 
 if __name__ == '__main__':
     unittest.main() 

@@ -9,7 +9,7 @@ from typing import List, Type, Any, T, Dict, Callable, Tuple
 from collections.abc import Iterator
 from pydantic import BaseModel
 
-from .langfuse import LangfuseConnector
+from .langfuse_connector import LangfuseConnector
 from .generic_agent import GenericAgent
 from .model_settings import OllamaModelSettings
 from .utils import Dotdict, AgentType
@@ -328,11 +328,7 @@ class OllamaAgent(GenericAgent):
                 chat_response: ChatResponse | Iterator[ChatResponse] = client.chat(**params)
                 response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
                 logging.debug("Inference output: %s", str(response))
-                print(type(chat_response))
-                #print("prompt = ", chat_response.prompt_eval_count)
                 if self.langfuse_connector:
-                    print("Ca bug ? ", history.get_messages_as_dict())
-                    print("et ca c'est comment ?", str(response['message']['content']))
                     root_span.update(input=history.get_messages_as_dict(),
                                     output=str(response['message']['content']),
                                     model=self.model_name,
@@ -352,10 +348,6 @@ class OllamaAgent(GenericAgent):
                     answer_slot: HistorySlot = history.add_message(OllamaTextMessage(MessageRole.ASSISTANT, response['message']['content'], tags=self._tags + [RESPONSE_TAG]))
 
                 if self.langfuse_connector:
-                    print("alors ca envoie quoi ? = ", str({
-                        **({"input_tokens": chat_response.prompt_eval_count} if streaming_callback is None else {}),
-                        **({"output_tokens": history.get_last_message().get_token_count()} if self.langfuse_connector.count_tokens_approximatively is True else {})
-                    }))
                     root_span.update(usage_details={
                         **({"input_tokens": chat_response.prompt_eval_count} if streaming_callback is None else {}),
                         **({"output_tokens": history.get_last_message().get_token_count()} if self.langfuse_connector.count_tokens_approximatively is True else {})

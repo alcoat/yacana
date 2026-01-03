@@ -1,5 +1,6 @@
 import logging
-from langfuse import propagate_attributes
+
+from langfuse._client.propagation import propagate_attributes
 from openai import OpenAI
 from openai._exceptions import BadRequestError
 from openai import Stream
@@ -11,7 +12,7 @@ from openai.types.chat import ChatCompletionChunk
 from contextlib import nullcontext
 
 from .generic_agent import GenericAgent
-from .langfuse import LangfuseConnector
+from .langfuse_connector import LangfuseConnector
 from .model_settings import OpenAiModelSettings
 from .utils import Dotdict, AgentType
 from .exceptions import IllogicalConfiguration, TaskCompletionRefusal, UnknownResponseFromLLM
@@ -218,8 +219,10 @@ class OpenAiAgent(GenericAgent):
 
     def _get_openai_client(self):
         if self.langfuse_connector:
+            print("je vois ca si y a un connector")
             return self.langfuse_connector.get_openai_client(self.endpoint, self.api_token)
         else:
+            print("Je vois ca si y a pas de connector")
             return OpenAI(api_key=self.api_token, base_url=self.endpoint)
 
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
