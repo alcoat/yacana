@@ -329,7 +329,7 @@ class OllamaAgent(GenericAgent):
                 response = self._dispatch_chunk_if_streaming(chat_response, streaming_callback)
                 logging.debug("Inference output: %s", str(response))
                 print(type(chat_response))
-                print("prompt = ", chat_response.prompt_eval_count)
+                #print("prompt = ", chat_response.prompt_eval_count)
                 if self.langfuse_connector:
                     print("Ca bug ? ", history.get_messages_as_dict())
                     print("et ca c'est comment ?", str(response['message']['content']))
@@ -353,11 +353,11 @@ class OllamaAgent(GenericAgent):
 
                 if self.langfuse_connector:
                     print("alors ca envoie quoi ? = ", str({
-                        "input_tokens": chat_response.prompt_eval_count,
+                        **({"input_tokens": chat_response.prompt_eval_count} if streaming_callback is None else {}),
                         **({"output_tokens": history.get_last_message().get_token_count()} if self.langfuse_connector.count_tokens_approximatively is True else {})
                     }))
                     root_span.update(usage_details={
-                        "input_tokens": chat_response.prompt_eval_count,
+                        **({"input_tokens": chat_response.prompt_eval_count} if streaming_callback is None else {}),
                         **({"output_tokens": history.get_last_message().get_token_count()} if self.langfuse_connector.count_tokens_approximatively is True else {})
                     })
 

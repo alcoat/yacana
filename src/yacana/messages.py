@@ -768,70 +768,6 @@ class OpenAiToolCallingMessage(GenericMessage):
         return simplified_msg
 
 
-class OllamaToolCallingMessage(GenericMessage):
-    """
-    Response from the LLM when a tool is called.
-
-    Parameters
-    ----------
-    content : str
-        The output of the tool.
-    tool_call_name : str
-        The ID of the tool call.
-    tags : List[str], optional
-        Optional list of tags associated with the message.
-    **kwargs
-        Additional keyword arguments passed to the parent class.
-
-    Attributes
-    ----------
-    tool_call_name : str
-        The name of the tool call.
-    """
-
-    def __init__(self, content: str, tool_call_name: str, tags: List[str] = None, **kwargs):
-        role = MessageRole.TOOL
-        tool_calls = None
-        medias = None
-        structured_output = None
-        self.tool_call_name = tool_call_name
-        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
-
-    def get_message_as_dict(self):
-        """
-        Convert the message to a dictionary format.
-
-        Returns
-        -------
-        dict
-            A dictionary containing the role, content, and tool call ID.
-        """
-        return {
-            "role": self.role.value,
-            "content": self.content,
-            "name": self.tool_call_name
-        }
-
-    def get_message_as_hugging_face_dict(self) -> HFMessage:
-        """
-        Convert the message to a dictionary format compatible with Hugging Face.
-        This is used to count tokens using the Hugging Face tokenizers.
-        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
-
-        Returns
-        -------
-        HFMessage
-            A dictionary representation of the message compatible with Hugging Face.
-        """
-        simplified_msg: HFMessage = {
-            "role": self.role.value,
-            "content": str(self.content)
-        }
-        if self.tool_calls:
-            simplified_msg["content"] += " " + self.tool_call_name
-        return simplified_msg
-
-
 class OpenAIStructuredOutputMessage(GenericMessage):
     """
     Response from OpenAI including structured output to be parsed.
@@ -920,6 +856,70 @@ class OpenAIStructuredOutputMessage(GenericMessage):
             "role": self.role.value,
             "content": str(self.content)
         }
+
+
+class OllamaToolCallingMessage(GenericMessage):
+    """
+    Response from the LLM when a tool is called.
+
+    Parameters
+    ----------
+    content : str
+        The output of the tool.
+    tool_call_name : str
+        The ID of the tool call.
+    tags : List[str], optional
+        Optional list of tags associated with the message.
+    **kwargs
+        Additional keyword arguments passed to the parent class.
+
+    Attributes
+    ----------
+    tool_call_name : str
+        The name of the tool call.
+    """
+
+    def __init__(self, content: str, tool_call_name: str, tags: List[str] = None, **kwargs):
+        role = MessageRole.TOOL
+        tool_calls = None
+        medias = None
+        structured_output = None
+        self.tool_call_name = tool_call_name
+        super().__init__(role, content, tool_calls, medias, structured_output, tags=tags, id=kwargs.get('id', None))
+
+    def get_message_as_dict(self):
+        """
+        Convert the message to a dictionary format.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the role, content, and tool call ID.
+        """
+        return {
+            "role": self.role.value,
+            "content": self.content,
+            "name": self.tool_call_name
+        }
+
+    def get_message_as_hugging_face_dict(self) -> HFMessage:
+        """
+        Convert the message to a dictionary format compatible with Hugging Face.
+        This is used to count tokens using the Hugging Face tokenizers.
+        The purpose of this method is to have 'content' contain every information like images, tool calls, etc.
+
+        Returns
+        -------
+        HFMessage
+            A dictionary representation of the message compatible with Hugging Face.
+        """
+        simplified_msg: HFMessage = {
+            "role": self.role.value,
+            "content": str(self.content)
+        }
+        if self.tool_calls:
+            simplified_msg["content"] += " " + self.tool_call_name
+        return simplified_msg
 
 
 class OllamaUserMessage(GenericMessage):

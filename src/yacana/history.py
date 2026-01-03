@@ -153,7 +153,7 @@ class HistorySlot:
     def set_raw_llm_json(self, raw_llm_json: str) -> None:
         """
         Sets the raw LLM JSON response for the slot.
-        This is the raw JSON from the inference server. When using OpenAI this may contain more than one message hence the slot system acts as a container for the messages.
+        This is the raw JSON from the inference server. When using OpenAI this may contain more than one message hence the slot system acting as a container for the messages.
 
         Parameters
         ----------

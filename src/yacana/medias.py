@@ -89,6 +89,7 @@ class Media:
     def path_to_base64(path: str) -> str:
         """
         Converts a target resource (remote or local) to a base64-encoded string.
+        To be clear, it is not the path itself that is encoded, but the target content it points to.
 
         Parameters
         ----------
