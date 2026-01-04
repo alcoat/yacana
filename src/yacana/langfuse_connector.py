@@ -1,6 +1,5 @@
 import os
 import uuid
-from langfuse.openai import OpenAI
 from langfuse import get_client
 
 
@@ -52,7 +51,7 @@ class LangfuseConnector:
         self._public_key: str = public_key
         self._secret_key: str = secret_key
         self.metadata: dict | None = metadata if metadata else {}
-        self.user_id: str = user_id
+        self.user_id: str | None = user_id
         self.observation_name_suffix: str = observation_name_suffix if observation_name_suffix == "" else "-" + observation_name_suffix
         self.session_id = str(uuid.uuid4())
         self._openai_client = None
@@ -74,9 +73,9 @@ class LangfuseConnector:
     def secret_key(self) -> str:
         return self._secret_key
 
-    def get_openai_client(self, openai_endpoint, openai_api_token) -> OpenAI:
+    def get_openai_client(self, openai_endpoint, openai_api_token):
         """
-        Returns the Langfuse OpenAI client.
+        Returns the Langfuse OpenAI client drop in replacement.
 
         Parameters
         ----------
@@ -90,6 +89,7 @@ class LangfuseConnector:
         OpenAI
             The Langfuse OpenAI client.
         """
+        from langfuse.openai import OpenAI
         if not self._openai_client:
             self._openai_client = OpenAI(
                 api_key=openai_api_token,

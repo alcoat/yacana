@@ -62,37 +62,23 @@
 
 
                 <h2 id="compatibility-with-openai-api">Compatibility with OpenAI API</h2>
-                <p>
-                    Yacana was initially designed to work only with Ollama. However, many projects require mixing both
-                    private LLM providers and local open source models to achieve
-                    a greater production grade product. Private LLM providers like OpenAI or Anthropic are great for
-                    production due to their quality but cost a lot of money.
-                    On the other hand, local open source models are way cheaper to run but their quality is not always
-                    there. Hence, having the ability to mix both is a great asset.
-                </p>
+
                 <br>
                 <p>
                     The force of Yacana is to provide you with the same programming API whether you use Ollama or an
                     OpenAI-compatible endpoint.
-                    <br>
-                    To be fair there is one important difference between the OllamaAgent and OpenAiAgent : the way tools
-                    are called.
-                    <br>
-                    For Ollama, tools are called using an "enhanced tool calling" system where Yacana will iterate over
-                    the tools and call the appropriate ones with its own
-                    internal method. This system was made specifically for local LLMs to achieve higher call success
-                    rates.
-                    <br>
-                    <br>
-                    For OpenAI, tools are called following the OpenAI standard. So, when using ChatGPT you won't have
-                    any troubles calling tools as chatGPT is tailored for this.<br>
-                    However, when using other inference servers like VLLM you will have a lower success rate at calling
-                    tools. This is a little bit unfortunate and will be addressed in
-                    another update. Our aim is to make both Agents capable of using both tool calling systems.
-                    <br>
-                    Stay tuned for future updates!
+                    Because Yacana exposes the raw underlying library client, you can define runtime arguments like guided backend decoding, etc. This should allow maximum portability between different inference servers.<br>
+                    In this page we'll go through example of using ChatGPT and VLLM with Yacana.<br>
+                    Note that LMStudio works fine too as it's exposing an OpenAi compatible endpoint too.
                 </p>
                 <br>
+                <div>
+                    Yacana provides tool calling abilities for all LLMs. Even the ones that don't support it. What you should acknowledge though is that by default the OpenAiAgent uses the Yacana tool calling mechanism and not the
+                    OpenAi one.<br>
+                    You can change this behaviour by setting the tool calling style in the Tool constructor as shown <a href="../pages/tool_calling.html#tool-calling-styles">here</a>.
+                </div>
+                <bR>
+
                 <h2 id="using-chatgpt">Using ChatGPT</h2>
                 <p>
                     Using ChatGpt requires using the <code>OpenAiAgent</code>. It has the same constructor and
@@ -279,7 +265,7 @@ Raw JSON output from LLM :
 
                 The HistorySlot is the class that wraps the message from the LLM. There are very few use cases where
                 you'll need to
-                interact with it. When accessing a Message from the history in reality you go through the HistorySlot
+                interact with it (See section <a href="#alt-resp" >Getting alternative responses</a> bellow). When accessing a Message from the history in reality you go through the HistorySlot
                 object even though you can't see it.
                 <br>
                 However, in this case the <code>logprobs</code> data is not available inside the <a
@@ -305,7 +291,7 @@ Task("Describe this image", openai_agent, medias=["./tests/assets/burger.jpg", "
 
                 <hr>
 
-                <h3>Getting alternative responses</h3>
+                <h3 id="alt-resp">Getting alternative responses</h3>
                 <p>
                     ChatGPT has a feature allowing it to return multiple version of the same message. It's used to
                     provide you with alternative responses. For instance,
@@ -523,6 +509,7 @@ print(message.content)
 print("Name = ", message.structured_output.countryFacts[0].name)
 print("Fact = ", message.structured_output.countryFacts[0].fact)
                 </code></pre>
+                <br>
                 <p>
                     All other features, like medias, streaming, etc. are also available with the OpenAiAgent and can be
                     used in the exact same way.

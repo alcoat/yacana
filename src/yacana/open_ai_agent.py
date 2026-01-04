@@ -1,6 +1,6 @@
 import logging
 
-from langfuse._client.propagation import propagate_attributes
+#from langfuse._client.propagation import propagate_attributes
 from openai import OpenAI
 from openai._exceptions import BadRequestError
 from openai import Stream
@@ -219,10 +219,8 @@ class OpenAiAgent(GenericAgent):
 
     def _get_openai_client(self):
         if self.langfuse_connector:
-            print("je vois ca si y a un connector")
             return self.langfuse_connector.get_openai_client(self.endpoint, self.api_token)
         else:
-            print("Je vois ca si y a pas de connector")
             return OpenAI(api_key=self.api_token, base_url=self.endpoint)
 
     def _chat(self, history: History, task: str | None, medias: List[str] | None = None, json_output=False, structured_output: Type[T] | None = None, save_to_history: bool = True, tools: List[Tool] | None = None,
@@ -261,9 +259,19 @@ class OpenAiAgent(GenericAgent):
         TaskCompletionRefusal
             If the model refuses to complete the task.
         """
+        if self.langfuse_connector:
+            try:
+                from langfuse._client.propagation import propagate_attributes as _propagate_attributes
+            except Exception:
+                _propagate_attributes = lambda *a, **k: nullcontext()
+            propagate_ctx = _propagate_attributes(session_id=self.langfuse_connector.session_id, user_id=self.langfuse_connector.user_id)
+            observation_ctx = self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_name_suffix)
+        else:
+            propagate_ctx = nullcontext()
+            observation_ctx = nullcontext()
 
-        with self.langfuse_connector.client.start_as_current_observation(as_type="generation", name=self.name + self.langfuse_connector.observation_name_suffix) if self.langfuse_connector else nullcontext() as root_span:
-            with propagate_attributes(session_id=self.langfuse_connector.session_id, user_id=self.langfuse_connector.user_id) if self.langfuse_connector else nullcontext():
+        with observation_ctx as root_span:
+            with propagate_ctx:
                 if task:
                     logging.info(f"[PROMPT][To: {self.name}]: {task}")
                     question_slot = history.add_message(OpenAIUserMessage(MessageRole.USER, task, tags=self._tags + [PROMPT_TAG], medias=medias, structured_output=structured_output))

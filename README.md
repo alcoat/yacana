@@ -101,7 +101,7 @@ print(message.content)
 
 <br />
 
-**All these examples use Ollama, but you can easily switch to any OpenAI-compatible server by replacing `OllamaAgent` by `OpenAiAgent` and you're good to go!**
+**All these examples use Ollama, but you can easily switch to any [OpenAI-compatible](https://remembersoftwares.github.io/yacana/pages/other_inference_servers.html) server by replacing `OllamaAgent` by `OpenAiAgent` and you're good to go!**
 
 🧪 Tool calling (Ollama 🦙)  
 A calculator using tools called by the LLM to solve an equation. It makes use of the [Enhanced Tool Calling](https://remembersoftwares.github.io/yacana/pages/tool_calling.html) feature and [ModelSettings](https://remembersoftwares.github.io/yacana/pages/agents_and_tasks.html#configuring-llms-settings).
@@ -419,6 +419,9 @@ To look at more complete examples try the [examples folder](https://github.com/r
 ---
 
 ## Releases
+
+**0.4.1**  
++ Added support for evaluation with Langfuse.  
 
 **0.4.0**  
 + Added token counting in history.  
